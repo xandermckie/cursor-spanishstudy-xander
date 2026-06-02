@@ -1,0 +1,162 @@
+[
+  {
+    "id": "vocab-001",
+    "category": "transit",
+    "es": "¿Dónde está la estación de metro?",
+    "ca": "On és l'estació de metro?",
+    "en": "Where is the metro station?",
+    "notes": "L5 Diagonal"
+  },
+  {
+    "id": "vocab-002",
+    "category": "transit",
+    "es": "Un billete de bus, por favor.",
+    "ca": "Un bitllet d'autobús, si us plau.",
+    "en": "One bus ticket, please.",
+    "notes": "TMB bus"
+  },
+  {
+    "id": "vocab-003",
+    "category": "transit",
+    "es": "¿Cómo llego al Aeropuerto T1?",
+    "ca": "Com arribo a l'Aeroport T1?",
+    "en": "How do I get to Airport T1?",
+    "notes": "Aeroport Josep Tarradellas"
+  },
+  {
+    "id": "vocab-004",
+    "category": "transit",
+    "es": "Quiero una T-usual de diez viajes.",
+    "ca": "Vull una T-usual de deu viatges.",
+    "en": "I want a T-usual card with ten trips.",
+    "notes": "TMB travel card"
+  },
+  {
+    "id": "vocab-005",
+    "category": "food",
+    "es": "Una ración de pan con tomate, por favor.",
+    "ca": "Una ració de pa amb tomàquet, si us plau.",
+    "en": "A serving of bread with tomato, please.",
+    "notes": "pa amb tomàquet"
+  },
+  {
+    "id": "vocab-006",
+    "category": "food",
+    "es": "¿Tienen menú del día?",
+    "ca": "Tenen menú del dia?",
+    "en": "Do you have a set lunch menu?",
+    "notes": "menú del día"
+  },
+  {
+    "id": "vocab-007",
+    "category": "food",
+    "es": "Un vermut en la terraza, por favor.",
+    "ca": "Un vermut a la terrassa, si us plau.",
+    "en": "A vermouth on the terrace, please.",
+    "notes": "Sunday vermut culture"
+  },
+  {
+    "id": "vocab-008",
+    "category": "food",
+    "es": "Voy al mercado de la Boqueria.",
+    "ca": "Vaig al mercat de la Boqueria.",
+    "en": "I'm going to the Boqueria market.",
+    "notes": "La Rambla"
+  },
+  {
+    "id": "vocab-009",
+    "category": "places",
+    "es": "La Sagrada Família está al norte.",
+    "ca": "La Sagrada Família és al nord.",
+    "en": "The Sagrada Família is to the north.",
+    "notes": "Gaudí basilica"
+  },
+  {
+    "id": "vocab-010",
+    "category": "places",
+    "es": "La playa de Barceloneta está cerca.",
+    "ca": "La platja de la Barceloneta és a prop.",
+    "en": "Barceloneta beach is nearby.",
+    "notes": "Beach neighborhood"
+  },
+  {
+    "id": "vocab-011",
+    "category": "places",
+    "es": "Vivo en el barrio de Gràcia.",
+    "ca": "Vis al barri de Gràcia.",
+    "en": "I live in the Gràcia neighborhood.",
+    "notes": "Gràcia"
+  },
+  {
+    "id": "vocab-012",
+    "category": "places",
+    "es": "Nos vemos en Plaça Catalunya.",
+    "ca": "Ens veiem a la Plaça Catalunya.",
+    "en": "See you at Plaça Catalunya.",
+    "notes": "Central square"
+  },
+  {
+    "id": "vocab-013",
+    "category": "phrases",
+    "es": "Bon dia, ¿qué tal?",
+    "ca": "Bon dia, com estàs?",
+    "en": "Good morning, how are you?",
+    "notes": "Greeting"
+  },
+  {
+    "id": "vocab-014",
+    "category": "phrases",
+    "es": "¿Cuánto cuesta esto?",
+    "ca": "Quant costa això?",
+    "en": "How much does this cost?",
+    "notes": "Shopping"
+  },
+  {
+    "id": "vocab-015",
+    "category": "phrases",
+    "es": "¿Habla inglés?",
+    "ca": "Parla anglès?",
+    "en": "Do you speak English?",
+    "notes": "Useful for tourists"
+  },
+  {
+    "id": "vocab-016",
+    "category": "phrases",
+    "es": "¿Me puede ayudar, por favor?",
+    "ca": "Em pot ajudar, si us plau?",
+    "en": "Can you help me, please?",
+    "notes": "Polite request"
+  },
+  {
+    "id": "vocab-017",
+    "category": "emergencies",
+    "es": "¡Necesito un socorrista!",
+    "ca": "Necessito un socorrista!",
+    "en": "I need a lifeguard!",
+    "notes": "Beach emergency"
+  },
+  {
+    "id": "vocab-018",
+    "category": "emergencies",
+    "es": "¿Dónde está el hospital más cercano?",
+    "ca": "On és l'hospital més proper?",
+    "en": "Where is the nearest hospital?",
+    "notes": "Hospital Clínic, etc."
+  },
+  {
+    "id": "vocab-019",
+    "category": "emergencies",
+    "es": "He perdido el pasaporte.",
+    "ca": "He perdut el passaport.",
+    "en": "I have lost my passport.",
+    "notes": "Consulate may be needed"
+  },
+  {
+    "id": "vocab-020",
+    "category": "emergencies",
+    "es": "Llame al ciento doce, por favor.",
+    "ca": "Truqui al cent dotze, si us plau.",
+    "en": "Please call one one two.",
+    "notes": "EU emergency number 112"
+  }
+]

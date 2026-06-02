@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Quiz — {{ app_name }}{% endblock %}
+
+{% block content %}
+<h1 class="h3 text-accent mb-4">Quiz</h1>
+
+{% if score is not none and total is not none %}
+<div class="alert alert-success">
+  Your score: <strong>{{ score }} / {{ total }}</strong>
+</div>
+{% endif %}
+
+{% if questions %}
+<form method="post" action="{{ url_for('quiz_page') }}">
+  {% for q in questions %}
+  {% set qidx = loop.index0 %}
+  <div class="card mb-4">
+    <div class="card-header">
+      {% if q.type == 'vocab' %}Vocab{% else %}Trivia{% endif %}
+      {% if q.category %} — {{ q.category }}{% endif %}
+      {% if q.difficulty %} ({{ q.difficulty }}){% endif %}
+    </div>
+    <div class="card-body">
+      <p class="fw-semibold mb-3">{{ q.question }}</p>
+      <div class="list-group">
+        {% for opt in q.answers %}
+        <label class="list-group-item list-group-item-action">
+          <input class="form-check-input me-2" type="radio"
+                 name="answer_{{ qidx }}"
+                 value="{{ opt.text }}" required>
+          {{ opt.text }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  <button type="submit" class="btn btn-accent">Submit answers</button>
+</form>
+{% else %}
+<div class="alert alert-warning">
+  No quiz questions available right now. Try <a href="{{ url_for('refresh_data') }}">refreshing data</a>.
+</div>
+{% endif %}
+{% endblock %}
