@@ -3,8 +3,6 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
-data/translations_cache.json
-data/glosbe_cache.json
-data/definitions_cache.json
-data/daily_sentence.json
-data/lingua_cache.json
+
+# Runtime cache — keep folder, ignore contents
+data/*
