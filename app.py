@@ -58,11 +58,12 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/reader")
     def reader():
+        reader_data = fetcher.get_reader()
         return render_template(
-            "index.html",
+            "reader.html",
             page="reader",
             title="Fog-reveal reader",
-            message="Reader placeholder — fog-reveal passages will go here.",
+            reader=reader_data,
         )
 
     @app.route("/vocab")

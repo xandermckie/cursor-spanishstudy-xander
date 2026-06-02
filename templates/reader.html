@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Reader{% endblock %}
+{% block body_class %}reader-page{% endblock %}
+{% block main_class %}reader-main{% endblock %}
+
+{% block extra_css %}
+  body.reader-page { cursor: none; }
+  body.reader-page a, body.reader-page button { cursor: none; }
+
+  #fog-cursor {
+    position: fixed;
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: width 0.15s ease, height 0.15s ease, border-color 0.15s ease;
+    box-shadow: 0 0 12px rgba(200, 169, 110, 0.35);
+    left: -100px;
+    top: -100px;
+  }
+  #fog-cursor.active {
+    width: 140px;
+    height: 140px;
+    border-color: var(--accent2);
+    box-shadow: 0 0 24px rgba(126, 184, 160, 0.4);
+  }
+
+  .reader-main {
+    max-width: 680px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 3rem;
+  }
+
+  .reader-hero { text-align: center; margin-bottom: 2rem; }
+  .reader-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 12px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+  }
+  .reader-hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 400;
+    line-height: 1.2;
+    margin-bottom: 0.75rem;
+  }
+  .reader-hero h1 em { color: var(--accent); font-style: italic; }
+  .reader-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-dim);
+    line-height: 1.65;
+  }
+
+  .instruction {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface2);
+    border: 1px solid rgba(200, 169, 110, 0.2);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    margin-bottom: 1.5rem;
+  }
+
+  .reader-card {
+    background: var(--surface);
+    border: 1px solid rgba(200, 169, 110, 0.15);
+    border-radius: 12px;
+    padding: 2rem 2.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .card-label {
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(200, 169, 110, 0.15);
+  }
+
+  .lang-badge {
+    display: inline-block;
+    background: rgba(200, 169, 110, 0.12);
+    color: var(--accent);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-right: 6px;
+  }
+  .lang-badge.ca {
+    color: var(--accent2);
+    background: rgba(126, 184, 160, 0.12);
+  }
+
+  .passage-wrap {
+    position: relative;
+    cursor: none;
+  }
+
+  .passage-layer {
+    line-height: 1.9;
+    font-size: 17px;
+  }
+
+  .passage-layer.target-lang {
+    color: var(--text);
+    position: relative;
+    z-index: 1;
+  }
+
+  .passage-layer.translation {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    color: var(--accent2);
+    font-style: italic;
+    clip-path: circle(0px at var(--cx, 50%) var(--cy, 50%));
+    transition: clip-path 0.08s ease;
+    pointer-events: none;
+    z-index: 2;
+    background: var(--surface);
+  }
+
+  .passage-wrap.revealing .passage-layer.translation {
+    clip-path: circle(70px at var(--cx, 50%) var(--cy, 50%));
+  }
+
+  .progress-section {
+    background: var(--surface);
+    border: 1px solid rgba(200, 169, 110, 0.15);
+    border-radius: 12px;
+    padding: 1.75rem 2rem;
+    margin-top: 0.5rem;
+  }
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .progress-row:last-child { margin-bottom: 0; }
+  .progress-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    width: 100px;
+    flex-shrink: 0;
+  }
+  .progress-bar-bg {
+    flex: 1;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0;
+    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .progress-pct {
+    font-size: 12px;
+    color: var(--accent);
+    width: 36px;
+    text-align: right;
+  }
+{% endblock %}
+
+{% block content %}
+<div id="fog-cursor" aria-hidden="true"></div>
+
+<header class="reader-hero">
+  <div class="reader-logo">✦ Estudio Personal</div>
+  <h1>Read in Spanish.<br><em>Hover to remember.</em></h1>
+  <p class="reader-subtitle">
+    Move your cursor over the passages below — a lens reveals the English translation
+    hidden beneath the Spanish or Catalan.
+  </p>
+</header>
+
+<div class="instruction" role="note">
+  ◎ &nbsp;Hover over a passage — the fog clears where your cursor moves
+</div>
+
+{% for passage in reader.passages %}
+<article class="reader-card">
+  <div class="card-label">
+    <span class="lang-badge{% if passage.lang == 'ca' %} ca{% endif %}">{{ passage.lang | upper }}</span>
+    {{ passage.title }}
+  </div>
+  <div class="passage-wrap" data-passage-id="{{ passage.id }}">
+    <div class="passage-layer target-lang">{{ passage.body }}</div>
+    <div class="passage-layer translation">{{ passage.en }}</div>
+  </div>
+</article>
+{% endfor %}
+
+<section class="progress-section" aria-label="Study progress by category">
+  <div class="card-label" style="margin-bottom: 1.25rem;">Weak areas</div>
+  {% for row in reader.progress %}
+  <div class="progress-row">
+    <span class="progress-label">{{ row.label }}</span>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" data-pct="{{ row.pct }}"></div>
+    </div>
+    <span class="progress-pct">{{ row.pct }}%</span>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const cursor = document.getElementById('fog-cursor');
+  if (!cursor) return;
+
+  document.addEventListener('mousemove', function (e) {
+    cursor.style.left = e.clientX + 'px';
+    cursor.style.top = e.clientY + 'px';
+  });
+
+  document.querySelectorAll('.passage-wrap').forEach(function (wrap) {
+    const translation = wrap.querySelector('.passage-layer.translation');
+    if (!translation) return;
+
+    wrap.addEventListener('mousemove', function (e) {
+      const rect = wrap.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      translation.style.setProperty('--cx', x + 'px');
+      translation.style.setProperty('--cy', y + 'px');
+      wrap.classList.add('revealing');
+      cursor.classList.add('active');
+    });
+
+    wrap.addEventListener('mouseleave', function () {
+      wrap.classList.remove('revealing');
+      cursor.classList.remove('active');
+    });
+  });
+
+  setTimeout(function () {
+    document.querySelectorAll('.progress-bar-fill').forEach(function (bar) {
+      bar.style.width = bar.dataset.pct + '%';
+    });
+  }, 400);
+})();
+</script>
+{% endblock %}

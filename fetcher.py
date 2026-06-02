@@ -33,6 +33,41 @@ DAILY_SENTENCE_ES = (
     "¿Dónde está la estación de metro más cercana a la Plaça de Catalunya?"
 )
 
+READER_PASSAGES_SEED = [
+    {
+        "id": "es-barcelona",
+        "lang": "es",
+        "title": "Lectura del día — La Ciudad Condal",
+        "body": (
+            "Barcelona es una ciudad única en el mundo. Sus calles están llenas de "
+            "historia, arte y vida. Puedes pasear por el Barrio Gótico, visitar el "
+            "mercado de La Boqueria, o simplemente sentarte en la terraza de un café "
+            "y observar la gente pasar. El idioma de la calle es el catalán, pero "
+            "todo el mundo habla castellano también."
+        ),
+        "en": (
+            "Barcelona is a unique city in the world. Its streets are full of "
+            "history, art and life. You can walk through the Gothic Quarter, visit "
+            "La Boqueria market, or simply sit on a café terrace and watch people "
+            "pass by. The language of the street is Catalan, but everyone speaks "
+            "Spanish too."
+        ),
+    },
+    {
+        "id": "ca-phrases",
+        "lang": "ca",
+        "title": "Frase en Català",
+        "body": (
+            "Bon dia! Com estàs? Vull un cafè amb llet, si us plau. Quant costa? "
+            "Moltes gràcies, fins aviat."
+        ),
+        "en": (
+            "Good morning! How are you? I'd like a coffee with milk, please. "
+            "How much does it cost? Thank you very much, see you soon."
+        ),
+    },
+]
+
 
 def _load_cache() -> dict[str, Any]:
     if not CACHE_FILE.exists():
@@ -202,10 +237,63 @@ def get_homepage() -> dict[str, Any]:
     }
 
 
+def _ensure_reader_passages(cache: dict[str, Any]) -> list[dict[str, Any]]:
+    """Load reader passages from cache or seed; optionally refresh EN via API."""
+    passages = cache.get("reader_passages")
+    if not passages:
+        passages = [dict(p) for p in READER_PASSAGES_SEED]
+        cache["reader_passages"] = passages
+        _save_cache(cache)
+        return passages
+
+    updated = False
+    for passage in passages:
+        if passage.get("en"):
+            continue
+        src = "es" if passage.get("lang") == "es" else "ca"
+        translated = fetch_translation(passage.get("body", ""), src, "en")
+        if translated:
+            passage["en"] = translated
+            updated = True
+    if updated:
+        cache["reader_passages"] = passages
+        _save_cache(cache)
+    return passages
+
+
+def get_reader() -> dict[str, Any]:
+    """Return fog-reader passages and weak-area stats for the reader page."""
+    cache = _load_cache()
+    cache.setdefault("weak_areas", {cat: 0 for cat in CATEGORIES})
+    passages = _ensure_reader_passages(cache)
+
+    weak_areas = cache.get("weak_areas") or {cat: 0 for cat in CATEGORIES}
+    max_misses = max(weak_areas.values()) if weak_areas else 1
+    progress = []
+    labels = {
+        "transit": "Transit",
+        "food": "Food & Drink",
+        "places": "Places",
+        "phrases": "Phrases",
+        "emergencies": "Emergencies",
+    }
+    for cat in CATEGORIES:
+        misses = weak_areas.get(cat, 0)
+        pct = max(0, min(100, 100 - int((misses / max(max_misses, 1)) * 50)))
+        progress.append({"label": labels.get(cat, cat), "pct": pct, "category": cat})
+
+    return {
+        "passages": passages,
+        "weak_areas": weak_areas,
+        "progress": progress,
+    }
+
+
 def run_refresh() -> None:
     """Full cache refresh — homepage data for now."""
     refresh_homepage()
     cache = _load_cache()
+    _ensure_reader_passages(cache)
     cache.setdefault("translations", {})
     cache.setdefault("examples", {})
     cache.setdefault("quiz_history", [])
