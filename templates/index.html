@@ -9,6 +9,7 @@
     :root {
       --bg: #0e0d0b;
       --accent: #c8a96e;
+      --accent2: #7eb8a0;
       --text: #e8e0d0;
       --border: #3a3530;
     }
@@ -23,16 +24,23 @@
     .navbar-brand, .nav-link { color: var(--text) !important; }
     .nav-link:hover, .nav-link.active { color: var(--accent) !important; }
     main { flex: 1; }
-    .placeholder-card {
+    .card-panel {
       background: #1a1814;
       border: 1px solid var(--border);
       border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .card-panel .card-header {
+      background: transparent;
+      border-bottom: 1px solid var(--border);
+      color: var(--accent);
     }
     footer {
       border-top: 1px solid var(--border);
       color: #9a9080;
       font-size: 0.85rem;
     }
+    .badge-cat { background: var(--accent2); color: var(--bg); }
   </style>
 </head>
 <body>
@@ -73,9 +81,68 @@
 
   <main class="container py-5">
     <h1 class="h3 mb-4" style="color: var(--accent);">{{ title }}</h1>
-    <div class="placeholder-card p-4">
+
+    {% if page == 'home' and homepage %}
+    {# ——— Homepage: live data from cache.json / APIs ——— #}
+    <div class="card-panel">
+      <div class="card-header px-3 py-2">Daily sentence</div>
+      <div class="p-3">
+        <p class="mb-2 fs-5">{{ homepage.daily_sentence.es }}</p>
+        <p class="mb-0" style="color: var(--accent);">{{ homepage.daily_sentence.en }}</p>
+        {% if homepage.daily_sentence.fetched_at %}
+        <small class="text-muted d-block mt-2">Updated {{ homepage.daily_sentence.fetched_at }}</small>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if homepage.word_of_day %}
+    <div class="card-panel">
+      <div class="card-header px-3 py-2">Word of the day — {{ homepage.word_of_day.word }}</div>
+      <div class="p-3">
+        <p class="mb-1">{{ homepage.word_of_day.definition }}</p>
+        {% if homepage.word_of_day.phonetic %}
+        <p class="mb-1" style="color: var(--accent2);"><em>{{ homepage.word_of_day.phonetic }}</em></p>
+        {% endif %}
+        {% if homepage.word_of_day.example %}
+        <p class="mb-0 small text-muted">Example: {{ homepage.word_of_day.example }}</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card-panel">
+      <div class="card-header px-3 py-2">Weak areas (quiz misses by category)</div>
+      <div class="p-3">
+        <ul class="list-unstyled mb-0">
+          {% for cat, count in homepage.weak_areas.items() %}
+          <li class="mb-1">
+            <span class="badge badge-cat me-2">{{ cat }}</span>
+            {{ count }} miss{{ 'es' if count != 1 else '' }}
+            — <a href="{{ url_for('vocab', category=cat) }}" style="color: var(--accent);">study</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="card-panel p-3">
+      <p class="mb-2 fw-semibold" style="color: var(--accent);">Quick links</p>
+      <a href="{{ url_for('reader') }}" class="btn btn-sm btn-outline-light me-1">Reader</a>
+      <a href="{{ url_for('vocab') }}" class="btn btn-sm btn-outline-light me-1">Vocab</a>
+      <a href="{{ url_for('quiz') }}" class="btn btn-sm btn-outline-light me-1">Quiz</a>
+      <a href="{{ url_for('refresh') }}" class="btn btn-sm btn-outline-light">Refresh cache</a>
+      {% if homepage.last_refresh %}
+      <p class="small text-muted mt-2 mb-0">Last cache refresh: {{ homepage.last_refresh }}</p>
+      {% endif %}
+    </div>
+
+    {% else %}
+    {# ——— Other routes: placeholders ——— #}
+    <div class="card-panel p-4">
       <p class="mb-0">{{ message }}</p>
     </div>
+    {% endif %}
+
     {% block content %}{% endblock %}
   </main>
 

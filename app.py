@@ -48,11 +48,12 @@ def create_app() -> Flask:
 def register_routes(app: Flask) -> None:
     @app.route("/")
     def home():
+        homepage = fetcher.get_homepage()
         return render_template(
             "index.html",
             page="home",
             title="Estudio Personal",
-            message="Homepage placeholder — weak areas, daily sentence, and quick links will go here.",
+            homepage=homepage,
         )
 
     @app.route("/reader")
