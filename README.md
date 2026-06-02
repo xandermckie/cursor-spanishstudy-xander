@@ -34,6 +34,18 @@ flask --app app run
 | GET | `/refresh` | Runs `fetcher.run_refresh()` stub |
 | GET | `/export` | Placeholder export |
 
+## Deploy on Render
+
+Render needs **gunicorn** (included in `requirements.txt`) and this start command:
+
+```bash
+gunicorn app:app --bind 0.0.0.0:$PORT
+```
+
+The repo includes a `Procfile` and `render.yaml`. If deploy fails with **exit 127**, the start command is missing from the environment — set the Render start command to match the Procfile above, or connect the Blueprint from `render.yaml`.
+
+Set `SECRET_KEY` in the Render dashboard (or use `generateValue` in `render.yaml`).
+
 ## APIs (stubs in `fetcher.py`)
 
 1. MyMemory — `fetch_translation()`

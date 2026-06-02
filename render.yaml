@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: estudio-personal
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: SCHEDULER_ENABLED
+        value: "true"
+      - key: MYMEMORY_URL
+        value: https://api.mymemory.translated.net/get
+      - key: GLOSBE_URL
+        value: https://glosbe.com/gapi/v0.1/translate
+      - key: GLOSBE_USER_AGENT
+        value: EstudioPersonal/1.0 (student project)
+      - key: DICTIONARY_API_BASE
+        value: https://api.dictionaryapi.dev/api/v2/entries/en
+      - key: REFRESH_INTERVAL_MINUTES
+        value: "15"
