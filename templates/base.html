@@ -42,6 +42,20 @@
             <li><a href="{{ url_for('resources') }}" class="{% if page == 'resources' %}active{% endif %}">Recursos</a></li>
           </ul>
         </div>
+        <div class="nav-auth">
+          {% if current_user.is_authenticated %}
+          <a href="{{ url_for('profile') }}" class="nav-profile" title="Perfil">
+            {% if current_user.avatar_url %}
+            <img src="{{ current_user.avatar_url }}" alt="" class="avatar-circle">
+            {% else %}
+            <span class="avatar-circle avatar-circle-placeholder">{{ current_user.email[0]|upper }}</span>
+            {% endif %}
+          </a>
+          {% else %}
+          <a href="{{ url_for('login') }}" class="nav-auth-link">Iniciar sesión</a>
+          <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm nav-register-btn">Registrarse</a>
+          {% endif %}
+        </div>
         <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Modo oscuro">🌙</button>
       </div>
     </div>

@@ -20,6 +20,16 @@
 <p class="section-error">No se pudo cargar esta sección. Inténtalo más tarde.</p>
 {% elif homepage %}
 
+{% if not current_user.is_authenticated %}
+<div class="alert alert-info mb-4" role="status">
+  <span>
+    <a href="{{ url_for('register') }}">Crea una cuenta</a> o
+    <a href="{{ url_for('login') }}">inicia sesión</a>
+    para guardar tu progreso, frases y palabras débiles.
+  </span>
+</div>
+{% endif %}
+
 {% if homepage.error and homepage.last_refresh_display %}
 <div class="cache-banner" role="status">
   Mostrando datos guardados del {{ homepage.last_refresh_display }}
@@ -137,9 +147,14 @@
   <div class="text-center py-4">
     {{ pez(size=64, expression='thinking') }}
     <p class="text-muted mt-3 mb-0">
+      {% if not current_user.is_authenticated %}
+      <a href="{{ url_for('login', next=url_for('vocab')) }}">Inicia sesión</a> y practica en
+      <a href="{{ url_for('vocab') }}">Tarjetas</a> para marcar las que fallas.
+      {% else %}
       Aún no hay palabras marcadas. Practica en
       <a href="{{ url_for('vocab') }}">Tarjetas</a>
       y marca las que fallas.
+      {% endif %}
     </p>
   </div>
   {% endif %}

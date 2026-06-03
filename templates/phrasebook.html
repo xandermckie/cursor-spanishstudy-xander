@@ -6,11 +6,23 @@
 {% block content %}
 <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
   <h1 class="page-title mb-0">Libro de frases</h1>
+  {% if current_user.is_authenticated %}
   <a href="{{ url_for('phrasebook_export') }}" class="btn btn-secondary btn-sm">Exportar CSV</a>
+  {% endif %}
 </div>
 
 <div class="instruction-bar" role="note">◎ &nbsp;Toca el texto para ver inglés</div>
 
+{% if not current_user.is_authenticated %}
+<div class="alert alert-info mb-4" role="status">
+  <span>
+    <a href="{{ url_for('login', next=url_for('phrasebook')) }}">Inicia sesión</a>
+    para guardar tu libro de frases y sincronizar tu progreso.
+  </span>
+</div>
+{% endif %}
+
+{% if current_user.is_authenticated %}
 <div class="card mb-4">
   <h2 class="h3" style="font-size: 16px; font-weight: 700; margin: 0 0 12px;">Añadir frase</h2>
   <form method="post" action="{{ url_for('phrasebook') }}">
@@ -23,6 +35,7 @@
     <p class="text-muted mb-0 mt-2" style="font-size: 12px;">La traducción se guarda en caché para no repetir llamadas a la API.</p>
   </form>
 </div>
+{% endif %}
 
 <div class="card">
   <h2 class="h3" style="font-size: 16px; font-weight: 700; margin: 0 0 16px;">Tus frases ({{ phrases|length }})</h2>
@@ -30,6 +43,7 @@
   {% for p in phrases %}
   <div class="phrase-row mb-3" style="padding-bottom: 16px; border-bottom: 1px solid var(--border);">
     {{ reveal_card(p.es, p.input) }}
+    {% if current_user.is_authenticated %}
     <div class="flex gap-2 mt-2">
       <button type="button" class="btn btn-secondary btn-sm phrase-edit-btn" data-target="edit-{{ p.id }}">Editar</button>
       <form method="post" action="{{ url_for('phrasebook_delete', phrase_id=p.id) }}" class="inline-form"
@@ -45,6 +59,7 @@
         <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
       </form>
     </div>
+    {% endif %}
   </div>
   {% endfor %}
   {% else %}

@@ -99,6 +99,16 @@
 <h1 class="page-title text-center">Tarjetas</h1>
 <p class="page-subtitle text-center">Español primero — toca la tarjeta para ver inglés.</p>
 
+{% if session.read_only %}
+<div class="alert alert-info mb-4" role="status">
+  <span>
+    Modo lectura: puedes ver las tarjetas.
+    <a href="{{ url_for('login', next=url_for('vocab')) }}">Inicia sesión</a>
+    para guardar tu progreso y XP.
+  </span>
+</div>
+{% endif %}
+
 <div class="vocab-zone">
   <div class="vocab-progress-meta">
     <span>Tarjeta {{ session.index + 1 }} de {{ session.total }}</span>
@@ -114,6 +124,7 @@
     <div class="flashcard-answer" id="flashAnswer">{{ session.card.en }}</div>
   </div>
 
+  {% if not session.read_only %}
   <form method="post" action="{{ url_for('vocab_record') }}" id="vocab-form" class="flex justify-center gap-2 mt-4 hidden">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="es" value="{{ session.card.es }}">
@@ -126,6 +137,7 @@
       <button type="submit" class="btn btn-danger" data-action="missed">✗ Fallé</button>
     </div>
   </form>
+  {% endif %}
 
   <div class="text-center mt-4">{{ pez(size=48, expression='happy') }}</div>
 </div>
@@ -133,7 +145,7 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if not section_failed and not session.complete %}
+{% if not section_failed and not session.complete and not session.read_only %}
 <script src="{{ url_for('static', filename='js/vocab.js') }}"></script>
 {% endif %}
 {% endblock %}

@@ -5,13 +5,27 @@ from __future__ import annotations
 import logging
 import os
 import secrets
+from functools import wraps
 from io import BytesIO
 from pathlib import Path
+from typing import Any, Callable
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, render_template, request, send_file, session, url_for
+from flask import (
+    Flask,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    session,
+    url_for,
+)
+from werkzeug.wrappers.response import Response
 
 import fetcher
+import user_store
 from scheduler import init_scheduler
 
 load_dotenv()
@@ -22,6 +36,7 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 CACHE_FILE = DATA_DIR / "cache.json"
 DEFAULT_SECRET_KEY = "dev-change-me"
 PHRASE_MAX_LENGTH = 500
+MIN_PASSWORD_LEN = 8
 
 
 def _parse_refresh_interval_minutes() -> int:
@@ -51,6 +66,49 @@ def validate_csrf(token: str | None) -> bool:
     return bool(token and expected and secrets.compare_digest(token, expected))
 
 
+def get_current_user_id() -> str | None:
+    return session.get("user_id")
+
+
+def get_current_user_email() -> str | None:
+    return session.get("email")
+
+
+def _safe_next_url(target: str | None) -> str:
+    if not target:
+        return url_for("home")
+    parsed = urlparse(target)
+    if parsed.netloc or parsed.scheme:
+        return url_for("home")
+    if not target.startswith("/"):
+        return url_for("home")
+    return target
+
+
+def _current_user_context() -> dict[str, Any]:
+    user_id = get_current_user_id()
+    email = get_current_user_email()
+    avatar_url = None
+    if user_id and user_store.has_avatar(user_id):
+        avatar_url = url_for("profile_avatar")
+    return {
+        "is_authenticated": bool(user_id),
+        "email": email,
+        "avatar_url": avatar_url,
+    }
+
+
+def login_required(view: Callable) -> Callable:
+    @wraps(view)
+    def wrapped(*args: Any, **kwargs: Any) -> Response:
+        if not get_current_user_id():
+            flash("Inicia sesión para continuar.", "warning")
+            return redirect(url_for("login", next=request.path))
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
 def ensure_cache_file() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     if not CACHE_FILE.exists():
@@ -67,6 +125,7 @@ def create_app() -> Flask:
             "(FLASK_DEBUG=0)."
         )
     app.config["SECRET_KEY"] = secret_key
+    app.config["MAX_CONTENT_LENGTH"] = 3 * 1024 * 1024
     if debug:
         app.config["TEMPLATES_AUTO_RELOAD"] = True
 
@@ -83,10 +142,12 @@ def create_app() -> Flask:
 
     @app.context_processor
     def inject_globals():
+        user_id = get_current_user_id()
         return {
             "last_refresh_display": fetcher.get_last_refresh_display(),
-            "user_stats": fetcher.get_user_stats(),
+            "user_stats": fetcher.get_user_stats(user_id),
             "csrf_token": generate_csrf_token,
+            "current_user": _current_user_context(),
         }
 
     register_routes(app)
@@ -94,9 +155,128 @@ def create_app() -> Flask:
 
 
 def register_routes(app: Flask) -> None:
+    @app.route("/register", methods=["GET", "POST"])
+    def register():
+        if get_current_user_id():
+            return redirect(url_for("profile"))
+        if request.method == "POST":
+            if not validate_csrf(request.form.get("csrf_token")):
+                flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
+                return redirect(url_for("register"))
+            email = request.form.get("email", "")
+            password = request.form.get("password", "")
+            confirm = request.form.get("confirm_password", "")
+            if not user_store.normalize_email(email):
+                flash("Introduce un correo electrónico válido.", "warning")
+            elif len(password) < MIN_PASSWORD_LEN:
+                flash(
+                    f"La contraseña debe tener al menos {MIN_PASSWORD_LEN} caracteres.",
+                    "warning",
+                )
+            elif password != confirm:
+                flash("Las contraseñas no coinciden.", "warning")
+            else:
+                user_id = user_store.register_user(email, password)
+                if user_id:
+                    session["user_id"] = user_id
+                    session["email"] = user_store.normalize_email(email)
+                    flash("Cuenta creada. ¡Bienvenido!", "success")
+                    return redirect(url_for("profile"))
+                flash("Ese correo ya está registrado.", "warning")
+        return render_template(
+            "register.html",
+            page="register",
+            title="Registrarse",
+        )
+
+    @app.route("/login", methods=["GET", "POST"])
+    def login():
+        if get_current_user_id():
+            return redirect(url_for("home"))
+        if request.method == "POST":
+            if not validate_csrf(request.form.get("csrf_token")):
+                flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
+                return redirect(url_for("login"))
+            email = request.form.get("email", "")
+            password = request.form.get("password", "")
+            user_id = user_store.authenticate(email, password)
+            if user_id:
+                session["user_id"] = user_id
+                session["email"] = user_store.normalize_email(email)
+                flash("Sesión iniciada.", "success")
+                return redirect(_safe_next_url(request.args.get("next")))
+            flash("Correo o contraseña incorrectos.", "warning")
+        return render_template(
+            "login.html",
+            page="login",
+            title="Iniciar sesión",
+            next_url=request.args.get("next", ""),
+        )
+
+    @app.route("/logout", methods=["POST"])
+    def logout():
+        if not validate_csrf(request.form.get("csrf_token")):
+            flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
+            return redirect(url_for("home"))
+        session.pop("user_id", None)
+        session.pop("email", None)
+        flash("Sesión cerrada.", "success")
+        return redirect(url_for("home"))
+
+    @app.route("/profile")
+    @login_required
+    def profile():
+        user_id = get_current_user_id()
+        stats = fetcher.get_user_stats(user_id)
+        phrase_count = len(fetcher.get_phrasebook(user_id))
+        return render_template(
+            "profile.html",
+            page="profile",
+            title="Perfil",
+            stats=stats,
+            phrase_count=phrase_count,
+            has_avatar=user_store.has_avatar(user_id),
+        )
+
+    @app.route("/profile/avatar", methods=["GET", "POST"])
+    @login_required
+    def profile_avatar():
+        user_id = get_current_user_id()
+        if request.method == "POST":
+            if not validate_csrf(request.form.get("csrf_token")):
+                flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
+                return redirect(url_for("profile"))
+            file = request.files.get("avatar")
+            if not file or not file.filename:
+                flash("Selecciona una imagen.", "warning")
+                return redirect(url_for("profile"))
+            data = file.read()
+            ext = user_store.save_avatar(user_id, data, file.content_type)
+            if ext:
+                flash("Foto de perfil actualizada.", "success")
+            else:
+                flash(
+                    "No se pudo guardar la imagen. Usa JPG, PNG o WebP (máx. 2 MB).",
+                    "warning",
+                )
+            return redirect(url_for("profile"))
+
+        path = user_store.avatar_path(user_id)
+        if not path:
+            return redirect(url_for("profile"))
+        ext = path.suffix.lower()
+        mimetype = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".webp": "image/webp",
+        }.get(ext, "application/octet-stream")
+        return send_file(path, mimetype=mimetype)
+
     @app.route("/")
     def home():
-        homepage = fetcher.get_homepage()
+        user_id = get_current_user_id()
+        homepage = fetcher.get_homepage(user_id)
         return render_template(
             "index.html",
             page="home",
@@ -106,8 +286,9 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/reader")
     def reader():
+        user_id = get_current_user_id()
         try:
-            reader_data = fetcher.get_reader()
+            reader_data = fetcher.get_reader(user_id)
         except Exception as exc:
             logger.exception("reader route failed: %s", exc)
             reader_data = {
@@ -125,31 +306,38 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/vocab")
     def vocab():
+        user_id = get_current_user_id()
         if request.args.get("restart"):
-            fetcher.reset_vocab_session()
+            if not user_id:
+                flash("Inicia sesión para guardar tu progreso.", "warning")
+                return redirect(url_for("login", next=url_for("vocab")))
+            fetcher.reset_vocab_session(user_id)
             return redirect(url_for("vocab"))
         idx = request.args.get("i", 0, type=int)
         try:
-            session = fetcher.get_vocab_session(idx)
+            vocab_session = fetcher.get_vocab_session(user_id, idx)
         except Exception as exc:
             logger.exception("vocab route failed: %s", exc)
-            session = {
+            vocab_session = {
                 "card": {"es": "", "en": ""},
                 "index": 0,
                 "total": 0,
                 "next_index": 0,
                 "section_failed": True,
+                "read_only": True,
             }
         return render_template(
             "vocab.html",
             page="vocab",
             title="Tarjetas",
-            session=session,
-            section_failed=session.get("section_failed", False),
+            session=vocab_session,
+            section_failed=vocab_session.get("section_failed", False),
         )
 
     @app.route("/vocab/record", methods=["POST"])
+    @login_required
     def vocab_record():
+        user_id = get_current_user_id()
         if not validate_csrf(request.form.get("csrf_token")):
             flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
             return redirect(url_for("vocab"))
@@ -159,12 +347,14 @@ def register_routes(app: Flask) -> None:
         next_i = request.form.get("next_i", 0, type=int)
         current_i = request.form.get("current_i", 0, type=int)
         try:
-            if not fetcher.record_flashcard_result(es, en, missed, current_i):
+            if not fetcher.record_flashcard_result(
+                user_id, es, en, missed, current_i
+            ):
                 flash(
                     "No se pudo guardar el resultado. Inténtalo de nuevo.",
                     "warning",
                 )
-            next_session = fetcher.get_vocab_session(next_i)
+            next_session = fetcher.get_vocab_session(user_id, next_i)
             if next_session.get("complete"):
                 return redirect(url_for("vocab"))
             return redirect(url_for("vocab", i=next_i))
@@ -178,7 +368,11 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/phrasebook", methods=["GET", "POST"])
     def phrasebook():
+        user_id = get_current_user_id()
         if request.method == "POST":
+            if not user_id:
+                flash("Inicia sesión para guardar frases.", "warning")
+                return redirect(url_for("login", next=url_for("phrasebook")))
             if not validate_csrf(request.form.get("csrf_token")):
                 flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
                 return redirect(url_for("phrasebook"))
@@ -192,7 +386,7 @@ def register_routes(app: Flask) -> None:
                 )
             else:
                 try:
-                    if fetcher.add_phrase(text):
+                    if fetcher.add_phrase(user_id, text):
                         flash("Frase guardada.", "success")
                     else:
                         flash(
@@ -208,7 +402,7 @@ def register_routes(app: Flask) -> None:
             return redirect(url_for("phrasebook"))
 
         try:
-            phrases = fetcher.get_phrasebook()
+            phrases = fetcher.get_phrasebook(user_id)
         except Exception as exc:
             logger.exception("phrasebook route failed: %s", exc)
             phrases = []
@@ -221,7 +415,9 @@ def register_routes(app: Flask) -> None:
         )
 
     @app.route("/phrasebook/<phrase_id>/edit", methods=["POST"])
+    @login_required
     def phrasebook_edit(phrase_id: str):
+        user_id = get_current_user_id()
         if not validate_csrf(request.form.get("csrf_token")):
             flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
             return redirect(url_for("phrasebook"))
@@ -235,7 +431,7 @@ def register_routes(app: Flask) -> None:
             )
         else:
             try:
-                if fetcher.update_phrase(phrase_id, text):
+                if fetcher.update_phrase(user_id, phrase_id, text):
                     flash("Frase actualizada.", "success")
                 else:
                     flash("No se encontró la frase.", "warning")
@@ -248,12 +444,14 @@ def register_routes(app: Flask) -> None:
         return redirect(url_for("phrasebook"))
 
     @app.route("/phrasebook/<phrase_id>/delete", methods=["POST"])
+    @login_required
     def phrasebook_delete(phrase_id: str):
+        user_id = get_current_user_id()
         if not validate_csrf(request.form.get("csrf_token")):
             flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
             return redirect(url_for("phrasebook"))
         try:
-            if fetcher.delete_phrase(phrase_id):
+            if fetcher.delete_phrase(user_id, phrase_id):
                 flash("Frase eliminada.", "success")
             else:
                 flash("No se encontró la frase.", "warning")
@@ -266,9 +464,11 @@ def register_routes(app: Flask) -> None:
         return redirect(url_for("phrasebook"))
 
     @app.route("/phrasebook/export")
+    @login_required
     def phrasebook_export():
+        user_id = get_current_user_id()
         try:
-            csv_content = fetcher.export_phrasebook_csv()
+            csv_content = fetcher.export_phrasebook_csv(user_id)
         except Exception as exc:
             logger.exception("phrasebook_export failed: %s", exc)
             flash(
