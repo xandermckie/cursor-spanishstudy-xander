@@ -2,16 +2,27 @@
 
 from __future__ import annotations
 
+import atexit
 import logging
 import os
+import threading
 
 from apscheduler.schedulers.background import BackgroundScheduler
-
-import fetcher
 
 logger = logging.getLogger(__name__)
 
 _scheduler: BackgroundScheduler | None = None
+_init_lock = threading.Lock()
+
+
+def _run_refresh_with_context(app) -> None:
+    with app.app_context():
+        import fetcher
+
+        try:
+            fetcher.run_refresh()
+        except Exception as exc:
+            logger.exception("Scheduled refresh failed: %s", exc)
 
 
 def init_scheduler(app, interval_minutes: int = 15, enabled: bool = True) -> None:
@@ -22,26 +33,30 @@ def init_scheduler(app, interval_minutes: int = 15, enabled: bool = True) -> Non
         logger.info("Scheduler disabled.")
         return
 
-    if app.debug and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+    # In debug mode, Werkzeug spawns a reloader child process.
+    # Only start the scheduler in the child (WERKZEUG_RUN_MAIN=true),
+    # or in production where this env var is unset.
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "false":
         return
 
-    if _scheduler is not None:
-        return
+    with _init_lock:
+        if _scheduler is not None:
+            return
 
-    _scheduler = BackgroundScheduler(daemon=True)
+        scheduler = BackgroundScheduler(daemon=True)
+        _scheduler = scheduler
+        try:
+            scheduler.add_job(
+                func=lambda: _run_refresh_with_context(app),
+                trigger="interval",
+                minutes=interval_minutes,
+                id="refresh_job",
+                replace_existing=True,
+            )
+            scheduler.start()
+            atexit.register(lambda: scheduler.shutdown(wait=False))
+        except Exception:
+            _scheduler = None
+            raise
 
-    def job():
-        with app.app_context():
-            try:
-                fetcher.run_refresh()
-            except Exception as exc:
-                logger.exception("Scheduled refresh failed: %s", exc)
-
-    _scheduler.add_job(
-        job,
-        "interval",
-        minutes=interval_minutes,
-        id="cache_refresh",
-    )
-    _scheduler.start()
     logger.info("Scheduler started: refresh every %s minutes.", interval_minutes)
