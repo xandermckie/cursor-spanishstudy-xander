@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+import user_store
 from fetcher_seeds import (
     DAILY_PHRASES_ES,
     DAILY_SENTENCES_ES,
@@ -294,17 +295,25 @@ def _ensure_user_stats(cache: dict[str, Any]) -> dict[str, Any]:
     return stats
 
 
-def update_streak(cache: dict[str, Any] | None = None) -> None:
+def _load_user_cache(user_id: str) -> dict[str, Any]:
+    return user_store.load_user(user_id) or {}
+
+
+def _save_user_cache(user_id: str, cache: dict[str, Any]) -> bool:
+    return user_store.save_user(user_id, cache)
+
+
+def update_streak(user_id: str, cache: dict[str, Any] | None = None) -> None:
     """Increment streak on first activity of the day (Europe/Madrid)."""
     own_cache = cache is None
     if own_cache:
-        cache = _load_cache()
+        cache = _load_user_cache(user_id)
     stats = _ensure_user_stats(cache)
     today = _activity_today()
     last = stats.get("last_activity_date")
     if last == today:
         if own_cache:
-            _save_cache(cache)
+            _save_user_cache(user_id, cache)
         return
     if not last:
         stats["streak_days"] = 1
@@ -321,29 +330,32 @@ def update_streak(cache: dict[str, Any] | None = None) -> None:
             stats["streak_days"] = 1
     stats["last_activity_date"] = today
     if own_cache:
-        _save_cache(cache)
+        _save_user_cache(user_id, cache)
 
 
-def update_xp(amount: int, cache: dict[str, Any] | None = None) -> None:
+def update_xp(user_id: str, amount: int, cache: dict[str, Any] | None = None) -> None:
     if amount <= 0:
         return
     own_cache = cache is None
     if own_cache:
-        cache = _load_cache()
+        cache = _load_user_cache(user_id)
     stats = _ensure_user_stats(cache)
-    update_streak(cache)
+    update_streak(user_id, cache)
     stats["xp_total"] = stats.get("xp_total", 0) + amount
     stats["xp_today"] = stats.get("xp_today", 0) + amount
     stats["level"] = _level_from_xp(stats["xp_total"])
     if own_cache:
-        _save_cache(cache)
+        _save_user_cache(user_id, cache)
 
 
-def get_user_stats() -> dict[str, Any]:
+def get_user_stats(user_id: str | None = None) -> dict[str, Any]:
+    if not user_id:
+        return _default_user_stats()
     try:
-        cache = _load_cache()
+        cache = _load_user_cache(user_id)
         stats = _ensure_user_stats(cache)
-        deck = cache.get("flashcard_deck") or FLASHCARD_DECK_SEED
+        global_cache = _load_cache()
+        deck = global_cache.get("flashcard_deck") or FLASHCARD_DECK_SEED
         weak = cache.get("weak_words") or {}
         stats["words_learned"] = max(0, len(deck) - len(weak))
         answered = stats.get("total_answered", 0)
@@ -362,7 +374,7 @@ def get_user_stats() -> dict[str, Any]:
         else:
             stats["xp_level_max"] = 500
             stats["xp_to_next_level"] = 0
-        _save_cache(cache)
+        _save_user_cache(user_id, cache)
         return stats
     except Exception as exc:
         logger.exception("get_user_stats failed: %s", exc)
@@ -374,8 +386,8 @@ def get_last_refresh_display() -> str:
     return format_refresh_time(cache.get("last_refresh"))
 
 
-def reset_vocab_session() -> None:
-    cache = _load_cache()
+def reset_vocab_session(user_id: str) -> None:
+    cache = _load_user_cache(user_id)
     cache["vocab_session"] = {
         "started_at": datetime.now(timezone.utc).isoformat(),
         "results": [],
@@ -383,7 +395,7 @@ def reset_vocab_session() -> None:
         "missed_count": 0,
         "complete": False,
     }
-    _save_cache(cache)
+    _save_user_cache(user_id, cache)
 
 
 def _ensure_vocab_session(cache: dict[str, Any]) -> dict[str, Any]:
@@ -400,17 +412,19 @@ def _ensure_vocab_session(cache: dict[str, Any]) -> dict[str, Any]:
     return session
 
 
-def award_reader_xp() -> None:
+def award_reader_xp(user_id: str | None) -> None:
     """+5 XP once per calendar day for opening the reader."""
-    cache = _load_cache()
+    if not user_id:
+        return
+    cache = _load_user_cache(user_id)
     today = _activity_today()
     awarded = cache.get("reader_xp_dates") or []
     if today in awarded:
         return
     awarded.append(today)
     cache["reader_xp_dates"] = awarded[-30:]
-    update_xp(5, cache)
-    _save_cache(cache)
+    update_xp(user_id, 5, cache)
+    _save_user_cache(user_id, cache)
 
 
 def refresh_homepage() -> dict[str, Any]:
@@ -464,8 +478,6 @@ def refresh_homepage() -> dict[str, Any]:
     cache["daily_sentence"] = daily
     cache["daily_phrase"] = daily_phrase
     cache["word_of_day"] = word_of_day
-    cache.setdefault("weak_words", {})
-    cache.setdefault("phrasebook", [])
     cache["last_refresh"] = now_iso
     if not _save_cache(cache):
         logger.error("refresh_homepage: failed to write cache")
@@ -474,7 +486,7 @@ def refresh_homepage() -> dict[str, Any]:
     return get_homepage(_refreshing=True)
 
 
-def _homepage_fallback() -> dict[str, Any]:
+def _homepage_fallback(user_id: str | None = None) -> dict[str, Any]:
     return {
         "daily_sentence": None,
         "daily_phrase": None,
@@ -482,12 +494,14 @@ def _homepage_fallback() -> dict[str, Any]:
         "weak_words": [],
         "last_refresh": None,
         "last_refresh_display": "",
-        "user_stats": get_user_stats(),
+        "user_stats": get_user_stats(user_id),
         "error": True,
     }
 
 
-def _homepage_from_cache(cache: dict[str, Any]) -> dict[str, Any] | None:
+def _homepage_from_cache(
+    cache: dict[str, Any], user_id: str | None = None
+) -> dict[str, Any] | None:
     daily = cache.get("daily_sentence")
     daily_phrase = cache.get("daily_phrase")
     if not daily or not daily.get("en") or not daily_phrase or not daily_phrase.get("en"):
@@ -496,15 +510,17 @@ def _homepage_from_cache(cache: dict[str, Any]) -> dict[str, Any] | None:
         "daily_sentence": daily,
         "daily_phrase": daily_phrase,
         "word_of_day": cache.get("word_of_day"),
-        "weak_words": get_weak_words(),
+        "weak_words": get_weak_words(user_id),
         "last_refresh": cache.get("last_refresh"),
         "last_refresh_display": format_refresh_time(cache.get("last_refresh")),
-        "user_stats": get_user_stats(),
+        "user_stats": get_user_stats(user_id),
         "error": True,
     }
 
 
-def get_homepage(*, _refreshing: bool = False) -> dict[str, Any]:
+def get_homepage(
+    user_id: str | None = None, *, _refreshing: bool = False
+) -> dict[str, Any]:
     try:
         cache = _load_cache()
         daily = cache.get("daily_sentence")
@@ -513,12 +529,12 @@ def get_homepage(*, _refreshing: bool = False) -> dict[str, Any]:
         if not daily or not daily.get("en") or not daily_phrase or not daily_phrase.get("en"):
             if _refreshing:
                 logger.error("get_homepage: cache still empty after refresh attempt")
-                return _homepage_fallback()
+                return _homepage_fallback(user_id)
             try:
                 return refresh_homepage()
             except Exception as exc:
                 logger.exception("refresh_homepage failed: %s", exc)
-                return _homepage_from_cache(cache) or _homepage_fallback()
+                return _homepage_from_cache(cache, user_id) or _homepage_fallback(user_id)
 
         wod = cache.get("word_of_day")
         if wod and not wod.get("es"):
@@ -535,19 +551,21 @@ def get_homepage(*, _refreshing: bool = False) -> dict[str, Any]:
             "daily_sentence": daily,
             "daily_phrase": daily_phrase,
             "word_of_day": wod,
-            "weak_words": get_weak_words(),
+            "weak_words": get_weak_words(user_id),
             "last_refresh": cache.get("last_refresh"),
             "last_refresh_display": format_refresh_time(cache.get("last_refresh")),
-            "user_stats": get_user_stats(),
+            "user_stats": get_user_stats(user_id),
             "error": False,
         }
     except Exception as exc:
         logger.exception("get_homepage failed: %s", exc)
-        return _homepage_fallback()
+        return _homepage_fallback(user_id)
 
 
-def get_weak_words() -> list[dict[str, Any]]:
-    cache = _load_cache()
+def get_weak_words(user_id: str | None = None) -> list[dict[str, Any]]:
+    if not user_id:
+        return []
+    cache = _load_user_cache(user_id)
     weak = cache.get("weak_words") or {}
     items = list(weak.values())
     items.sort(key=lambda x: x.get("miss_count", 0), reverse=True)
@@ -563,11 +581,26 @@ def _ensure_flashcard_deck(cache: dict[str, Any]) -> list[dict[str, str]]:
     return deck
 
 
-def get_vocab_session(index: int = 0) -> dict[str, Any]:
+def get_vocab_session(user_id: str | None, index: int = 0) -> dict[str, Any]:
     try:
-        cache = _load_cache()
-        deck = _ensure_flashcard_deck(cache)
+        global_cache = _load_cache()
+        deck = _ensure_flashcard_deck(global_cache)
         total = len(deck)
+        if not user_id:
+            idx = index % total if total else 0
+            card = deck[idx] if total else {"es": "", "en": ""}
+            return {
+                "card": card,
+                "index": idx,
+                "total": total,
+                "next_index": (idx + 1) % total if total else 0,
+                "correct_count": 0,
+                "missed_count": 0,
+                "complete": False,
+                "section_failed": False,
+                "read_only": True,
+            }
+        cache = _load_user_cache(user_id)
         session = cache.get("vocab_session") or {}
         if session.get("complete"):
             results = session.get("results", [])
@@ -581,10 +614,11 @@ def get_vocab_session(index: int = 0) -> dict[str, Any]:
                 "missed_words": [r for r in results if r.get("missed")],
                 "total": total,
                 "section_failed": False,
+                "read_only": False,
             }
         if not cache.get("vocab_session"):
             _ensure_vocab_session(cache)
-            _save_cache(cache)
+            _save_user_cache(user_id, cache)
             session = cache["vocab_session"]
         idx = index % total if total else 0
         card = deck[idx] if total else {"es": "", "en": ""}
@@ -598,6 +632,7 @@ def get_vocab_session(index: int = 0) -> dict[str, Any]:
             "missed_count": session.get("missed_count", 0),
             "complete": False,
             "section_failed": False,
+            "read_only": False,
         }
     except Exception as exc:
         logger.exception("get_vocab_session failed: %s", exc)
@@ -608,15 +643,18 @@ def get_vocab_session(index: int = 0) -> dict[str, Any]:
             "next_index": 0,
             "complete": False,
             "section_failed": True,
+            "read_only": True,
         }
 
 
 def record_flashcard_result(
-    es: str, en: str, missed: bool, index: int = 0
+    user_id: str, es: str, en: str, missed: bool, index: int = 0
 ) -> bool:
+    if not user_id:
+        return False
     try:
-        cache = _load_cache()
-        deck = _ensure_flashcard_deck(cache)
+        global_cache = _load_cache()
+        deck = _ensure_flashcard_deck(global_cache)
         total = len(deck)
         if total == 0 or index < 0 or index >= total:
             logger.warning("record_flashcard_result: invalid index %s", index)
@@ -625,6 +663,7 @@ def record_flashcard_result(
         if card.get("es", "").strip() != es.strip() or card.get("en", "").strip() != en.strip():
             logger.warning("record_flashcard_result: card mismatch at index %s", index)
             return False
+        cache = _load_user_cache(user_id)
         session = _ensure_vocab_session(cache)
         session.setdefault("results", [])
         session["results"].append({"es": es, "en": en, "missed": missed})
@@ -647,26 +686,30 @@ def record_flashcard_result(
         else:
             session["correct_count"] = session.get("correct_count", 0) + 1
             stats["total_correct"] = stats.get("total_correct", 0) + 1
-            update_xp(10, cache)
-        update_streak(cache)
+            update_xp(user_id, 10, cache)
+        update_streak(user_id, cache)
         if total > 0 and index >= total - 1:
             session["complete"] = True
-        return _save_cache(cache)
+        return _save_user_cache(user_id, cache)
     except Exception as exc:
         logger.exception("record_flashcard_result failed: %s", exc)
         return False
 
 
-def get_phrasebook() -> list[dict[str, Any]]:
+def get_phrasebook(user_id: str | None) -> list[dict[str, Any]]:
+    if not user_id:
+        return []
     try:
-        cache = _load_cache()
+        cache = _load_user_cache(user_id)
         return cache.get("phrasebook") or []
     except Exception as exc:
         logger.exception("get_phrasebook failed: %s", exc)
         return []
 
 
-def add_phrase(user_input: str) -> dict[str, Any] | None:
+def add_phrase(user_id: str, user_input: str) -> dict[str, Any] | None:
+    if not user_id:
+        return None
     text = user_input.strip()
     if not text:
         return None
@@ -675,7 +718,7 @@ def add_phrase(user_input: str) -> dict[str, Any] | None:
         if not es_text:
             es_text = text
 
-        cache = _load_cache()
+        cache = _load_user_cache(user_id)
         cache.setdefault("phrasebook", [])
         now = datetime.now(timezone.utc).isoformat()
         entry = {
@@ -686,9 +729,9 @@ def add_phrase(user_input: str) -> dict[str, Any] | None:
             "updated_at": now,
         }
         cache["phrasebook"].append(entry)
-        update_xp(5, cache)
-        update_streak(cache)
-        if not _save_cache(cache):
+        update_xp(user_id, 5, cache)
+        update_streak(user_id, cache)
+        if not _save_user_cache(user_id, cache):
             return None
         return entry
     except Exception as exc:
@@ -696,7 +739,9 @@ def add_phrase(user_input: str) -> dict[str, Any] | None:
         return None
 
 
-def update_phrase(phrase_id: str, user_input: str) -> bool:
+def update_phrase(user_id: str, phrase_id: str, user_input: str) -> bool:
+    if not user_id:
+        return False
     text = user_input.strip()
     if not text or len(text) > PHRASE_MAX_LENGTH:
         return False
@@ -705,40 +750,42 @@ def update_phrase(phrase_id: str, user_input: str) -> bool:
         if not es_text:
             es_text = text
 
-        cache = _load_cache()
+        cache = _load_user_cache(user_id)
         for entry in cache.get("phrasebook", []):
             if entry.get("id") == phrase_id:
                 entry["input"] = text
                 entry["es"] = es_text
                 entry["updated_at"] = datetime.now(timezone.utc).isoformat()
-                return _save_cache(cache)
+                return _save_user_cache(user_id, cache)
         return False
     except Exception as exc:
         logger.exception("update_phrase failed: %s", exc)
         return False
 
 
-def delete_phrase(phrase_id: str) -> bool:
+def delete_phrase(user_id: str, phrase_id: str) -> bool:
+    if not user_id:
+        return False
     try:
-        cache = _load_cache()
+        cache = _load_user_cache(user_id)
         book = cache.get("phrasebook", [])
         new_book = [e for e in book if e.get("id") != phrase_id]
         if len(new_book) == len(book):
             return False
         cache["phrasebook"] = new_book
-        return _save_cache(cache)
+        return _save_user_cache(user_id, cache)
     except Exception as exc:
         logger.exception("delete_phrase failed: %s", exc)
         return False
 
 
-def export_phrasebook_csv() -> str:
+def export_phrasebook_csv(user_id: str | None) -> str:
     header = ["input_en", "spanish", "created_at", "updated_at"]
     try:
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(header)
-        for entry in get_phrasebook():
+        for entry in get_phrasebook(user_id):
             if not isinstance(entry, dict):
                 continue
             writer.writerow([
@@ -779,13 +826,13 @@ def _ensure_reader_passages(cache: dict[str, Any]) -> list[dict[str, Any]]:
     return passages
 
 
-def get_reader() -> dict[str, Any]:
+def get_reader(user_id: str | None = None) -> dict[str, Any]:
     try:
         cache = _load_cache()
         passages = _ensure_reader_passages(cache)
         idx = _reader_passage_index(len(passages))
-        weak_top = get_weak_words()[:5]
-        award_reader_xp()
+        weak_top = get_weak_words(user_id)[:5]
+        award_reader_xp(user_id)
         return {
             "passages": [passages[idx]] if passages else [],
             "weak_words_top": weak_top,
@@ -806,8 +853,6 @@ def run_refresh() -> None:
     _ensure_reader_passages(cache)
     _ensure_flashcard_deck(cache)
     cache.setdefault("translations", {})
-    cache.setdefault("phrasebook", [])
-    cache.setdefault("weak_words", {})
     _save_cache(cache)
     if NEWS_API_KEY:
         get_spain_news()
