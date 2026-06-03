@@ -24,7 +24,6 @@ from fetcher_seeds import (
     DAILY_PHRASES_ES,
     DAILY_SENTENCES_ES,
     FLASHCARD_DECK_SEED,
-    HISTORY_TOPICS_BODY,
     READER_PASSAGES_SEED,
 )
 from fetcher_travel import (
@@ -473,33 +472,88 @@ SPAIN_NEWS_RE = re.compile(
     r"ibex|sánchez|sanchez|gobierno\s+español|reino\s+de\s+españa)\b",
     re.IGNORECASE,
 )
-WIKIPEDIA_SUMMARY_URL = "https://en.wikipedia.org/api/rest_v1/page/summary"
-HISTORY_CACHE_VERSION = 2
-
 HISTORY_TOPICS = [
     {
         "key": "civil_war",
         "title_es": "La Guerra Civil Española",
         "intro_es": "Conflicto de 1936–1939 que transformó la España del siglo XX.",
-        "wiki_title": "Spanish_Civil_War",
+        "wiki_url": "https://en.wikipedia.org/wiki/Spanish_Civil_War",
+        "summary_es": (
+            "La Guerra Civil Española (1936–1939) enfrentó al bando republicano, apoyado por anarquistas, socialistas y catalanes que defendían la Segunda República, contra los sublevados nacionalistas liderados por Francisco Franco, con apoyo de la Alemania nazi y la Italia fascista. "
+            "El conflicto empezó con un golpe militar contra el gobierno elegido y se extendió por casi tres años de combates brutales, bombardeos sobre ciudades como Barcelona y Madrid, y una profunda división social. "
+            "En Cataluña, el republicanismo y el autogobierno catalán formaron parte del frente leal a la República; Barcelona vivió episodios decisivos y, al final, la ocupación franquista suprimió la Generalitat y el catalán en la escuela y la administración durante décadas. "
+            "La guerra dejó cientos de miles de muertos, exilio masivo y un régimen autoritario que duró hasta la muerte de Franco en 1975. "
+            "Para entender la España actual — debates sobre memoria histórica, estatutos autonómicos y símbolos en la calle — conviene conocer cómo esta guerra marcó familias, instituciones y el lenguaje político que aún se usa hoy."
+        ),
+        "summary_en": (
+            "The Spanish Civil War (1936–1939) pitted the Republican side—backed by anarchists, socialists, and Catalans defending the Second Republic—against Nationalist rebels led by Francisco Franco, with support from Nazi Germany and Fascist Italy. "
+            "The conflict began with a military coup against the elected government and lasted nearly three years of brutal fighting, air raids on cities such as Barcelona and Madrid, and deep social division. "
+            "In Catalonia, republicanism and Catalan self-government were part of the loyal front; Barcelona saw decisive episodes and, in the end, Francoist occupation suppressed the Generalitat and Catalan in schools and public life for decades. "
+            "The war left hundreds of thousands dead, mass exile, and an authoritarian regime that lasted until Franco's death in 1975. "
+            "To understand Spain today—debates on historical memory, autonomy statutes, and symbols in the street—it helps to see how this war shaped families, institutions, and the political language still used now."
+        ),
     },
     {
         "key": "picasso",
         "title_es": "Pablo Picasso",
         "intro_es": "Pintor malagueño; figura central del arte moderno y del Museo Picasso en Barcelona.",
-        "wiki_title": "Pablo_Picasso",
+        "wiki_url": "https://en.wikipedia.org/wiki/Pablo_Picasso",
+        "summary_es": (
+            "Pablo Ruiz Picasso nació en Málaga en 1881 y se formó como artista entre España y Francia, pero mantuvo lazos fuertes con Barcelona, donde abrió estudios y expuso en sus primeros años de fama. "
+            "En la ciudad catalana convivió con el modernismo y con otros creadores; el Museu Picasso de Barcelona conserva una de las mejores colecciones de su obra juvenil y de las etapas azul y rosa. "
+            "Picasso revolucionó el arte del siglo XX: del realismo académico pasó al cubismo, colaboró con Georges Braque y reinterpretó formas, perspectiva y materiales en pintura, escultura y cerámica. "
+            "Su mural «Guernica» (1937) se convirtió en símbolo universal contra el bombardeo de la villa vasca durante la Guerra Civil y sigue siendo referencia en protestas y museos de todo el mundo. "
+            "Estudiar su trayectoria en español permite conectar vocabulario de arte, política y ciudad: ver una obra en el museo del Born o en Málaga después de leer sobre ella en clase da contexto cultural real, no solo nombres en un libro de texto."
+        ),
+        "summary_en": (
+            "Pablo Ruiz Picasso was born in Málaga in 1881 and trained as an artist in Spain and France, but kept strong ties with Barcelona, where he opened studios and showed work in his early years of fame. "
+            "In the Catalan city he moved among modernism and other creators; the Picasso Museum in Barcelona holds one of the finest collections of his youth and Blue and Rose periods. "
+            "Picasso revolutionized twentieth-century art: from academic realism he moved to Cubism, worked with Georges Braque, and reshaped form, perspective, and materials in painting, sculpture, and ceramics. "
+            "His mural «Guernica» (1937) became a universal symbol against the bombing of the Basque town during the Civil War and remains a reference in protests and museums worldwide. "
+            "Studying his career in Spanish connects art, politics, and city vocabulary: seeing a work in the Born museum or in Málaga after reading about it in class gives real cultural context, not only names in a textbook."
+        ),
     },
     {
         "key": "football",
         "title_es": "El Fútbol Español (FC Barcelona y Real Madrid)",
         "intro_es": "El clásico entre Barça y Madrid refleja rivalidad deportiva y cultural.",
-        "wiki_title": "El_Clásico",
+        "wiki_url": "https://en.wikipedia.org/wiki/El_Cl%C3%A1sico",
+        "summary_es": (
+            "El fútbol en España es mucho más que deporte: es identidad regional, economía de medios y ritual social semanal. "
+            "El FC Barcelona y el Real Madrid encarnan el «clásico», el partido más visto del país, donde se mezclan rivalidad deportiva, símbolos catalanes y castellanos y narrativas políticas según el momento histórico. "
+            "El Barça se identifica con el lema «Més que un club» y con la defensa del catalán en el estadio; el Madrid, con éxitos europeos y una imagen internacional muy marcada. "
+            "La Liga, la Copa del Rey y la Champions generan un vocabulario útil para estudiantes: gol, fuera de juego, entrenador, afición, descenso, fichaje. "
+            "En Barcelona, ir a un partido en el Spotify Camp Nou o verlo en un bar del barrio es una inmersión lingüística: escucharás gritos, cánticos y análisis en español y catalán. "
+            "Aunque no sigas el deporte, entender por qué un domingo de clásico vacía calles o llena terrazas ayuda a leer la cultura popular española con más matices."
+        ),
+        "summary_en": (
+            "Football in Spain is far more than sport: it is regional identity, media business, and a weekly social ritual. "
+            "FC Barcelona and Real Madrid embody «El Clásico», the country's most watched match, mixing sporting rivalry, Catalan and Castilian symbols, and political narratives depending on the historical moment. "
+            "Barça is tied to the motto «More than a club» and to defending Catalan in the stadium; Madrid, to European success and a strong international image. "
+            "La Liga, the Copa del Rey, and the Champions League offer useful vocabulary for learners: goal, offside, coach, fans, relegation, signing. "
+            "In Barcelona, attending a match at Spotify Camp Nou or watching in a neighborhood bar is language immersion: you will hear shouts, chants, and analysis in Spanish and Catalan. "
+            "Even if you do not follow the sport, understanding why a Clásico Sunday empties streets or fills terraces helps you read Spanish popular culture with more nuance."
+        ),
     },
     {
         "key": "gaudi",
         "title_es": "La Sagrada Família y Antoni Gaudí",
         "intro_es": "Arquitecto modernista; su obra define el paisaje urbano de Barcelona.",
-        "wiki_title": "Sagrada_Família",
+        "wiki_url": "https://en.wikipedia.org/wiki/Sagrada_Fam%C3%ADlia",
+        "summary_es": (
+            "Antoni Gaudí i Cornet (1852–1926) es el arquitecto más emblemático del modernismo catalán y define, para muchos visitantes, la imagen de Barcelona. "
+            "Su obra mezcla inspiración natural —formas de plantas, animales y oleaje— con estructuras innovadoras, trencadís (mosaico de cerámica rota) y una fe católica que impregna proyectos como la Sagrada Família, aún en construcción más de un siglo después de su inicio. "
+            "Además del templo expiatorio, diseñó o intervino en la Casa Batlló, la Pedrera, el Park Güell y la Casa Vicens; caminar por el Eixample o subir al parque permite ver cómo el urbanismo de la ciudad se volvió escenario de su imaginación. "
+            "Gaudí murió tras un accidente con un tranvía cuando la Sagrada Família llevaba solo una parte levantada; desde entonces arquitectos y artesanos han continuado el proyecto según sus planos y modelos. "
+            "Para un estudiante en Barcelona, visitar estas obras conociendo vocabulario de arquitectura —fachada, nave, catenaria, balcón— convierte una salida de fin de semana en práctica de español ligada al entorno inmediato de la universidad y del metro que usa cada día."
+        ),
+        "summary_en": (
+            "Antoni Gaudí i Cornet (1852–1926) is the most emblematic architect of Catalan modernism and, for many visitors, defines the image of Barcelona. "
+            "His work blends natural inspiration—shapes of plants, animals, and waves—with innovative structures, trencadís (broken-tile mosaic), and a Catholic faith that runs through projects such as the Sagrada Família, still under construction more than a century after it began. "
+            "Beyond the expiatory temple, he designed or shaped Casa Batlló, La Pedrera, Park Güell, and Casa Vicens; walking the Eixample or climbing the park shows how the city's urban plan became a stage for his imagination. "
+            "Gaudí died after a tram accident when the Sagrada Família had only part of its structure raised; since then architects and craftspeople have continued the project from his plans and models. "
+            "For a student in Barcelona, visiting these sites with architecture vocabulary—façade, nave, catenary, balcony—turns a weekend outing into Spanish practice tied to the university setting and the metro used every day."
+        ),
     },
 ]
 
@@ -680,123 +734,18 @@ def get_spain_news() -> dict[str, Any]:
         }
 
 
-def _wikipedia_hero_image(data: dict[str, Any]) -> str:
-    """Prefer a larger image URL; avoid upscaling tiny thumbs in the UI."""
-    original = data.get("originalimage") or {}
-    if original.get("source"):
-        return original["source"]
-    thumb = data.get("thumbnail") or {}
-    src = thumb.get("source", "")
-    if not src:
-        return ""
-    width = thumb.get("width") or 0
-    if width and width >= 640:
-        return src
-    return re.sub(r"/\d+px-", "/640px-", src, count=1)
-
-
-def _fetch_wikipedia_summary(wiki_title: str) -> dict[str, Any] | None:
-    try:
-        response = requests.get(
-            f"{WIKIPEDIA_SUMMARY_URL}/{wiki_title}",
-            timeout=15,
-            headers={"User-Agent": "EstudioAbroad/1.0 (language study app)"},
-        )
-        if response.status_code == 404:
-            return None
-        response.raise_for_status()
-        data = response.json()
-        urls = data.get("content_urls") or {}
-        desktop = urls.get("desktop") or {}
-        return {
-            "extract": data.get("extract", ""),
-            "thumbnail": _wikipedia_hero_image(data),
-            "wiki_url": desktop.get("page", ""),
-        }
-    except (requests.RequestException, ValueError, KeyError) as exc:
-        logger.exception("Wikipedia fetch failed for %r: %s", wiki_title, exc)
-        return None
-
-
-def _history_body_for_key(key: str) -> dict[str, str]:
-    body = HISTORY_TOPICS_BODY.get(key, {})
-    return {
-        "body_es": body.get("body_es", ""),
-        "body_en": body.get("body_en", ""),
-    }
-
-
-def _history_cache_valid(entry: dict[str, Any] | None) -> bool:
-    return bool(
-        entry
-        and entry.get("version") == HISTORY_CACHE_VERSION
-        and _cache_is_fresh(entry.get("fetched_at"), 86400)
-    )
-
-
 def get_history_topics() -> list[dict[str, Any]]:
-    cache = _load_cache()
-    cache.setdefault("history", {})
-    topics_out = []
-
-    for meta in HISTORY_TOPICS:
-        key = meta["key"]
-        bodies = _history_body_for_key(key)
-        entry = cache["history"].get(key)
-
-        if _history_cache_valid(entry):
-            thumb = entry.get("thumbnail", "")
-            if thumb and re.search(r"/\d{2,3}px-", thumb):
-                wiki = _fetch_wikipedia_summary(meta["wiki_title"])
-                if wiki and wiki.get("thumbnail"):
-                    entry = {**entry, "thumbnail": wiki["thumbnail"]}
-                    cache["history"][key] = entry
-            topics_out.append({
-                **meta,
-                **bodies,
-                "thumbnail": entry.get("thumbnail", ""),
-                "wiki_url": entry.get("wiki_url", ""),
-            })
-            continue
-
-        wiki = _fetch_wikipedia_summary(meta["wiki_title"])
-        now = datetime.now(timezone.utc).isoformat()
-        if wiki:
-            entry = {
-                "thumbnail": wiki.get("thumbnail", ""),
-                "wiki_url": wiki.get("wiki_url", ""),
-                "fetched_at": now,
-                "version": HISTORY_CACHE_VERSION,
-            }
-        elif entry:
-            entry = {
-                "thumbnail": entry.get("thumbnail", ""),
-                "wiki_url": entry.get(
-                    "wiki_url",
-                    f"https://en.wikipedia.org/wiki/{meta['wiki_title']}",
-                ),
-                "fetched_at": now,
-                "version": HISTORY_CACHE_VERSION,
-            }
-        else:
-            entry = {
-                "thumbnail": "",
-                "wiki_url": f"https://en.wikipedia.org/wiki/{meta['wiki_title']}",
-                "fetched_at": now,
-                "version": HISTORY_CACHE_VERSION,
-            }
-        if not bodies["body_es"] and wiki and wiki.get("extract"):
-            bodies["body_es"] = wiki["extract"]
-        cache["history"][key] = entry
-        topics_out.append({
-            **meta,
-            **bodies,
-            "thumbnail": entry.get("thumbnail", ""),
-            "wiki_url": entry.get("wiki_url", ""),
-        })
-
-    _save_cache(cache)
-    return topics_out
+    return [
+        {
+            "key": t["key"],
+            "title_es": t["title_es"],
+            "intro_es": t["intro_es"],
+            "summary_es": t["summary_es"],
+            "summary_en": t["summary_en"],
+            "wiki_url": t["wiki_url"],
+        }
+        for t in HISTORY_TOPICS
+    ]
 
 
 def get_study_resources() -> list[dict[str, Any]]:

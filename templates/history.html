@@ -11,38 +11,26 @@
   #historyTabs .nav-link:hover {
     color: var(--accent) !important;
   }
-  .history-hero {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 1.25rem;
-    padding: 0.75rem;
-    background: var(--surface2);
-    border-radius: 0.5rem;
-    border: 1px solid var(--border);
-    min-height: 120px;
-    max-height: 280px;
-    overflow: hidden;
+  .history-translate-btn {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    margin-bottom: 1rem;
   }
-  .history-hero img {
-    display: block;
-    max-width: 100%;
-    max-height: 260px;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    border-radius: 0.35rem;
+  .history-translate-btn:hover {
+    background: var(--accent2);
+    color: var(--bg);
+  }
+  .history-summary-en {
+    font-style: italic;
+    margin-bottom: 1.25rem;
   }
 </style>
 {% endblock %}
 
 {% block content %}
 <h1 class="h3 mb-3" style="color: var(--accent); font-family: 'Playfair Display', serif;">Historia de España</h1>
-<p class="mb-3" style="color: var(--text-dim);">Temas clave para entender la cultura española y catalana.</p>
-
-<div class="click-reveal-hint" role="note">
-  ◎ &nbsp;Toca el texto para ver inglés
-</div>
+<p class="mb-4" style="color: var(--text-dim);">Temas clave para entender la cultura española y catalana.</p>
 
 <ul class="nav nav-tabs mb-3" id="historyTabs" role="tablist">
   {% for topic in topics %}
@@ -60,29 +48,40 @@
   {% for topic in topics %}
   <div class="tab-pane fade{% if loop.first %} show active{% endif %}" id="panel-{{ topic.key }}" role="tabpanel">
     <div class="card-panel p-4">
-      {% if topic.thumbnail %}
-      <figure class="history-hero">
-        <img src="{{ topic.thumbnail }}" alt="" loading="lazy" decoding="async"
-             width="640" height="360">
-      </figure>
-      {% endif %}
       <h2 class="h4 mb-2" style="color: var(--text); font-family: 'Playfair Display', serif;">{{ topic.title_es }}</h2>
       <p class="mb-3" style="color: var(--text-dim);">{{ topic.intro_es }}</p>
-      {% if topic.body_es %}
-      <div class="click-reveal mb-3">
-        <div class="click-reveal-es" style="line-height: 1.75;">{{ topic.body_es }}</div>
-        <div class="click-reveal-en" style="line-height: 1.75;">{{ topic.body_en }}</div>
+      <p class="history-summary-es mb-3" style="line-height: 1.75; color: var(--text);">{{ topic.summary_es }}</p>
+      <button type="button" class="btn btn-sm history-translate-btn"
+              data-target="en-{{ topic.key }}" aria-expanded="false"
+              aria-controls="en-{{ topic.key }}">
+        Ver en inglés
+      </button>
+      <div id="en-{{ topic.key }}" class="history-summary-en d-none" style="line-height: 1.75; color: var(--accent2);">
+        {{ topic.summary_en }}
       </div>
-      {% else %}
-      <p style="color: var(--text-dim);">No se pudo cargar el texto. Inténtalo más tarde.</p>
-      {% endif %}
-      {% if topic.wiki_url %}
       <a href="{{ topic.wiki_url }}" target="_blank" rel="noopener" style="color: var(--accent);">
         Leer más en Wikipedia
       </a>
-      {% endif %}
     </div>
   </div>
   {% endfor %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  document.querySelectorAll('.history-translate-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const targetId = btn.getAttribute('data-target');
+      const panel = document.getElementById(targetId);
+      if (!panel) return;
+      panel.classList.toggle('d-none');
+      const showing = !panel.classList.contains('d-none');
+      btn.setAttribute('aria-expanded', showing ? 'true' : 'false');
+      btn.textContent = showing ? 'Ocultar inglés' : 'Ver en inglés';
+    });
+  });
+})();
+</script>
 {% endblock %}
