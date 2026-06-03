@@ -392,3 +392,7 @@ Review covered production Python, config, templates, and static assets. `_protot
 
 - `Fix: address security and reliability issues from self-review` — CSRF, SECRET_KEY guard, vocab validation, phrasebook limits, atomic cache writes, CSV sanitization, HTTPS news URLs, env parsing, vocab route try/except
 - `Docs: add self-review notes from final code review` — this file
+
+## Post-review additions
+
+- **User accounts (stretch)** — Email/password registration, per-user JSON cache (`data/users/`), profile picture upload, and scoped phrasebook/progress. Addresses the ephemeral single-cache limitation for multi-user progress tracking; Render persistence still deferred to Postgres/S3.
