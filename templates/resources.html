@@ -9,6 +9,9 @@
   ◎ &nbsp;Toca el texto para ver inglés
 </div>
 
+{% include "partials/section_alerts.html" %}
+
+{% if not section_failed %}
 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
   {% for r in resources %}
   <div class="col">
@@ -28,4 +31,5 @@
   </div>
   {% endfor %}
 </div>
+{% endif %}
 {% endblock %}

@@ -39,6 +39,9 @@
   Español primero — toca la tarjeta para ver inglés. Marca «Fallé» para añadir a palabras débiles.
 </p>
 
+{% if section_failed %}
+{% include "partials/section_alerts.html" %}
+{% else %}
 <div class="flashcard-zone">
   <div class="flashcard click-reveal" id="flashcard">
     <div class="click-reveal-es flashcard-prompt">{{ session.card.es }}</div>
@@ -54,4 +57,5 @@
     <button type="submit" name="missed" value="1" class="btn btn-sm btn-outline-warning">Fallé</button>
   </form>
 </div>
+{% endif %}
 {% endblock %}

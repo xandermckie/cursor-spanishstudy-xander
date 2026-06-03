@@ -32,6 +32,9 @@
 <h1 class="h3 mb-3" style="color: var(--accent); font-family: 'Playfair Display', serif;">Historia de España</h1>
 <p class="mb-4" style="color: var(--text-dim);">Temas clave para entender la cultura española y catalana.</p>
 
+{% include "partials/section_alerts.html" %}
+
+{% if not section_failed %}
 <ul class="nav nav-tabs mb-3" id="historyTabs" role="tablist">
   {% for topic in topics %}
   <li class="nav-item" role="presentation">
@@ -66,6 +69,7 @@
   </div>
   {% endfor %}
 </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}

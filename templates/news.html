@@ -5,13 +5,12 @@
 <h1 class="h3 mb-3" style="color: var(--accent); font-family: 'Playfair Display', serif;">Noticias de España</h1>
 <p class="mb-4" style="color: var(--text-dim);">Titulares en español de medios españoles, filtrados para noticias sobre España.</p>
 
-{% if news.error and not news.articles %}
-<div class="alert alert-warning" role="alert" style="background: var(--surface2); border-color: var(--border); color: var(--text);">
+{% include "partials/section_alerts.html" %}
+
+{% if not section_failed %}
+{% if news.error and news.articles %}
+<div class="alert alert-warning py-2 small mb-3" role="alert" style="background: var(--surface2); border-color: var(--border); color: var(--text-dim);">
   {{ news.error }}
-</div>
-{% elif news.error %}
-<div class="alert alert-warning py-2 small" role="alert" style="background: var(--surface2); border-color: var(--border); color: var(--text-dim);">
-  {{ news.error }} (mostrando caché anterior si existe)
 </div>
 {% endif %}
 
@@ -35,11 +34,8 @@
   </div>
   {% endfor %}
 </div>
-{% elif not news.error %}
-<p style="color: var(--text-dim);">No hay artículos para mostrar.</p>
+{% elif news.error and not cache_timestamp_display %}
+<p style="color: var(--text-dim);">{{ news.error }}</p>
 {% endif %}
-
-{% if news.fetched_at %}
-<p class="mt-4 small" style="color: var(--text-dim);">Fuentes: NewsAPI (español, filtro España). Caché del servidor ~1 hora.</p>
 {% endif %}
 {% endblock %}

@@ -61,23 +61,43 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/reader")
     def reader():
-        reader_data = fetcher.get_reader()
+        try:
+            reader_data = fetcher.get_reader()
+        except Exception as exc:
+            logger.exception("reader route failed: %s", exc)
+            reader_data = {
+                "passages": [],
+                "weak_words_top": [],
+                "section_failed": True,
+            }
         return render_template(
             "reader.html",
             page="reader",
             title="Lector",
             reader=reader_data,
+            section_failed=reader_data.get("section_failed", False),
         )
 
     @app.route("/vocab")
     def vocab():
         idx = request.args.get("i", 0, type=int)
-        session = fetcher.get_vocab_session(idx)
+        try:
+            session = fetcher.get_vocab_session(idx)
+        except Exception as exc:
+            logger.exception("vocab route failed: %s", exc)
+            session = {
+                "card": {"es": "", "en": ""},
+                "index": 0,
+                "total": 0,
+                "next_index": 0,
+                "section_failed": True,
+            }
         return render_template(
             "vocab.html",
             page="vocab",
             title="Tarjetas",
             session=session,
+            section_failed=session.get("section_failed", False),
         )
 
     @app.route("/vocab/record", methods=["POST"])
@@ -86,7 +106,18 @@ def register_routes(app: Flask) -> None:
         en = request.form.get("en", "")
         missed = request.form.get("missed") == "1"
         next_i = request.form.get("next_i", 0, type=int)
-        fetcher.record_flashcard_result(es, en, missed)
+        try:
+            if not fetcher.record_flashcard_result(es, en, missed):
+                flash(
+                    "No se pudo guardar el resultado. Inténtalo de nuevo.",
+                    "warning",
+                )
+        except Exception as exc:
+            logger.exception("vocab_record failed: %s", exc)
+            flash(
+                "No se pudo guardar el resultado. Inténtalo de nuevo.",
+                "warning",
+            )
         return redirect(url_for("vocab", i=next_i))
 
     @app.route("/phrasebook", methods=["GET", "POST"])
@@ -96,16 +127,33 @@ def register_routes(app: Flask) -> None:
             if not text:
                 flash("Escribe una frase en inglés.", "warning")
             else:
-                fetcher.add_phrase(text)
-                flash("Frase guardada.", "success")
+                try:
+                    if fetcher.add_phrase(text):
+                        flash("Frase guardada.", "success")
+                    else:
+                        flash(
+                            "No se pudo guardar la frase. Inténtalo de nuevo.",
+                            "warning",
+                        )
+                except Exception as exc:
+                    logger.exception("phrasebook add failed: %s", exc)
+                    flash(
+                        "No se pudo guardar la frase. Inténtalo de nuevo.",
+                        "warning",
+                    )
             return redirect(url_for("phrasebook"))
 
-        phrases = fetcher.get_phrasebook()
+        try:
+            phrases = fetcher.get_phrasebook()
+        except Exception as exc:
+            logger.exception("phrasebook route failed: %s", exc)
+            phrases = []
         return render_template(
             "phrasebook.html",
             page="phrasebook",
             title="Libro de frases",
             phrases=phrases,
+            section_failed=False,
         )
 
     @app.route("/phrasebook/<phrase_id>/edit", methods=["POST"])
@@ -113,21 +161,46 @@ def register_routes(app: Flask) -> None:
         text = request.form.get("input", "").strip()
         if not text:
             flash("La frase no puede estar vacía.", "warning")
-        elif fetcher.update_phrase(phrase_id, text):
-            flash("Frase actualizada.", "success")
         else:
-            flash("No se encontró la frase.", "warning")
+            try:
+                if fetcher.update_phrase(phrase_id, text):
+                    flash("Frase actualizada.", "success")
+                else:
+                    flash("No se encontró la frase.", "warning")
+            except Exception as exc:
+                logger.exception("phrasebook_edit failed: %s", exc)
+                flash(
+                    "No se pudo actualizar la frase. Inténtalo de nuevo.",
+                    "warning",
+                )
         return redirect(url_for("phrasebook"))
 
     @app.route("/phrasebook/<phrase_id>/delete", methods=["POST"])
     def phrasebook_delete(phrase_id: str):
-        if fetcher.delete_phrase(phrase_id):
-            flash("Frase eliminada.", "success")
+        try:
+            if fetcher.delete_phrase(phrase_id):
+                flash("Frase eliminada.", "success")
+            else:
+                flash("No se encontró la frase.", "warning")
+        except Exception as exc:
+            logger.exception("phrasebook_delete failed: %s", exc)
+            flash(
+                "No se pudo eliminar la frase. Inténtalo de nuevo.",
+                "warning",
+            )
         return redirect(url_for("phrasebook"))
 
     @app.route("/phrasebook/export")
     def phrasebook_export():
-        csv_content = fetcher.export_phrasebook_csv()
+        try:
+            csv_content = fetcher.export_phrasebook_csv()
+        except Exception as exc:
+            logger.exception("phrasebook_export failed: %s", exc)
+            flash(
+                "No se pudo exportar el libro de frases. Inténtalo más tarde.",
+                "warning",
+            )
+            return redirect(url_for("phrasebook"))
         buffer = BytesIO(csv_content.encode("utf-8"))
         buffer.seek(0)
         return send_file(
@@ -146,9 +219,17 @@ def register_routes(app: Flask) -> None:
             "mood": request.values.get("mood", "").strip() or None,
         }
         searched = request.method == "POST" or any(filters.values())
-        recommendations = (
-            fetcher.filter_travel_recommendations(**filters) if searched else []
-        )
+        section_failed = False
+        recommendations: list = []
+        map_center = {"lat": fetcher.UB_LAT, "lng": fetcher.UB_LNG}
+        try:
+            recommendations = (
+                fetcher.filter_travel_recommendations(**filters) if searched else []
+            )
+            map_center = fetcher.get_travel_map_center()
+        except Exception as exc:
+            logger.exception("travel route failed: %s", exc)
+            section_failed = True
         return render_template(
             "travel.html",
             page="travel",
@@ -156,37 +237,65 @@ def register_routes(app: Flask) -> None:
             recommendations=recommendations,
             filters=filters,
             searched=searched,
-            map_center=fetcher.get_travel_map_center(),
+            map_center=map_center,
+            section_failed=section_failed,
         )
 
     @app.route("/news")
     def news():
-        news_data = fetcher.get_spain_news()
+        try:
+            news_data = fetcher.get_spain_news()
+        except Exception as exc:
+            logger.exception("news route failed: %s", exc)
+            news_data = {
+                "articles": [],
+                "error": "No se pudieron cargar las noticias. Inténtalo más tarde.",
+                "fetched_at": None,
+                "cache_timestamp": None,
+                "cache_timestamp_display": "",
+                "section_failed": True,
+            }
         return render_template(
             "news.html",
             page="news",
             title="Noticias",
             news=news_data,
+            cache_timestamp_display=news_data.get("cache_timestamp_display", ""),
+            section_failed=news_data.get("section_failed", False),
         )
 
     @app.route("/history")
     def history():
-        topics = fetcher.get_history_topics()
+        section_failed = False
+        try:
+            topics = fetcher.get_history_topics()
+            if not topics:
+                section_failed = True
+        except Exception as exc:
+            logger.exception("history route failed: %s", exc)
+            topics = []
+            section_failed = True
         return render_template(
             "history.html",
             page="history",
             title="Historia",
             topics=topics,
+            section_failed=section_failed,
         )
 
     @app.route("/resources")
     def resources():
-        resources_list = fetcher.get_study_resources()
+        try:
+            resources_list = fetcher.get_study_resources()
+        except Exception as exc:
+            logger.exception("resources route failed: %s", exc)
+            resources_list = []
         return render_template(
             "resources.html",
             page="resources",
             title="Recursos",
             resources=resources_list,
+            section_failed=not resources_list,
         )
 
 

@@ -74,10 +74,15 @@ def _load_cache() -> dict[str, Any]:
         return {}
 
 
-def _save_cache(cache: dict[str, Any]) -> None:
+def _save_cache(cache: dict[str, Any]) -> bool:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    with CACHE_FILE.open("w", encoding="utf-8") as f:
-        json.dump(cache, f, ensure_ascii=False, indent=2)
+    try:
+        with CACHE_FILE.open("w", encoding="utf-8") as f:
+            json.dump(cache, f, ensure_ascii=False, indent=2)
+        return True
+    except OSError as exc:
+        logger.error("Failed to write cache file: %s", exc)
+        return False
 
 
 def _translation_cache_key(text: str, source: str, target: str) -> str:
@@ -267,29 +272,69 @@ def refresh_homepage() -> dict[str, Any]:
     return get_homepage()
 
 
-def get_homepage() -> dict[str, Any]:
-    cache = _load_cache()
+def _homepage_fallback() -> dict[str, Any]:
+    return {
+        "daily_sentence": None,
+        "daily_phrase": None,
+        "word_of_day": None,
+        "weak_words": [],
+        "last_refresh": None,
+        "last_refresh_display": "",
+        "error": True,
+    }
+
+
+def _homepage_from_cache(cache: dict[str, Any]) -> dict[str, Any] | None:
     daily = cache.get("daily_sentence")
     daily_phrase = cache.get("daily_phrase")
-
     if not daily or not daily.get("en") or not daily_phrase or not daily_phrase.get("en"):
-        return refresh_homepage()
-
-    wod = cache.get("word_of_day")
-    if wod and not wod.get("es"):
-        refresh_homepage()
-        cache = _load_cache()
-        wod = cache.get("word_of_day")
-        daily_phrase = cache.get("daily_phrase")
-
+        return None
     return {
         "daily_sentence": daily,
         "daily_phrase": daily_phrase,
-        "word_of_day": wod,
+        "word_of_day": cache.get("word_of_day"),
         "weak_words": get_weak_words(),
         "last_refresh": cache.get("last_refresh"),
         "last_refresh_display": format_refresh_time(cache.get("last_refresh")),
+        "error": True,
     }
+
+
+def get_homepage() -> dict[str, Any]:
+    try:
+        cache = _load_cache()
+        daily = cache.get("daily_sentence")
+        daily_phrase = cache.get("daily_phrase")
+
+        if not daily or not daily.get("en") or not daily_phrase or not daily_phrase.get("en"):
+            try:
+                return refresh_homepage()
+            except Exception as exc:
+                logger.exception("refresh_homepage failed: %s", exc)
+                return _homepage_from_cache(cache) or _homepage_fallback()
+
+        wod = cache.get("word_of_day")
+        if wod and not wod.get("es"):
+            try:
+                refresh_homepage()
+                cache = _load_cache()
+                wod = cache.get("word_of_day")
+                daily_phrase = cache.get("daily_phrase")
+            except Exception as exc:
+                logger.exception("refresh_homepage (word_of_day) failed: %s", exc)
+
+        return {
+            "daily_sentence": daily,
+            "daily_phrase": daily_phrase,
+            "word_of_day": wod,
+            "weak_words": get_weak_words(),
+            "last_refresh": cache.get("last_refresh"),
+            "last_refresh_display": format_refresh_time(cache.get("last_refresh")),
+            "error": False,
+        }
+    except Exception as exc:
+        logger.exception("get_homepage failed: %s", exc)
+        return _homepage_fallback()
 
 
 def get_weak_words() -> list[dict[str, Any]]:
@@ -310,107 +355,147 @@ def _ensure_flashcard_deck(cache: dict[str, Any]) -> list[dict[str, str]]:
 
 
 def get_vocab_session(index: int = 0) -> dict[str, Any]:
-    cache = _load_cache()
-    deck = _ensure_flashcard_deck(cache)
-    total = len(deck)
-    idx = index % total if total else 0
-    card = deck[idx] if total else {"es": "", "en": ""}
-    return {
-        "card": card,
-        "index": idx,
-        "total": total,
-        "next_index": (idx + 1) % total if total else 0,
-    }
+    try:
+        cache = _load_cache()
+        deck = _ensure_flashcard_deck(cache)
+        total = len(deck)
+        idx = index % total if total else 0
+        card = deck[idx] if total else {"es": "", "en": ""}
+        return {
+            "card": card,
+            "index": idx,
+            "total": total,
+            "next_index": (idx + 1) % total if total else 0,
+            "section_failed": False,
+        }
+    except Exception as exc:
+        logger.exception("get_vocab_session failed: %s", exc)
+        return {
+            "card": {"es": "", "en": ""},
+            "index": 0,
+            "total": 0,
+            "next_index": 0,
+            "section_failed": True,
+        }
 
 
-def record_flashcard_result(es: str, en: str, missed: bool) -> None:
+def record_flashcard_result(es: str, en: str, missed: bool) -> bool:
     if not missed or not es:
-        return
-    cache = _load_cache()
-    cache.setdefault("weak_words", {})
-    key = es.strip().lower()
-    entry = cache["weak_words"].get(key, {
-        "es": es,
-        "en": en,
-        "miss_count": 0,
-    })
-    entry["miss_count"] = entry.get("miss_count", 0) + 1
-    entry["last_missed"] = datetime.now(timezone.utc).isoformat()
-    entry["en"] = en or entry.get("en", "")
-    cache["weak_words"][key] = entry
-    _save_cache(cache)
+        return True
+    try:
+        cache = _load_cache()
+        cache.setdefault("weak_words", {})
+        key = es.strip().lower()
+        entry = cache["weak_words"].get(key, {
+            "es": es,
+            "en": en,
+            "miss_count": 0,
+        })
+        entry["miss_count"] = entry.get("miss_count", 0) + 1
+        entry["last_missed"] = datetime.now(timezone.utc).isoformat()
+        entry["en"] = en or entry.get("en", "")
+        cache["weak_words"][key] = entry
+        return _save_cache(cache)
+    except Exception as exc:
+        logger.exception("record_flashcard_result failed: %s", exc)
+        return False
 
 
 def get_phrasebook() -> list[dict[str, Any]]:
-    cache = _load_cache()
-    return cache.get("phrasebook") or []
+    try:
+        cache = _load_cache()
+        return cache.get("phrasebook") or []
+    except Exception as exc:
+        logger.exception("get_phrasebook failed: %s", exc)
+        return []
 
 
 def add_phrase(user_input: str) -> dict[str, Any] | None:
     text = user_input.strip()
     if not text:
         return None
-    es_text, _ = fetch_translation(text, "en", "es")
-    if not es_text:
-        es_text = text
+    try:
+        es_text, _ = fetch_translation(text, "en", "es")
+        if not es_text:
+            es_text = text
 
-    cache = _load_cache()
-    cache.setdefault("phrasebook", [])
-    now = datetime.now(timezone.utc).isoformat()
-    entry = {
-        "id": str(uuid.uuid4()),
-        "input": text,
-        "es": es_text,
-        "created_at": now,
-        "updated_at": now,
-    }
-    cache["phrasebook"].append(entry)
-    _save_cache(cache)
-    return entry
+        cache = _load_cache()
+        cache.setdefault("phrasebook", [])
+        now = datetime.now(timezone.utc).isoformat()
+        entry = {
+            "id": str(uuid.uuid4()),
+            "input": text,
+            "es": es_text,
+            "created_at": now,
+            "updated_at": now,
+        }
+        cache["phrasebook"].append(entry)
+        if not _save_cache(cache):
+            return None
+        return entry
+    except Exception as exc:
+        logger.exception("add_phrase failed: %s", exc)
+        return None
 
 
 def update_phrase(phrase_id: str, user_input: str) -> bool:
     text = user_input.strip()
     if not text:
         return False
-    es_text, _ = fetch_translation(text, "en", "es")
-    if not es_text:
-        es_text = text
+    try:
+        es_text, _ = fetch_translation(text, "en", "es")
+        if not es_text:
+            es_text = text
 
-    cache = _load_cache()
-    for entry in cache.get("phrasebook", []):
-        if entry.get("id") == phrase_id:
-            entry["input"] = text
-            entry["es"] = es_text
-            entry["updated_at"] = datetime.now(timezone.utc).isoformat()
-            _save_cache(cache)
-            return True
-    return False
+        cache = _load_cache()
+        for entry in cache.get("phrasebook", []):
+            if entry.get("id") == phrase_id:
+                entry["input"] = text
+                entry["es"] = es_text
+                entry["updated_at"] = datetime.now(timezone.utc).isoformat()
+                return _save_cache(cache)
+        return False
+    except Exception as exc:
+        logger.exception("update_phrase failed: %s", exc)
+        return False
 
 
 def delete_phrase(phrase_id: str) -> bool:
-    cache = _load_cache()
-    book = cache.get("phrasebook", [])
-    new_book = [e for e in book if e.get("id") != phrase_id]
-    if len(new_book) == len(book):
+    try:
+        cache = _load_cache()
+        book = cache.get("phrasebook", [])
+        new_book = [e for e in book if e.get("id") != phrase_id]
+        if len(new_book) == len(book):
+            return False
+        cache["phrasebook"] = new_book
+        return _save_cache(cache)
+    except Exception as exc:
+        logger.exception("delete_phrase failed: %s", exc)
         return False
-    cache["phrasebook"] = new_book
-    _save_cache(cache)
-    return True
 
 
 def export_phrasebook_csv() -> str:
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["input_en", "spanish", "created_at", "updated_at"])
-    for entry in get_phrasebook():
-        writer.writerow([
-            entry.get("input", ""),
-            entry.get("es", ""),
-            entry.get("created_at", ""),
-            entry.get("updated_at", ""),
-        ])
-    return output.getvalue()
+    header = ["input_en", "spanish", "created_at", "updated_at"]
+    try:
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(header)
+        for entry in get_phrasebook():
+            if not isinstance(entry, dict):
+                continue
+            writer.writerow([
+                entry.get("input", ""),
+                entry.get("es", ""),
+                entry.get("created_at", ""),
+                entry.get("updated_at", ""),
+            ])
+        return output.getvalue()
+    except Exception as exc:
+        logger.exception("export_phrasebook_csv failed: %s", exc)
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(header)
+        return output.getvalue()
 
 
 def _ensure_reader_passages(cache: dict[str, Any]) -> list[dict[str, Any]]:
@@ -437,14 +522,23 @@ def _ensure_reader_passages(cache: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def get_reader() -> dict[str, Any]:
-    cache = _load_cache()
-    passages = _ensure_reader_passages(cache)
-    idx = _reader_passage_index(len(passages))
-    weak_top = get_weak_words()[:5]
-    return {
-        "passages": [passages[idx]] if passages else [],
-        "weak_words_top": weak_top,
-    }
+    try:
+        cache = _load_cache()
+        passages = _ensure_reader_passages(cache)
+        idx = _reader_passage_index(len(passages))
+        weak_top = get_weak_words()[:5]
+        return {
+            "passages": [passages[idx]] if passages else [],
+            "weak_words_top": weak_top,
+            "section_failed": False,
+        }
+    except Exception as exc:
+        logger.exception("get_reader failed: %s", exc)
+        return {
+            "passages": [],
+            "weak_words_top": [],
+            "section_failed": True,
+        }
 
 
 def run_refresh() -> None:
@@ -683,69 +777,105 @@ def _parse_news_api_articles(
     return articles
 
 
+def _news_result(
+    articles: list[dict[str, Any]],
+    error: str | None,
+    fetched_at: str | None,
+    *,
+    stale_cache: bool = False,
+) -> dict[str, Any]:
+    cache_ts = fetched_at if stale_cache and fetched_at else None
+    display = format_refresh_time(cache_ts) if cache_ts else ""
+    section_failed = not articles and bool(error or not fetched_at)
+    return {
+        "articles": articles,
+        "error": error,
+        "fetched_at": fetched_at,
+        "cache_timestamp": cache_ts,
+        "cache_timestamp_display": display,
+        "section_failed": section_failed,
+    }
+
+
 def get_spain_news() -> dict[str, Any]:
-    cache = _load_cache()
-    cached = cache.get("spain_news")
-    if cached and _cache_is_fresh(cached.get("fetched_at"), 3600):
-        return {
-            "articles": cached.get("articles", []),
-            "error": None,
-            "fetched_at": cached.get("fetched_at"),
-        }
-
-    if not NEWS_API_KEY:
-        return {
-            "articles": cached.get("articles", []) if cached else [],
-            "error": "Falta la clave NEWS_API_KEY en el archivo .env.",
-            "fetched_at": cached.get("fetched_at") if cached else None,
-        }
-
     try:
-        response = requests.get(
-            NEWS_API_URL,
-            params=_news_api_request_params(),
-            timeout=15,
+        cache = _load_cache()
+        cached = cache.get("spain_news")
+        if cached and _cache_is_fresh(cached.get("fetched_at"), 3600):
+            return _news_result(
+                cached.get("articles", []),
+                None,
+                cached.get("fetched_at"),
+            )
+
+        stale_articles = cached.get("articles", []) if cached else []
+        stale_at = cached.get("fetched_at") if cached else None
+
+        if not NEWS_API_KEY:
+            return _news_result(
+                stale_articles,
+                "Falta la clave NEWS_API_KEY en el archivo .env.",
+                stale_at,
+                stale_cache=bool(stale_articles and stale_at),
+            )
+
+        try:
+            response = requests.get(
+                NEWS_API_URL,
+                params=_news_api_request_params(),
+                timeout=15,
+            )
+            response.raise_for_status()
+            data = response.json()
+            if data.get("status") == "error":
+                raise ValueError(data.get("message", "NewsAPI error"))
+            raw = data.get("articles") or []
+            articles = _parse_news_api_articles(raw)
+            if not articles and raw:
+                articles = _parse_news_api_articles(raw, spain_only=False)
+            now = datetime.now(timezone.utc).isoformat()
+            cache["spain_news"] = {"articles": articles, "fetched_at": now}
+            _save_cache(cache)
+            if not articles:
+                return _news_result(
+                    [],
+                    "No hay artículos disponibles en este momento.",
+                    now,
+                )
+            return _news_result(articles, None, now)
+        except (requests.RequestException, ValueError, KeyError) as exc:
+            logger.exception("get_spain_news failed: %s", exc)
+            return _news_result(
+                stale_articles,
+                "No se pudieron cargar las noticias. Inténtalo más tarde.",
+                stale_at,
+                stale_cache=bool(stale_articles and stale_at),
+            )
+    except Exception as exc:
+        logger.exception("get_spain_news unexpected failure: %s", exc)
+        return _news_result(
+            [],
+            "No se pudieron cargar las noticias. Inténtalo más tarde.",
+            None,
         )
-        response.raise_for_status()
-        data = response.json()
-        if data.get("status") == "error":
-            raise ValueError(data.get("message", "NewsAPI error"))
-        raw = data.get("articles") or []
-        articles = _parse_news_api_articles(raw)
-        if not articles and raw:
-            articles = _parse_news_api_articles(raw, spain_only=False)
-        now = datetime.now(timezone.utc).isoformat()
-        cache["spain_news"] = {"articles": articles, "fetched_at": now}
-        _save_cache(cache)
-        if not articles:
-            return {
-                "articles": [],
-                "error": "No hay artículos disponibles en este momento.",
-                "fetched_at": now,
-            }
-        return {"articles": articles, "error": None, "fetched_at": now}
-    except (requests.RequestException, ValueError, KeyError) as exc:
-        logger.exception("get_spain_news failed: %s", exc)
-        stale = cached.get("articles", []) if cached else []
-        return {
-            "articles": stale,
-            "error": "No se pudieron cargar las noticias. Inténtalo más tarde.",
-            "fetched_at": cached.get("fetched_at") if cached else None,
-        }
 
 
 def get_history_topics() -> list[dict[str, Any]]:
-    return [
-        {
-            "key": t["key"],
-            "title_es": t["title_es"],
-            "intro_es": t["intro_es"],
-            "summary_es": t["summary_es"],
-            "summary_en": t["summary_en"],
-            "wiki_url": t["wiki_url"],
-        }
-        for t in HISTORY_TOPICS
-    ]
+    try:
+        return [
+            {
+                "key": t["key"],
+                "title_es": t["title_es"],
+                "intro_es": t["intro_es"],
+                "summary_es": t["summary_es"],
+                "summary_en": t["summary_en"],
+                "wiki_url": t["wiki_url"],
+            }
+            for t in HISTORY_TOPICS
+        ]
+    except Exception as exc:
+        logger.exception("get_history_topics failed: %s", exc)
+        return []
 
 
 def get_study_resources() -> list[dict[str, Any]]:

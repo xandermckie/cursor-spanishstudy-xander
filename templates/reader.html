@@ -150,6 +150,9 @@
   ◎ &nbsp;Hover over the passage — the fog clears where your cursor moves
 </div>
 
+{% if section_failed %}
+{% include "partials/section_alerts.html" %}
+{% else %}
 {% for passage in reader.passages %}
 <article class="reader-card">
   <div class="card-label">
@@ -176,6 +179,7 @@
   </ul>
   <p class="mt-3 mb-0 small"><a href="{{ url_for('vocab') }}" style="color: var(--accent);">Practicar tarjetas</a></p>
 </section>
+{% endif %}
 {% endif %}
 {% endblock %}
 

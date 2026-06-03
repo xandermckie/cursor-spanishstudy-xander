@@ -10,7 +10,18 @@
 {% block content %}
 <h1 class="h3 mb-4" style="color: var(--accent); font-family: 'Playfair Display', serif;">Inicio</h1>
 
-{% if homepage %}
+{% if homepage and homepage.error and not homepage.daily_sentence %}
+<p class="mb-0" style="color: var(--text-dim);">
+  No se pudo cargar esta sección. Inténtalo más tarde.
+</p>
+{% elif homepage %}
+
+{% if homepage.error and homepage.last_refresh_display %}
+<div class="alert py-2 small mb-3" role="status"
+     style="background: var(--surface2); border-color: var(--border); color: var(--text-dim);">
+  Mostrando datos guardados del {{ homepage.last_refresh_display }}
+</div>
+{% endif %}
 
 <div class="click-reveal-hint" role="note">
   ◎ &nbsp;Toca el texto para ver inglés
@@ -54,6 +65,7 @@
 </div>
 {% endif %}
 
+{% if homepage.daily_sentence %}
 <div class="card-panel">
   <div class="card-header px-3 py-2">Frase del día</div>
   <div class="p-4">
@@ -63,6 +75,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <div class="card-panel">
   <div class="card-header px-3 py-2">Palabras débiles</div>

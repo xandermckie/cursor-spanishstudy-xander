@@ -65,6 +65,9 @@
   ◎ &nbsp;Toca el texto para ver inglés
 </div>
 
+{% include "partials/section_alerts.html" %}
+
+{% if not section_failed %}
 <div class="row g-4">
   <div class="col-lg-4">
     <aside class="filter-panel">
@@ -142,9 +145,11 @@
     {% endif %}
   </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
+{% if not section_failed %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 (function () {
@@ -185,4 +190,5 @@
   }
 })();
 </script>
+{% endif %}
 {% endblock %}

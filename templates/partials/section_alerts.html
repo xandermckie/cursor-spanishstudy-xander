@@ -1,0 +1,11 @@
+{% if cache_timestamp_display %}
+<div class="alert py-2 small mb-3" role="status"
+     style="background: var(--surface2); border-color: var(--border); color: var(--text-dim);">
+  Mostrando datos guardados del {{ cache_timestamp_display }}
+</div>
+{% endif %}
+{% if section_failed %}
+<p class="mb-0" style="color: var(--text-dim);">
+  No se pudo cargar esta sección. Inténtalo más tarde.
+</p>
+{% endif %}
