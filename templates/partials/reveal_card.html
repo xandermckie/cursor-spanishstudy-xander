@@ -1,0 +1,7 @@
+{% macro reveal_card(es, en, hint='Tap to reveal English', extra_class='') %}
+<div class="reveal-card {{ extra_class }}" role="button" tabindex="0">
+  <div class="reveal-es">{{ es }}</div>
+  <div class="reveal-en">{{ en }}</div>
+  <div class="reveal-hint">{{ hint }}</div>
+</div>
+{% endmacro %}

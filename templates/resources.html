@@ -1,52 +1,41 @@
 {% extends "base.html" %}
+{% from "partials/reveal_card.html" import reveal_card %}
 {% block title %}Recursos{% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-2" style="color: var(--color-navy); font-weight: 800;">Recursos de estudio</h1>
-<p class="mb-3 text-muted">Sitios recomendados para mejorar tu español fuera de clase.</p>
+<h1 class="page-title">Recursos de estudio</h1>
+<p class="page-subtitle">Sitios recomendados para mejorar tu español fuera de clase.</p>
 
-<div class="click-reveal-hint" role="note">
-  ◎ &nbsp;Toca el texto para ver inglés
-</div>
+<div class="instruction-bar" role="note">◎ &nbsp;Toca el texto para ver inglés</div>
 
 {% include "partials/section_alerts.html" %}
 
 {% if not section_failed %}
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+<div class="resource-grid">
   {% for r in resources %}
-  {% set border_color = {
-    'speaking': 'var(--color-red)',
-    'vocabulary': 'var(--color-yellow)',
-    'listening': 'var(--color-green)',
-    'reading': '#3B82F6'
-  }.get(r.skill, 'var(--color-red)') %}
-  {% set badge_bg = {
-    'speaking': 'var(--color-red-light)',
-    'vocabulary': 'var(--color-yellow-light)',
-    'listening': '#ecfdf5',
-    'reading': '#eff6ff'
-  }.get(r.skill, 'var(--color-red-light)') %}
-  {% set badge_color = {
-    'speaking': 'var(--color-red)',
-    'vocabulary': '#b45309',
-    'listening': '#065f46',
-    'reading': '#1e40af'
-  }.get(r.skill, 'var(--color-red)') %}
-  <div class="col">
-    <article class="card-panel h-100 p-3 d-flex flex-column" style="border-left: 4px solid {{ border_color }};">
-      <div class="d-flex justify-content-between align-items-start mb-2">
-        <h2 class="h5 mb-0" style="color: var(--color-navy); font-weight: 700;">{{ r.name }}</h2>
-        <span class="badge badge-cat" style="background: {{ badge_bg }}; color: {{ badge_color }};">{{ r.skill_es }}</span>
+  {% set bar_colors = {
+    'speaking': 'var(--primary)',
+    'vocabulary': 'var(--secondary)',
+    'listening': 'var(--green)',
+    'reading': 'var(--teal)'
+  } %}
+  {% set badge_class = {
+    'speaking': 'badge-primary',
+    'vocabulary': 'badge-secondary',
+    'listening': 'badge-green',
+    'reading': 'badge-teal'
+  } %}
+  <article class="news-card">
+    <div class="news-card-bar" style="background: {{ bar_colors.get(r.skill, 'var(--primary)') }};"></div>
+    <div class="news-card-body">
+      <div class="flex justify-between items-start gap-2 mb-2">
+        <h2 style="font-size: 17px; font-weight: 700; margin: 0; font-family: var(--font-heading);">{{ r.name }}</h2>
+        <span class="badge {{ badge_class.get(r.skill, 'badge-primary') }}">{{ r.skill_es }}</span>
       </div>
-      <div class="click-reveal flex-grow-1 mb-3">
-        <div class="click-reveal-es">{{ r.description_es }}</div>
-        <div class="click-reveal-en">{{ r.description_en }}</div>
-      </div>
-      <a href="{{ r.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mt-auto align-self-start">
-        Visitar sitio
-      </a>
-    </article>
-  </div>
+      {{ reveal_card(r.description_es, r.description_en) }}
+      <a href="{{ r.url }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm mt-3">Visitar sitio</a>
+    </div>
+  </article>
   {% endfor %}
 </div>
 {% endif %}

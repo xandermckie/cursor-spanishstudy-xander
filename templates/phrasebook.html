@@ -1,77 +1,70 @@
 {% extends "base.html" %}
+{% from "partials/pez.html" import pez %}
+{% from "partials/reveal_card.html" import reveal_card %}
 {% block title %}Libro de frases{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-  <h1 class="h3 mb-0" style="color: var(--color-navy); font-weight: 800;">Libro de frases</h1>
-  <a href="{{ url_for('phrasebook_export') }}" class="btn btn-sm btn-outline-primary">Exportar CSV</a>
+<div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+  <h1 class="page-title mb-0">Libro de frases</h1>
+  <a href="{{ url_for('phrasebook_export') }}" class="btn btn-secondary btn-sm">Exportar CSV</a>
 </div>
 
-<div class="click-reveal-hint" role="note">
-  ◎ &nbsp;Toca el texto para ver inglés
-</div>
+<div class="instruction-bar" role="note">◎ &nbsp;Toca el texto para ver inglés</div>
 
-<div class="card-panel mb-4">
-  <div class="card-header px-3 py-2">Enter phrase in English</div>
-  <div class="p-3">
-    <form method="post" action="{{ url_for('phrasebook') }}">
-      <label class="form-label small text-muted">Escribe la frase en inglés; se traduce al español al guardar.</label>
-      <div class="input-group">
-        <input type="text" class="form-control" name="input" placeholder="e.g. I need to renew my student visa" required maxlength="500">
-        <button type="submit" class="btn btn-primary">Traducir y guardar</button>
-      </div>
-      <small class="text-muted d-block mt-2">
-        La traducción se guarda en caché para no repetir llamadas a la API.
-      </small>
-    </form>
-  </div>
-</div>
-
-<div class="card-panel">
-  <div class="card-header px-3 py-2">Tus frases ({{ phrases|length }})</div>
-  <div class="p-0">
-    {% if phrases %}
-    <div class="table-responsive">
-      <table class="table table-hover mb-0 align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Frase</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in phrases %}
-          <tr>
-            <td class="py-3">
-              <div class="click-reveal">
-                <div class="click-reveal-es fw-semibold fs-5">{{ p.es }}</div>
-                <div class="click-reveal-en">{{ p.input }}</div>
-              </div>
-            </td>
-            <td class="text-end text-nowrap align-middle">
-              <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse"
-                      data-bs-target="#edit-{{ p.id }}">Editar</button>
-              <form method="post" action="{{ url_for('phrasebook_delete', phrase_id=p.id) }}" class="d-inline"
-                    onsubmit="return confirm('¿Eliminar esta frase?');">
-                <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
-              </form>
-            </td>
-          </tr>
-          <tr class="collapse" id="edit-{{ p.id }}">
-            <td colspan="2" class="pb-3">
-              <form method="post" action="{{ url_for('phrasebook_edit', phrase_id=p.id) }}" class="input-group input-group-sm">
-                <input type="text" class="form-control" name="input" value="{{ p.input }}" required>
-                <button type="submit" class="btn btn-outline-primary">Guardar</button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<div class="card mb-4">
+  <h2 class="h3" style="font-size: 16px; font-weight: 700; margin: 0 0 12px;">Añadir frase</h2>
+  <form method="post" action="{{ url_for('phrasebook') }}">
+    <label class="form-label">Escribe la frase en inglés; se traduce al español al guardar.</label>
+    <div class="flex gap-2 flex-wrap">
+      <input type="text" class="form-control" name="input" placeholder="e.g. I need to renew my student visa" required maxlength="500" style="flex: 1; min-width: 200px;">
+      <button type="submit" class="btn btn-primary">Traducir y guardar</button>
     </div>
-    {% else %}
-    <p class="p-3 mb-0 text-muted">No hay frases guardadas. Añade la primera arriba.</p>
-    {% endif %}
-  </div>
+    <p class="text-muted mb-0 mt-2" style="font-size: 12px;">La traducción se guarda en caché para no repetir llamadas a la API.</p>
+  </form>
 </div>
+
+<div class="card">
+  <h2 class="h3" style="font-size: 16px; font-weight: 700; margin: 0 0 16px;">Tus frases ({{ phrases|length }})</h2>
+  {% if phrases %}
+  {% for p in phrases %}
+  <div class="phrase-row mb-3" style="padding-bottom: 16px; border-bottom: 1px solid var(--border);">
+    {{ reveal_card(p.es, p.input) }}
+    <div class="flex gap-2 mt-2">
+      <button type="button" class="btn btn-secondary btn-sm phrase-edit-btn" data-target="edit-{{ p.id }}">Editar</button>
+      <form method="post" action="{{ url_for('phrasebook_delete', phrase_id=p.id) }}" class="inline-form"
+            onsubmit="return confirm('¿Eliminar esta frase?');">
+        <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
+      </form>
+    </div>
+    <div id="edit-{{ p.id }}" class="phrase-edit-panel hidden mt-2">
+      <form method="post" action="{{ url_for('phrasebook_edit', phrase_id=p.id) }}" class="flex gap-2">
+        <input type="text" class="form-control" name="input" value="{{ p.input }}" required>
+        <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="text-center py-4">
+    {{ pez(size=64, expression='thinking', speech='¡Añade tu primera frase!') }}
+    <p class="text-muted mt-3 mb-0">No hay frases guardadas. Añade la primera arriba.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.phrase-edit-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var panel = document.getElementById(btn.getAttribute('data-target'));
+    if (panel) panel.classList.toggle('hidden');
+  });
+});
+</script>
+{% endblock %}
+
+{% block inline_css %}
+.phrase-row:last-child { border-bottom: none !important; padding-bottom: 0 !important; }
+.inline-form { display: inline; }
 {% endblock %}

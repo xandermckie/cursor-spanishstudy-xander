@@ -2,40 +2,42 @@
 {% block title %}Noticias{% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-2" style="color: var(--color-navy); font-weight: 800;">Noticias de España</h1>
-<p class="mb-4 text-muted">Titulares en español de medios españoles, filtrados para noticias sobre España.</p>
+<h1 class="page-title">Noticias de España</h1>
+<p class="page-subtitle">Titulares en español de medios españoles.</p>
 
 {% include "partials/section_alerts.html" %}
 
 {% if not section_failed %}
 {% if news.error and news.articles %}
-<div class="cache-banner mb-3" role="alert">
-  {{ news.error }}
-</div>
+<div class="cache-banner mb-3" role="alert">{{ news.error }}</div>
 {% endif %}
 
 {% if news.articles %}
-<div class="row g-3">
+<div class="news-grid">
   {% for article in news.articles %}
-  <div class="col-md-6">
-    <article class="card-panel h-100 p-3">
-      <span class="section-tag">{{ article.source }}</span>
-      <h2 class="h6 mb-2" style="color: var(--color-navy); font-weight: 700;">{{ article.title }}</h2>
+  {% set bar_colors = ['linear-gradient(90deg, var(--primary), var(--secondary))', 'linear-gradient(90deg, var(--teal), #3B82F6)', 'linear-gradient(90deg, var(--green), var(--teal))', 'linear-gradient(90deg, var(--secondary), var(--primary))'] %}
+  <article class="news-card">
+    <div class="news-card-bar" style="background: {{ bar_colors[loop.index0 % 4] }};"></div>
+    <div class="news-card-body">
+      <span class="badge badge-teal mb-2">{{ article.source }}</span>
+      <h2 style="font-size: 16px; font-weight: 700; margin: 0 0 8px; font-family: var(--font-heading);">{{ article.title }}</h2>
       {% if article.published_display %}
-      <p class="small mb-2 text-muted">{{ article.published_display }}</p>
+      <p class="text-muted mb-2" style="font-size: 12px; margin-top: 0;">{{ article.published_display }}</p>
       {% endif %}
-      <p class="mb-3" style="font-size: 0.95rem;">{{ article.description }}</p>
+      <p style="font-size: 14px; flex: 1; margin-bottom: 16px;">{{ article.description }}</p>
       {% if article.url %}
-      <a href="{{ article.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
-        Leer más
-      </a>
+      <a href="{{ article.url }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Leer más</a>
       {% endif %}
-    </article>
-  </div>
+    </div>
+  </article>
   {% endfor %}
 </div>
-{% elif news.error and not cache_timestamp_display %}
+{% elif news.error %}
 <p class="text-muted">{{ news.error }}</p>
+{% endif %}
+
+{% if cache_timestamp_display %}
+<p class="text-muted mt-4 mb-0" style="font-size: 12px;">Noticias de NewsAPI · Caché: {{ cache_timestamp_display }}</p>
 {% endif %}
 {% endif %}
 {% endblock %}

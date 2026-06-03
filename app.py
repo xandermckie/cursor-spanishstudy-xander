@@ -44,6 +44,13 @@ def create_app() -> Flask:
     scheduler_on = os.environ.get("SCHEDULER_ENABLED", "true").lower() == "true"
     init_scheduler(app, interval_minutes=interval, enabled=scheduler_on)
 
+    @app.context_processor
+    def inject_globals():
+        return {
+            "last_refresh_display": fetcher.get_last_refresh_display(),
+            "user_stats": fetcher.get_user_stats(),
+        }
+
     register_routes(app)
     return app
 
@@ -80,6 +87,9 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/vocab")
     def vocab():
+        if request.args.get("restart"):
+            fetcher.reset_vocab_session()
+            return redirect(url_for("vocab"))
         idx = request.args.get("i", 0, type=int)
         try:
             session = fetcher.get_vocab_session(idx)
@@ -106,8 +116,9 @@ def register_routes(app: Flask) -> None:
         en = request.form.get("en", "")
         missed = request.form.get("missed") == "1"
         next_i = request.form.get("next_i", 0, type=int)
+        current_i = request.form.get("current_i", 0, type=int)
         try:
-            if not fetcher.record_flashcard_result(es, en, missed):
+            if not fetcher.record_flashcard_result(es, en, missed, current_i):
                 flash(
                     "No se pudo guardar el resultado. Inténtalo de nuevo.",
                     "warning",
@@ -118,6 +129,9 @@ def register_routes(app: Flask) -> None:
                 "No se pudo guardar el resultado. Inténtalo de nuevo.",
                 "warning",
             )
+        session = fetcher.get_vocab_session(next_i)
+        if session.get("complete"):
+            return redirect(url_for("vocab"))
         return redirect(url_for("vocab", i=next_i))
 
     @app.route("/phrasebook", methods=["GET", "POST"])

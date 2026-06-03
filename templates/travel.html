@@ -1,11 +1,14 @@
 {% extends "base.html" %}
+{% from "partials/pez.html" import pez %}
+{% from "partials/reveal_card.html" import reveal_card %}
 {% block title %}Viajes{% endblock %}
 {% block body_class %}travel-page{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<style>
-  /* Bootstrap img { max-width: 100% } breaks Leaflet tiles */
+{% endblock %}
+
+{% block inline_css %}
   body.travel-page .leaflet-container img.leaflet-tile {
     max-width: none !important;
     max-height: none !important;
@@ -15,136 +18,112 @@
   }
   body.travel-page #travel-map {
     width: 100%;
-    height: 420px;
+    height: 300px;
     border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
-    background: var(--color-surface);
+    border: 1px solid var(--border);
+    background: var(--surface);
     overflow: hidden;
     z-index: 0;
   }
-  body.travel-page #travel-map.leaflet-container {
-    font-family: inherit;
-  }
-  body.travel-page .travel-map-column {
-    min-width: 0;
-    overflow: hidden;
-  }
-  body.travel-page main.container {
-    overflow-x: clip;
-  }
+  body.travel-page main { overflow-x: clip; }
   .filter-panel {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
     padding: 1.25rem;
-  }
-  .filter-panel label {
-    color: var(--color-muted);
-    font-size: 0.85rem;
-    font-weight: 500;
+    box-shadow: var(--shadow-sm);
   }
   .rec-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
     padding: 1rem 1.25rem;
     margin-bottom: 0.75rem;
+    box-shadow: var(--shadow-sm);
   }
   .rec-card h3 {
-    color: var(--color-navy);
-    font-family: var(--font-display);
+    font-family: var(--font-heading);
     font-weight: 700;
+    font-size: 18px;
+    margin: 0 0 4px;
   }
-</style>
 {% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-2" style="color: var(--color-navy); font-weight: 800;">Viajes y recomendaciones</h1>
-<p class="mb-3 text-muted">Planes cerca de la Universidad de Barcelona y por la ciudad.</p>
-
-<div class="click-reveal-hint" role="note">
-  ◎ &nbsp;Toca el texto para ver inglés
-</div>
+<h1 class="page-title">Viajes y recomendaciones</h1>
+<p class="page-subtitle">Planes cerca de la Universidad de Barcelona y por la ciudad.</p>
 
 {% include "partials/section_alerts.html" %}
 
 {% if not section_failed %}
-<div class="row g-4">
-  <div class="col-lg-4">
-    <aside class="filter-panel">
-      <h2 class="h6 mb-3" style="color: var(--color-red); font-weight: 700;">Filtros</h2>
-      <form method="post" action="{{ url_for('travel') }}">
-        <div class="mb-3">
-          <label class="form-label" for="time">Tiempo disponible</label>
-          <select class="form-select form-select-sm" name="time" id="time">
-            <option value="">— Cualquiera —</option>
-            <option value="1-2h"{% if filters.time == '1-2h' %} selected{% endif %}>1–2 horas</option>
-            <option value="half"{% if filters.time == 'half' %} selected{% endif %}>Medio día</option>
-            <option value="full"{% if filters.time == 'full' %} selected{% endif %}>Día completo</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="location">Ubicación actual</label>
-          <select class="form-select form-select-sm" name="location" id="location">
-            <option value="">— Cualquiera —</option>
-            <option value="ub"{% if filters.location == 'ub' %} selected{% endif %}>En la Universitat de Barcelona</option>
-            <option value="barcelona"{% if filters.location == 'barcelona' %} selected{% endif %}>En otra zona de Barcelona</option>
-            <option value="spain"{% if filters.location == 'spain' %} selected{% endif %}>Otra ciudad de España</option>
-            <option value="beach"{% if filters.location == 'beach' %} selected{% endif %}>En la playa</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="distance">Distancia que recorrerías</label>
-          <select class="form-select form-select-sm" name="distance" id="distance">
-            <option value="">— Cualquiera —</option>
-            <option value="walk"{% if filters.distance == 'walk' %} selected{% endif %}>A pie (&lt; 1 km)</option>
-            <option value="transit"{% if filters.distance == 'transit' %} selected{% endif %}>Transporte corto (1–5 km)</option>
-            <option value="anywhere"{% if filters.distance == 'anywhere' %} selected{% endif %}>En cualquier parte de la ciudad</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="mood">Estado de ánimo</label>
-          <select class="form-select form-select-sm" name="mood" id="mood">
-            <option value="">— Cualquiera —</option>
-            <option value="hungry"{% if filters.mood == 'hungry' %} selected{% endif %}>Hambre</option>
-            <option value="adventure"{% if filters.mood == 'adventure' %} selected{% endif %}>Aventura</option>
-            <option value="chill"{% if filters.mood == 'chill' %} selected{% endif %}>Relax</option>
-            <option value="cultural"{% if filters.mood == 'cultural' %} selected{% endif %}>Cultural</option>
-          </select>
-        </div>
-        <button type="submit" class="btn btn-primary w-100">
-          Buscar recomendaciones
-        </button>
-      </form>
-    </aside>
-  </div>
+<div class="travel-layout">
+  <aside class="filter-panel">
+    <h2 style="font-size: 16px; font-weight: 700; color: var(--primary); margin: 0 0 16px;">Filtros</h2>
+    <form method="post" action="{{ url_for('travel') }}">
+      <div class="mb-3">
+        <label class="form-label" for="time">Tiempo disponible</label>
+        <select class="form-select" name="time" id="time">
+          <option value="">— Cualquiera —</option>
+          <option value="1-2h"{% if filters.time == '1-2h' %} selected{% endif %}>1–2 horas</option>
+          <option value="half"{% if filters.time == 'half' %} selected{% endif %}>Medio día</option>
+          <option value="full"{% if filters.time == 'full' %} selected{% endif %}>Día completo</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="location">Ubicación actual</label>
+        <select class="form-select" name="location" id="location">
+          <option value="">— Cualquiera —</option>
+          <option value="ub"{% if filters.location == 'ub' %} selected{% endif %}>En la Universitat de Barcelona</option>
+          <option value="barcelona"{% if filters.location == 'barcelona' %} selected{% endif %}>En otra zona de Barcelona</option>
+          <option value="spain"{% if filters.location == 'spain' %} selected{% endif %}>Otra ciudad de España</option>
+          <option value="beach"{% if filters.location == 'beach' %} selected{% endif %}>En la playa</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="distance">Distancia</label>
+        <select class="form-select" name="distance" id="distance">
+          <option value="">— Cualquiera —</option>
+          <option value="walk"{% if filters.distance == 'walk' %} selected{% endif %}>A pie (&lt; 1 km)</option>
+          <option value="transit"{% if filters.distance == 'transit' %} selected{% endif %}>Transporte corto</option>
+          <option value="anywhere"{% if filters.distance == 'anywhere' %} selected{% endif %}>En cualquier parte</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="mood">Estado de ánimo</label>
+        <select class="form-select" name="mood" id="mood">
+          <option value="">— Cualquiera —</option>
+          <option value="hungry"{% if filters.mood == 'hungry' %} selected{% endif %}>Hambre</option>
+          <option value="adventure"{% if filters.mood == 'adventure' %} selected{% endif %}>Aventura</option>
+          <option value="chill"{% if filters.mood == 'chill' %} selected{% endif %}>Relax</option>
+          <option value="cultural"{% if filters.mood == 'cultural' %} selected{% endif %}>Cultural</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary w-full">Buscar recomendaciones</button>
+    </form>
+  </aside>
 
-  <div class="col-lg-8 travel-map-column">
-    <div id="travel-map" class="mb-2" role="region" aria-label="Mapa de Barcelona (orientación)"></div>
-    <p class="small mb-3 text-muted">Mapa de orientación — las direcciones están en cada recomendación.</p>
+  <div>
+    <div id="travel-map" class="mb-2" role="region" aria-label="Mapa de Barcelona"></div>
+    <p class="text-muted mb-3" style="font-size: 12px;">Mapa de orientación — las direcciones están en cada recomendación.</p>
     {% if searched %}
       {% if recommendations %}
-      <h2 class="h6 mb-3" style="color: var(--color-red); font-weight: 700;">Recomendaciones ({{ recommendations|length }})</h2>
+      <h2 style="font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 12px;">Recomendaciones ({{ recommendations|length }})</h2>
       {% for rec in recommendations %}
       <article class="rec-card">
-        <h3 class="h5 mb-1">{{ rec.name_es }}</h3>
-        <p class="small mb-2 text-muted">{{ rec.address }} · {{ rec.travel_time_ub }}</p>
-        <div class="click-reveal mb-2">
-          <div class="click-reveal-es">{{ rec.description_es }}</div>
-          <div class="click-reveal-en">{{ rec.description_en }}</div>
-        </div>
-        <a href="{{ rec.google_maps_url }}" target="_blank" rel="noopener" style="color: var(--color-green); font-size: 0.9rem; font-weight: 600;">
-          Abrir en Google Maps
-        </a>
+        <h3>{{ rec.name_es }}</h3>
+        <p class="text-muted mb-2" style="font-size: 13px;">{{ rec.address }} · {{ rec.travel_time_ub }}</p>
+        {{ reveal_card(rec.description_es, rec.description_en) }}
+        <a href="{{ rec.google_maps_url }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm mt-2">Abrir en Google Maps</a>
       </article>
       {% endfor %}
       {% else %}
-      <p class="text-muted">No hay resultados con esos filtros. Prueba otras opciones.</p>
+      <p class="text-muted">No hay resultados con esos filtros.</p>
       {% endif %}
     {% else %}
-    <p class="text-muted">Elige filtros y pulsa «Buscar recomendaciones» para ver tarjetas con dirección y enlace a Google Maps.</p>
+    <div class="text-center py-4">
+      {{ pez(size=56, expression='happy', speech='¡Elige filtros y busca!') }}
+      <p class="text-muted mt-3">Elige filtros y pulsa «Buscar recomendaciones».</p>
+    </div>
     {% endif %}
   </div>
 </div>
@@ -156,41 +135,19 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 (function () {
-  const center = {{ map_center | tojson }};
-
+  var center = {{ map_center | tojson }};
   function initTravelMap() {
-    const el = document.getElementById('travel-map');
-    if (!el || el._leaflet_id) {
-      return;
-    }
-
-    const map = L.map(el, {
-      scrollWheelZoom: true,
-      attributionControl: true
-    }).setView([center.lat, center.lng], 13);
-
+    var el = document.getElementById('travel-map');
+    if (!el || el._leaflet_id) return;
+    var map = L.map(el, { scrollWheelZoom: true }).setView([center.lat, center.lng], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      subdomains: ['a', 'b', 'c'],
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      attribution: '&copy; OpenStreetMap'
     }).addTo(map);
-
-    let resizeTimer;
-    function fixSize() {
-      map.invalidateSize({ animate: false, pan: false });
-    }
-    fixSize();
-    window.addEventListener('resize', function () {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(fixSize, 150);
-    });
+    setTimeout(function () { map.invalidateSize({ animate: false }); }, 100);
   }
-
-  if (document.readyState === 'complete') {
-    initTravelMap();
-  } else {
-    window.addEventListener('load', initTravelMap);
-  }
+  if (document.readyState === 'complete') initTravelMap();
+  else window.addEventListener('load', initTravelMap);
 })();
 </script>
 {% endif %}

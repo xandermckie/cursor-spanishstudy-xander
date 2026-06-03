@@ -6,3 +6,6 @@ venv/
 
 # Runtime cache — keep folder, ignore contents
 data/*
+
+# Extracted design prototype reference
+_prototype/

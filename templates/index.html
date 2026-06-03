@@ -1,22 +1,23 @@
 {% extends "base.html" %}
+{% from "partials/pez.html" import pez %}
+{% from "partials/reveal_card.html" import reveal_card %}
 {% block title %}Inicio{% endblock %}
 
-{% block footer_extra %}
-{% if homepage and homepage.last_refresh_display %}
-<p class="mb-0 small">Última actualización de caché: {{ homepage.last_refresh_display }}</p>
-{% endif %}
-{% endblock %}
-
 {% block content %}
-<div class="d-flex align-items-center gap-3 mb-4">
-  <img src="{{ url_for('static', filename='img/pez.svg') }}" alt="" width="56" height="41">
-  <h1 class="h2 mb-0" style="color: var(--color-navy); font-weight: 800;">¡Hola, estudiante!</h1>
+{% set stats = homepage.user_stats if homepage and homepage.user_stats else user_stats %}
+
+<div class="home-hero mb-4">
+  <div class="flex flex-wrap items-center gap-3">
+    {{ pez(size=64, expression='happy', speech='¡Hola! ¿Listo para aprender?', animated=true) }}
+    <div>
+      <h1 class="page-title mb-0">Buenos días</h1>
+      <p class="page-subtitle mb-0">Sigue con el ritmo — lo estás haciendo muy bien.</p>
+    </div>
+  </div>
 </div>
 
 {% if homepage and homepage.error and not homepage.daily_sentence %}
-<p class="section-error mb-0">
-  No se pudo cargar esta sección. Inténtalo más tarde.
-</p>
+<p class="section-error">No se pudo cargar esta sección. Inténtalo más tarde.</p>
 {% elif homepage %}
 
 {% if homepage.error and homepage.last_refresh_display %}
@@ -25,95 +26,177 @@
 </div>
 {% endif %}
 
-<div class="click-reveal-hint" role="note">
-  ◎ &nbsp;Toca el texto para ver inglés
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon" style="background: rgba(255, 182, 39, 0.12);">🔥</div>
+    <div>
+      <div class="stat-value">{{ stats.streak_days }}</div>
+      <div class="stat-label">Días de racha</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background: rgba(255, 107, 53, 0.08);">⭐</div>
+    <div>
+      <div class="stat-value">{{ stats.xp_total }}</div>
+      <div class="stat-label">XP total</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background: rgba(46, 196, 182, 0.12);">📝</div>
+    <div>
+      <div class="stat-value">{{ stats.words_learned }}</div>
+      <div class="stat-label">Palabras aprendidas</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background: rgba(34, 197, 94, 0.12);">💪</div>
+    <div>
+      <div class="stat-value">{{ stats.accuracy_pct }}%</div>
+      <div class="stat-label">Precisión</div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4" style="padding: 18px 22px;">
+  <div class="card-header-row">
+    <span style="font-size: 14px; font-weight: 700; font-family: var(--font-heading);">Progreso diario</span>
+    <span class="streak-badge">🔥 {{ stats.streak_days }} día{{ 's' if stats.streak_days != 1 else '' }}</span>
+  </div>
+  <div class="xp-bar-wrap">
+    <div class="xp-bar-labels">
+      <span class="xp-level-badge">Nivel {{ stats.level }}</span>
+      <span style="font-weight: 700; color: var(--primary);">{{ stats.xp_in_level }}/{{ stats.xp_level_max }} XP</span>
+    </div>
+    <div class="xp-bar-track">
+      <div class="xp-bar-fill" style="width: {{ (stats.xp_in_level / stats.xp_level_max * 100) if stats.xp_level_max else 0 }}%;"></div>
+    </div>
+  </div>
+  {% if stats.xp_to_next_level > 0 %}
+  <p class="text-muted mb-0 mt-3" style="font-size: 12px;">{{ stats.xp_to_next_level }} XP más para el Nivel {{ stats.level + 1 }}</p>
+  {% endif %}
 </div>
 
 {% if homepage.word_of_day %}
-<div class="card-panel">
-  <div class="card-header px-3 py-2">
-    <span class="section-tag mb-0">📖 Vocabulario</span>
-  </div>
-  <div class="p-4">
-    <h2 class="mb-3" style="color: var(--color-red); font-family: var(--font-display); font-size: 2.5rem; font-weight: 800;">
-      {{ homepage.word_of_day.es }}
-    </h2>
-    <div class="click-reveal mb-3">
-      <div class="click-reveal-es">Significado — toca para ver</div>
-      <div class="click-reveal-en">{{ homepage.word_of_day.definition or homepage.word_of_day.en }}</div>
-    </div>
-    {% if homepage.word_of_day.phonetic %}
-    <div class="click-reveal mb-3">
-      <div class="click-reveal-es">Pronunciación (inglés) — toca para ver</div>
-      <div class="click-reveal-en"><em>{{ homepage.word_of_day.phonetic }}</em></div>
-    </div>
-    {% endif %}
-    <div class="click-reveal mb-0">
-      <p class="small mb-1 text-muted">Ejemplo</p>
-      <div class="click-reveal-es fs-5">{{ homepage.word_of_day.example_es }}</div>
-      <div class="click-reveal-en">{{ homepage.word_of_day.example_en }}</div>
-    </div>
-  </div>
+<div class="mb-3">
+  <span class="section-tag">📖 Vocabulario</span>
+  <h2 class="section-heading">Palabra del día</h2>
 </div>
-{% endif %}
-
-{% if homepage.daily_phrase %}
-<div class="card-panel">
-  <div class="card-header px-3 py-2">
-    <span class="section-tag mb-0">💬 Frase corta</span>
-  </div>
-  <div class="p-4">
-    <div class="click-reveal mb-0">
-      <div class="click-reveal-es fs-5" style="font-family: var(--font-display); font-weight: 600;">{{ homepage.daily_phrase.es }}</div>
-      <div class="click-reveal-en">{{ homepage.daily_phrase.en }}</div>
+<div class="card mb-4">
+  <div class="flex flex-wrap gap-3 items-start">
+    <div class="wod-icon">{{ homepage.word_of_day.es[0] | upper }}</div>
+    <div style="flex: 1; min-width: 200px;">
+      <h3 style="font-size: 26px; font-weight: 800; margin: 0 0 4px; font-family: var(--font-heading);">{{ homepage.word_of_day.es }}</h3>
+      {% if homepage.word_of_day.phonetic %}
+      <p class="text-muted mb-2" style="font-size: 13px; margin-top: 0;">{{ homepage.word_of_day.phonetic }}</p>
+      {% endif %}
+      <div class="reveal-card wod-meaning-card">
+        <div class="reveal-es" style="font-size: 13px;">👁 Toca para ver el significado</div>
+        <div class="reveal-en">{{ homepage.word_of_day.definition or homepage.word_of_day.en }}</div>
+        <div class="reveal-hint">Tap to reveal English</div>
+      </div>
     </div>
   </div>
+  {% if homepage.word_of_day.example_es %}
+  <div class="wod-example">
+    <p class="text-muted mb-1" style="font-size: 13px; font-weight: 600; margin-top: 0;">Ejemplo</p>
+    {{ reveal_card(homepage.word_of_day.example_es, homepage.word_of_day.example_en) }}
+  </div>
+  {% endif %}
 </div>
 {% endif %}
 
 {% if homepage.daily_sentence %}
-<div class="card-panel">
-  <div class="card-header px-3 py-2">
-    <span class="section-tag mb-0">📝 Frase del día</span>
-  </div>
-  <div class="p-4">
-    <div class="click-reveal mb-0">
-      <div class="click-reveal-es fs-5" style="font-family: var(--font-display); font-weight: 600;">{{ homepage.daily_sentence.es }}</div>
-      <div class="click-reveal-en">{{ homepage.daily_sentence.en }}</div>
-    </div>
-  </div>
+<div class="mb-3">
+  <span class="section-tag">📝 Frase del día</span>
 </div>
+{{ reveal_card(homepage.daily_sentence.es, homepage.daily_sentence.en) }}
 {% endif %}
 
-<div class="card-panel">
-  <div class="card-header px-3 py-2">Palabras débiles</div>
-  <div class="p-3">
-    {% if homepage.weak_words %}
-    <div class="d-flex flex-column gap-2">
-      {% for w in homepage.weak_words %}
-      <div class="click-reveal p-3 rounded-3" style="background: var(--color-surface); border-left: 4px solid var(--color-red); box-shadow: var(--shadow-sm);">
-        <div class="click-reveal-es d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <strong style="font-family: var(--font-display); color: var(--color-navy);">{{ w.es }}</strong>
-          <span class="badge rounded-pill" style="background: var(--color-red-light); color: var(--color-red); font-weight: 600;">
-            {{ w.miss_count }} error{{ 'es' if w.miss_count != 1 else '' }}
-          </span>
-        </div>
-        <div class="click-reveal-en">{{ w.en }}</div>
-      </div>
-      {% endfor %}
+{% if homepage.daily_phrase %}
+<div class="mb-3 mt-4">
+  <span class="section-tag">💬 Frase corta</span>
+</div>
+{{ reveal_card(homepage.daily_phrase.es, homepage.daily_phrase.en) }}
+{% endif %}
+
+<div class="mb-3 mt-4">
+  <h2 class="section-heading">Palabras débiles</h2>
+</div>
+<div class="card">
+  {% if homepage.weak_words %}
+  {% for w in homepage.weak_words %}
+  <div class="weak-word-item">
+    <div class="flex items-center gap-2" style="flex: 1;">
+      <span class="weak-word-es">{{ w.es }}</span>
+      <span class="weak-miss-badge">{{ w.miss_count }} error{{ 'es' if w.miss_count != 1 else '' }}</span>
     </div>
-    {% else %}
-    <div class="text-center py-4">
-      <img src="{{ url_for('static', filename='img/pez.svg') }}" alt="" width="64" height="47" style="opacity: 0.5; margin-bottom: 1rem;">
-      <p class="mb-2 text-muted">
-        Aún no hay palabras marcadas. Practica en
-        <a href="{{ url_for('vocab') }}" style="color: var(--color-red); font-weight: 600;">Tarjetas</a>
-        y marca las que fallas.
-      </p>
-    </div>
-    {% endif %}
+    <div class="weak-word-en">{{ w.en }}</div>
   </div>
+  {% endfor %}
+  {% else %}
+  <div class="text-center py-4">
+    {{ pez(size=64, expression='thinking') }}
+    <p class="text-muted mt-3 mb-0">
+      Aún no hay palabras marcadas. Practica en
+      <a href="{{ url_for('vocab') }}">Tarjetas</a>
+      y marca las que fallas.
+    </p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="mb-3 mt-4">
+  <h2 class="section-heading">Seguir aprendiendo</h2>
+</div>
+<div class="action-grid">
+  <a href="{{ url_for('reader') }}" class="action-card">
+    <div class="action-card-icon">📖</div>
+    <div class="action-card-title">Lector</div>
+    <p class="action-card-desc">Lee en español con traducción al pasar el cursor</p>
+  </a>
+  <a href="{{ url_for('vocab') }}" class="action-card">
+    <div class="action-card-icon">🃏</div>
+    <div class="action-card-title">Tarjetas</div>
+    <p class="action-card-desc">Practica vocabulario con flashcards</p>
+  </a>
+  <a href="{{ url_for('phrasebook') }}" class="action-card">
+    <div class="action-card-icon">💬</div>
+    <div class="action-card-title">Frases</div>
+    <p class="action-card-desc">Guarda frases útiles en tu libro</p>
+  </a>
+  <a href="{{ url_for('travel') }}" class="action-card">
+    <div class="action-card-icon">✈️</div>
+    <div class="action-card-title">Viajes</div>
+    <p class="action-card-desc">Recomendaciones cerca de Barcelona</p>
+  </a>
 </div>
 
 {% endif %}
+{% endblock %}
+
+{% block inline_css %}
+.wod-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #fff;
+  font-weight: 800;
+  font-family: var(--font-heading);
+  flex-shrink: 0;
+}
+.wod-example {
+  margin-top: 16px;
+  padding: 14px 18px;
+  background: #FFF8F5;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--primary);
+}
+body.dark .wod-example { background: var(--surface-hover); }
+.wod-meaning-card .reveal-es { font-size: 13px !important; }
+.home-hero .pez-wrapper { align-items: center; }
 {% endblock %}

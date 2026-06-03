@@ -213,6 +213,175 @@ def format_refresh_time(iso_timestamp: str | None) -> str:
         return iso_timestamp
 
 
+def _activity_today() -> str:
+    """Calendar day for streak tracking (Europe/Madrid)."""
+    return datetime.now(ZoneInfo("Europe/Madrid")).strftime("%Y-%m-%d")
+
+
+def _default_user_stats() -> dict[str, Any]:
+    return {
+        "xp_total": 0,
+        "xp_today": 0,
+        "xp_daily_goal": 200,
+        "level": 1,
+        "streak_days": 0,
+        "last_activity_date": None,
+        "words_learned": 0,
+        "accuracy_pct": 0,
+        "total_correct": 0,
+        "total_answered": 0,
+    }
+
+
+def _level_from_xp(xp_total: int) -> int:
+    if xp_total >= 1000:
+        return 5
+    if xp_total >= 500:
+        return 4
+    if xp_total >= 250:
+        return 3
+    if xp_total >= 100:
+        return 2
+    return 1
+
+
+def _xp_threshold_for_level(level: int) -> int:
+    return {1: 0, 2: 100, 3: 250, 4: 500, 5: 1000}.get(level, 0)
+
+
+def _xp_next_level_threshold(level: int) -> int | None:
+    return {1: 100, 2: 250, 3: 500, 4: 1000}.get(level)
+
+
+def _ensure_user_stats(cache: dict[str, Any]) -> dict[str, Any]:
+    stats = cache.get("user_stats")
+    if not stats:
+        stats = _default_user_stats()
+        cache["user_stats"] = stats
+    for key, val in _default_user_stats().items():
+        stats.setdefault(key, val)
+    return stats
+
+
+def update_streak(cache: dict[str, Any] | None = None) -> None:
+    """Increment streak on first activity of the day (Europe/Madrid)."""
+    own_cache = cache is None
+    if own_cache:
+        cache = _load_cache()
+    stats = _ensure_user_stats(cache)
+    today = _activity_today()
+    last = stats.get("last_activity_date")
+    if last == today:
+        if own_cache:
+            _save_cache(cache)
+        return
+    if not last:
+        stats["streak_days"] = 1
+    else:
+        try:
+            last_dt = datetime.strptime(last, "%Y-%m-%d").date()
+            today_dt = datetime.strptime(today, "%Y-%m-%d").date()
+            delta = (today_dt - last_dt).days
+            if delta == 1:
+                stats["streak_days"] = stats.get("streak_days", 0) + 1
+            else:
+                stats["streak_days"] = 1
+        except ValueError:
+            stats["streak_days"] = 1
+    stats["last_activity_date"] = today
+    if own_cache:
+        _save_cache(cache)
+
+
+def update_xp(amount: int, cache: dict[str, Any] | None = None) -> None:
+    if amount <= 0:
+        return
+    own_cache = cache is None
+    if own_cache:
+        cache = _load_cache()
+    stats = _ensure_user_stats(cache)
+    update_streak(cache)
+    stats["xp_total"] = stats.get("xp_total", 0) + amount
+    stats["xp_today"] = stats.get("xp_today", 0) + amount
+    stats["level"] = _level_from_xp(stats["xp_total"])
+    if own_cache:
+        _save_cache(cache)
+
+
+def get_user_stats() -> dict[str, Any]:
+    try:
+        cache = _load_cache()
+        stats = _ensure_user_stats(cache)
+        deck = cache.get("flashcard_deck") or FLASHCARD_DECK_SEED
+        weak = cache.get("weak_words") or {}
+        stats["words_learned"] = max(0, len(deck) - len(weak))
+        answered = stats.get("total_answered", 0)
+        correct = stats.get("total_correct", 0)
+        stats["accuracy_pct"] = (
+            round(100 * correct / answered) if answered > 0 else 0
+        )
+        level = _level_from_xp(stats.get("xp_total", 0))
+        stats["level"] = level
+        floor_xp = _xp_threshold_for_level(level)
+        next_xp = _xp_next_level_threshold(level)
+        stats["xp_in_level"] = stats.get("xp_total", 0) - floor_xp
+        if next_xp is not None:
+            stats["xp_level_max"] = next_xp - floor_xp
+            stats["xp_to_next_level"] = next_xp - stats.get("xp_total", 0)
+        else:
+            stats["xp_level_max"] = 500
+            stats["xp_to_next_level"] = 0
+        _save_cache(cache)
+        return stats
+    except Exception as exc:
+        logger.exception("get_user_stats failed: %s", exc)
+        return _default_user_stats()
+
+
+def get_last_refresh_display() -> str:
+    cache = _load_cache()
+    return format_refresh_time(cache.get("last_refresh"))
+
+
+def reset_vocab_session() -> None:
+    cache = _load_cache()
+    cache["vocab_session"] = {
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "results": [],
+        "correct_count": 0,
+        "missed_count": 0,
+        "complete": False,
+    }
+    _save_cache(cache)
+
+
+def _ensure_vocab_session(cache: dict[str, Any]) -> dict[str, Any]:
+    session = cache.get("vocab_session")
+    if not session:
+        session = {
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "results": [],
+            "correct_count": 0,
+            "missed_count": 0,
+            "complete": False,
+        }
+        cache["vocab_session"] = session
+    return session
+
+
+def award_reader_xp() -> None:
+    """+5 XP once per calendar day for opening the reader."""
+    cache = _load_cache()
+    today = _activity_today()
+    awarded = cache.get("reader_xp_dates") or []
+    if today in awarded:
+        return
+    awarded.append(today)
+    cache["reader_xp_dates"] = awarded[-30:]
+    update_xp(5, cache)
+    _save_cache(cache)
+
+
 def refresh_homepage() -> dict[str, Any]:
     """Fetch daily sentence, phrase, and word-of-day; write cache."""
     logger.info("Refreshing homepage data from APIs…")
@@ -280,6 +449,7 @@ def _homepage_fallback() -> dict[str, Any]:
         "weak_words": [],
         "last_refresh": None,
         "last_refresh_display": "",
+        "user_stats": get_user_stats(),
         "error": True,
     }
 
@@ -296,6 +466,7 @@ def _homepage_from_cache(cache: dict[str, Any]) -> dict[str, Any] | None:
         "weak_words": get_weak_words(),
         "last_refresh": cache.get("last_refresh"),
         "last_refresh_display": format_refresh_time(cache.get("last_refresh")),
+        "user_stats": get_user_stats(),
         "error": True,
     }
 
@@ -330,6 +501,7 @@ def get_homepage() -> dict[str, Any]:
             "weak_words": get_weak_words(),
             "last_refresh": cache.get("last_refresh"),
             "last_refresh_display": format_refresh_time(cache.get("last_refresh")),
+            "user_stats": get_user_stats(),
             "error": False,
         }
     except Exception as exc:
@@ -359,13 +531,35 @@ def get_vocab_session(index: int = 0) -> dict[str, Any]:
         cache = _load_cache()
         deck = _ensure_flashcard_deck(cache)
         total = len(deck)
+        session = cache.get("vocab_session") or {}
+        if session.get("complete"):
+            results = session.get("results", [])
+            correct = session.get("correct_count", 0)
+            missed = session.get("missed_count", 0)
+            return {
+                "complete": True,
+                "correct_count": correct,
+                "missed_count": missed,
+                "xp_earned": correct * 10,
+                "missed_words": [r for r in results if r.get("missed")],
+                "total": total,
+                "section_failed": False,
+            }
+        if not cache.get("vocab_session"):
+            _ensure_vocab_session(cache)
+            _save_cache(cache)
+            session = cache["vocab_session"]
         idx = index % total if total else 0
         card = deck[idx] if total else {"es": "", "en": ""}
+        at_last = total > 0 and idx >= total - 1
         return {
             "card": card,
             "index": idx,
             "total": total,
-            "next_index": (idx + 1) % total if total else 0,
+            "next_index": 0 if at_last else (idx + 1) % total if total else 0,
+            "correct_count": session.get("correct_count", 0),
+            "missed_count": session.get("missed_count", 0),
+            "complete": False,
             "section_failed": False,
         }
     except Exception as exc:
@@ -375,26 +569,44 @@ def get_vocab_session(index: int = 0) -> dict[str, Any]:
             "index": 0,
             "total": 0,
             "next_index": 0,
+            "complete": False,
             "section_failed": True,
         }
 
 
-def record_flashcard_result(es: str, en: str, missed: bool) -> bool:
-    if not missed or not es:
-        return True
+def record_flashcard_result(
+    es: str, en: str, missed: bool, index: int = 0
+) -> bool:
     try:
         cache = _load_cache()
-        cache.setdefault("weak_words", {})
-        key = es.strip().lower()
-        entry = cache["weak_words"].get(key, {
-            "es": es,
-            "en": en,
-            "miss_count": 0,
-        })
-        entry["miss_count"] = entry.get("miss_count", 0) + 1
-        entry["last_missed"] = datetime.now(timezone.utc).isoformat()
-        entry["en"] = en or entry.get("en", "")
-        cache["weak_words"][key] = entry
+        deck = _ensure_flashcard_deck(cache)
+        total = len(deck)
+        session = _ensure_vocab_session(cache)
+        session.setdefault("results", [])
+        session["results"].append({"es": es, "en": en, "missed": missed})
+        stats = _ensure_user_stats(cache)
+        stats["total_answered"] = stats.get("total_answered", 0) + 1
+        if missed:
+            session["missed_count"] = session.get("missed_count", 0) + 1
+            if es:
+                cache.setdefault("weak_words", {})
+                key = es.strip().lower()
+                entry = cache["weak_words"].get(key, {
+                    "es": es,
+                    "en": en,
+                    "miss_count": 0,
+                })
+                entry["miss_count"] = entry.get("miss_count", 0) + 1
+                entry["last_missed"] = datetime.now(timezone.utc).isoformat()
+                entry["en"] = en or entry.get("en", "")
+                cache["weak_words"][key] = entry
+        else:
+            session["correct_count"] = session.get("correct_count", 0) + 1
+            stats["total_correct"] = stats.get("total_correct", 0) + 1
+            update_xp(10, cache)
+        update_streak(cache)
+        if total > 0 and index >= total - 1:
+            session["complete"] = True
         return _save_cache(cache)
     except Exception as exc:
         logger.exception("record_flashcard_result failed: %s", exc)
@@ -430,6 +642,8 @@ def add_phrase(user_input: str) -> dict[str, Any] | None:
             "updated_at": now,
         }
         cache["phrasebook"].append(entry)
+        update_xp(5, cache)
+        update_streak(cache)
         if not _save_cache(cache):
             return None
         return entry
@@ -527,6 +741,7 @@ def get_reader() -> dict[str, Any]:
         passages = _ensure_reader_passages(cache)
         idx = _reader_passage_index(len(passages))
         weak_top = get_weak_words()[:5]
+        award_reader_xp()
         return {
             "passages": [passages[idx]] if passages else [],
             "weak_words_top": weak_top,

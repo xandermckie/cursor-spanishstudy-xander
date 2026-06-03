@@ -1,63 +1,138 @@
 {% extends "base.html" %}
+{% from "partials/pez.html" import pez %}
 {% block title %}Tarjetas{% endblock %}
 
 {% block inline_css %}
-  .flashcard-zone {
-    max-width: 520px;
-    margin: 0 auto;
+  .vocab-zone { max-width: 520px; margin: 0 auto; }
+  .vocab-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
   }
-  .flashcard.click-reveal {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
+  .flashcard {
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
     padding: 3rem 2rem;
     text-align: center;
-    min-height: 220px;
+    min-height: 240px;
+    cursor: pointer;
   }
   .flashcard-prompt {
-    font-size: 2rem;
-    font-family: var(--font-display);
+    font-size: 36px;
+    font-family: var(--font-heading);
     font-weight: 800;
-    color: var(--color-red);
-    margin-bottom: 0;
+    color: var(--text);
+    margin: 0;
   }
-  .flashcard.click-reveal .click-reveal-en {
-    font-size: 1.15rem;
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--color-border);
+  .flash-reveal-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 20px;
+    padding: 8px 16px;
+    background: var(--primary-light);
+    color: var(--primary);
+    border: none;
+    border-radius: var(--radius-full);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
   }
-  .flashcard-meta {
-    font-size: 0.8rem;
-    color: var(--color-muted);
-    margin-top: 1.5rem;
+  .flashcard-answer {
+    display: none;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 18px;
+    color: var(--teal);
+    font-style: italic;
   }
+  .flashcard.is-revealed .flashcard-answer { display: block; }
+  .session-complete { text-align: center; max-width: 480px; margin: 0 auto; }
 {% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-2 text-center" style="color: var(--color-navy); font-weight: 800;">Tarjetas</h1>
-<p class="text-center mb-4 text-muted">
-  Español primero — toca la tarjeta para ver inglés. Marca «Fallé» para añadir a palabras débiles.
-</p>
-
 {% if section_failed %}
+<h1 class="page-title">Tarjetas</h1>
 {% include "partials/section_alerts.html" %}
+{% elif session.complete %}
+<div class="session-complete">
+  {{ pez(size=96, expression='celebrating' if session.correct_count >= session.missed_count else 'thinking',
+         speech='¡Muy bien!' if session.correct_count >= session.missed_count else '¡Sigue practicando!', animated=true) }}
+  <h1 class="page-title mt-4">Sesión completada</h1>
+  <p class="page-subtitle">Has repasado {{ session.total }} tarjetas en esta sesión.</p>
+  <div class="stats-grid" style="max-width: 400px; margin: 0 auto 24px;">
+    <div class="stat-card">
+      <div class="stat-icon" style="background: rgba(34, 197, 94, 0.12);">✅</div>
+      <div>
+        <div class="stat-value">{{ session.correct_count }}</div>
+        <div class="stat-label">Correctas</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: rgba(230, 57, 70, 0.1);">❌</div>
+      <div>
+        <div class="stat-value">{{ session.missed_count }}</div>
+        <div class="stat-label">Falladas</div>
+      </div>
+    </div>
+  </div>
+  <div class="card mb-4">
+    <p class="text-muted mb-1" style="font-size: 14px; font-weight: 600;">XP ganados</p>
+    <p style="font-size: 32px; font-weight: 800; color: var(--primary); margin: 0; font-family: var(--font-heading);">+{{ session.xp_earned }} XP</p>
+  </div>
+  {% if session.missed_words %}
+  <div class="card text-left mb-4">
+    <h3 style="font-size: 16px; font-weight: 700; margin: 0 0 12px;">Palabras para repasar</h3>
+    {% for w in session.missed_words %}
+    <p style="margin: 0 0 8px;"><strong>{{ w.es }}</strong> — <span style="color: var(--teal); font-style: italic;">{{ w.en }}</span></p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <a href="{{ url_for('vocab', restart=1) }}" class="btn btn-primary">Practicar de nuevo</a>
+</div>
 {% else %}
-<div class="flashcard-zone">
-  <div class="flashcard click-reveal" id="flashcard">
-    <div class="click-reveal-es flashcard-prompt">{{ session.card.es }}</div>
-    <div class="click-reveal-en" id="flashAnswer">{{ session.card.en }}</div>
-    <p class="flashcard-meta">Tarjeta {{ session.index + 1 }} de {{ session.total }}</p>
+<h1 class="page-title text-center">Tarjetas</h1>
+<p class="page-subtitle text-center">Español primero — toca la tarjeta para ver inglés.</p>
+
+<div class="vocab-zone">
+  <div class="vocab-progress-meta">
+    <span>Tarjeta {{ session.index + 1 }} de {{ session.total }}</span>
+    <span>✓ {{ session.correct_count }} · ✗ {{ session.missed_count }}</span>
+  </div>
+  <div class="xp-bar-track mb-4">
+    <div class="xp-bar-fill" style="width: {{ ((session.index) / session.total * 100) if session.total else 0 }}%;"></div>
   </div>
 
-  <form method="post" action="{{ url_for('vocab_record') }}" class="d-flex flex-wrap justify-content-center gap-2 mt-4">
+  <div class="flashcard" id="flashcard">
+    <p class="flashcard-prompt">{{ session.card.es }}</p>
+    <button type="button" class="flash-reveal-pill" id="flash-reveal-btn">👁 Toca para revelar</button>
+    <div class="flashcard-answer" id="flashAnswer">{{ session.card.en }}</div>
+  </div>
+
+  <form method="post" action="{{ url_for('vocab_record') }}" id="vocab-form" class="flex justify-center gap-2 mt-4 hidden">
     <input type="hidden" name="es" value="{{ session.card.es }}">
     <input type="hidden" name="en" value="{{ session.card.en }}">
     <input type="hidden" name="next_i" value="{{ session.next_index }}">
-    <button type="submit" name="missed" value="0" class="btn btn-sm btn-success-pill">Correcto</button>
-    <button type="submit" name="missed" value="1" class="btn btn-sm btn-fail-pill">Fallé</button>
+    <input type="hidden" name="current_i" value="{{ session.index }}">
+    <input type="hidden" name="missed" value="0">
+    <div id="flash-actions" class="flex gap-2">
+      <button type="button" class="btn btn-success" data-action="correct">✓ Correcto</button>
+      <button type="submit" class="btn btn-danger" data-action="missed">✗ Fallé</button>
+    </div>
   </form>
+
+  <div class="text-center mt-4">{{ pez(size=48, expression='happy') }}</div>
 </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if not section_failed and not session.complete %}
+<script src="{{ url_for('static', filename='js/vocab.js') }}"></script>
 {% endif %}
 {% endblock %}

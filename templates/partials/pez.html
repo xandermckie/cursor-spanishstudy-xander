@@ -1,0 +1,43 @@
+{% macro pez(size=80, expression='happy', speech=None, animated=false, flip=false) %}
+{% set expr_map = {
+  'happy': {'eye_scale': 1, 'mouth_curve': 3, 'blush': true, 'wink': false},
+  'excited': {'eye_scale': 1.15, 'mouth_curve': 5, 'blush': true, 'wink': false},
+  'thinking': {'eye_scale': 0.9, 'mouth_curve': 0, 'blush': false, 'wink': false},
+  'sleeping': {'eye_scale': 0.3, 'mouth_curve': 1, 'blush': true, 'wink': false},
+  'wink': {'eye_scale': 1, 'mouth_curve': 3, 'blush': true, 'wink': true},
+  'celebrating': {'eye_scale': 1.2, 'mouth_curve': 6, 'blush': true, 'wink': false}
+} %}
+{% set expr = expr_map.get(expression, expr_map['happy']) %}
+{% set s = 80 %}
+{% set body_w = s * 0.72 %}
+{% set body_h = s * 0.55 %}
+{% set cx = s * 0.48 %}
+{% set cy = s * 0.5 %}
+{% set r = body_h * 0.38 %}
+{% set eye_r = s * 0.09 * expr.eye_scale %}
+{% set pupil_r = s * 0.05 * expr.eye_scale %}
+<div class="pez-wrapper{% if animated %} pez-animated{% endif %}{% if flip %} pez-flip{% endif %}"{% if animated %} style="display:inline-flex"{% endif %}>
+  {% if speech %}
+  <div class="pez-speech">{{ speech }}</div>
+  {% endif %}
+  <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 80 80" fill="none" aria-label="Pez mascot" class="pez-svg">
+    <polygon points="{{ cx + body_w * 0.38 }},{{ cy - body_h * 0.18 }} {{ cx + body_w * 0.62 }},{{ cy - body_h * 0.42 }} {{ cx + body_w * 0.62 }},{{ cy + body_h * 0.42 }} {{ cx + body_w * 0.38 }},{{ cy + body_h * 0.18 }}" fill="#FFB627"/>
+    <rect x="{{ cx + body_w * 0.32 }}" y="{{ cy - body_h * 0.22 }}" width="{{ body_w * 0.12 }}" height="{{ body_h * 0.44 }}" rx="3" fill="#F59E0B"/>
+    <rect x="{{ cx - body_w * 0.42 }}" y="{{ cy - body_h * 0.42 }}" width="{{ body_w * 0.78 }}" height="{{ body_h * 0.84 }}" rx="{{ r }}" fill="#E63946"/>
+    <rect x="{{ cx - body_w * 0.32 }}" y="{{ cy + body_h * 0.02 }}" width="{{ body_w * 0.58 }}" height="{{ body_h * 0.24 }}" rx="{{ body_h * 0.12 }}" fill="#FFB627" opacity="0.85"/>
+    <ellipse cx="{{ cx - body_w * 0.02 }}" cy="{{ cy - body_h * 0.42 }}" rx="{{ body_w * 0.1 }}" ry="{{ body_h * 0.18 }}" fill="#FF8A65"/>
+    <ellipse cx="{{ cx - body_w * 0.32 }}" cy="{{ cy + body_h * 0.08 }}" rx="{{ body_w * 0.12 }}" ry="{{ body_h * 0.1 }}" fill="#FF8A65" transform="rotate(-20 {{ cx - body_w * 0.32 }} {{ cy + body_h * 0.08 }})"/>
+    <circle cx="{{ cx - body_w * 0.14 }}" cy="{{ cy - body_h * 0.1 }}" r="{{ eye_r }}" fill="#fff"/>
+    {% if expr.wink %}
+    <line x1="{{ cx - body_w * 0.2 }}" y1="{{ cy - body_h * 0.1 }}" x2="{{ cx - body_w * 0.08 }}" y2="{{ cy - body_h * 0.1 }}" stroke="#1A1A2E" stroke-width="2.5" stroke-linecap="round"/>
+    {% else %}
+    <circle cx="{{ cx - body_w * 0.12 }}" cy="{{ cy - body_h * 0.08 }}" r="{{ pupil_r }}" fill="#1A1A2E"/>
+    <circle cx="{{ cx - body_w * 0.1 }}" cy="{{ cy - body_h * 0.14 }}" r="{{ s * 0.02 }}" fill="#fff"/>
+    {% endif %}
+    {% if expr.blush %}
+    <circle cx="{{ cx - body_w * 0.26 }}" cy="{{ cy + body_h * 0.04 }}" r="{{ s * 0.04 }}" fill="#FF8A65" opacity="0.5"/>
+    {% endif %}
+    <path d="M {{ cx - body_w * 0.2 }} {{ cy + body_h * 0.12 }} Q {{ cx - body_w * 0.12 }} {{ cy + body_h * 0.12 + expr.mouth_curve }} {{ cx - body_w * 0.04 }} {{ cy + body_h * 0.12 }}" stroke="#1A1A2E" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+  </svg>
+</div>
+{% endmacro %}

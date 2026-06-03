@@ -1,101 +1,65 @@
 {% extends "base.html" %}
 {% block title %}Historia{% endblock %}
 
-{% block extra_head %}
-<style>
-  #historyTabs {
-    border-bottom-color: var(--color-border);
-  }
-  #historyTabs .nav-link {
-    color: var(--color-muted);
-    border: none;
-    border-bottom: 3px solid transparent;
-    font-weight: 500;
-    padding: 0.75rem 1rem;
-  }
-  #historyTabs .nav-link:hover {
-    color: var(--color-red);
-    border-bottom-color: transparent;
-  }
-  #historyTabs .nav-link.active {
-    color: var(--color-red) !important;
-    background: transparent;
-    border-bottom: 3px solid var(--color-red);
-    font-weight: 700;
-  }
-  .history-translate-btn {
-    background: var(--color-red);
-    color: #fff;
-    border: none;
-    border-radius: 999px;
-    font-weight: 600;
-    margin-bottom: 1rem;
-  }
-  .history-translate-btn:hover {
-    background: var(--color-red-dark);
-    color: #fff;
-  }
-  .history-summary-en {
-    font-style: italic;
-    color: var(--color-red);
-    margin-bottom: 1.25rem;
-  }
-</style>
-{% endblock %}
-
 {% block content %}
-<h1 class="h3 mb-2" style="color: var(--color-navy); font-weight: 800;">Historia de España</h1>
-<p class="mb-4 text-muted">Temas clave para entender la cultura española y catalana.</p>
+<h1 class="page-title">Historia de España</h1>
+<p class="page-subtitle">Temas clave para entender la cultura española y catalana.</p>
 
 {% include "partials/section_alerts.html" %}
 
 {% if not section_failed %}
-<ul class="nav nav-tabs mb-3" id="historyTabs" role="tablist">
+<ul class="history-tabs" id="historyTabs" role="tablist">
   {% for topic in topics %}
-  <li class="nav-item" role="presentation">
-    <button class="nav-link{% if loop.first %} active{% endif %}" id="tab-{{ topic.key }}"
-            data-bs-toggle="tab" data-bs-target="#panel-{{ topic.key }}" type="button" role="tab">
+  <li>
+    <button type="button" class="{% if loop.first %}active{% endif %}" role="tab"
+            data-panel="panel-{{ topic.key }}" aria-selected="{{ 'true' if loop.first else 'false' }}">
       {{ topic.title_es }}
     </button>
   </li>
   {% endfor %}
 </ul>
 
-<div class="tab-content">
-  {% for topic in topics %}
-  <div class="tab-pane fade{% if loop.first %} show active{% endif %}" id="panel-{{ topic.key }}" role="tabpanel">
-    <div class="card-panel p-4">
-      <h2 class="h4 mb-2" style="color: var(--color-navy); font-weight: 700;">{{ topic.title_es }}</h2>
-      <p class="mb-3 text-muted">{{ topic.intro_es }}</p>
-      <p class="history-summary-es mb-3" style="line-height: 1.75;">{{ topic.summary_es }}</p>
-      <button type="button" class="btn btn-sm history-translate-btn"
-              data-target="en-{{ topic.key }}" aria-expanded="false"
-              aria-controls="en-{{ topic.key }}">
-        Ver en inglés
-      </button>
-      <div id="en-{{ topic.key }}" class="history-summary-en d-none" style="line-height: 1.75;">
-        {{ topic.summary_en }}
-      </div>
-      <a href="{{ topic.wiki_url }}" target="_blank" rel="noopener" style="color: var(--color-red); font-weight: 600;">
-        Leer más en Wikipedia
-      </a>
-    </div>
-  </div>
-  {% endfor %}
+{% for topic in topics %}
+<div class="history-panel card{% if loop.first %} active{% endif %}" id="panel-{{ topic.key }}" role="tabpanel">
+  <h2 style="font-size: 20px; font-weight: 700; margin: 0 0 8px;">{{ topic.title_es }}</h2>
+  <p class="text-muted mb-3">{{ topic.intro_es }}</p>
+  <p style="line-height: 1.75; margin-bottom: 16px;">{{ topic.summary_es }}</p>
+  <button type="button" class="btn btn-primary btn-sm history-translate-btn"
+          data-target="en-{{ topic.key }}" aria-expanded="false">
+    Ver en inglés
+  </button>
+  <div id="en-{{ topic.key }}" class="history-en hidden">{{ topic.summary_en }}</div>
+  <p class="mt-3 mb-0"><a href="{{ topic.wiki_url }}" target="_blank" rel="noopener">Leer más en Wikipedia</a></p>
 </div>
+{% endfor %}
 {% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
 (function () {
+  var tabs = document.querySelectorAll('#historyTabs button');
+  var panels = document.querySelectorAll('.history-panel');
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var panelId = tab.getAttribute('data-panel');
+      tabs.forEach(function (t) {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      panels.forEach(function (p) { p.classList.remove('active'); });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      var panel = document.getElementById(panelId);
+      if (panel) panel.classList.add('active');
+    });
+  });
   document.querySelectorAll('.history-translate-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      const targetId = btn.getAttribute('data-target');
-      const panel = document.getElementById(targetId);
+      var panel = document.getElementById(btn.getAttribute('data-target'));
       if (!panel) return;
-      panel.classList.toggle('d-none');
-      const showing = !panel.classList.contains('d-none');
+      panel.classList.toggle('hidden');
+      var showing = !panel.classList.contains('hidden');
       btn.setAttribute('aria-expanded', showing ? 'true' : 'false');
       btn.textContent = showing ? 'Ocultar inglés' : 'Ver en inglés';
     });
