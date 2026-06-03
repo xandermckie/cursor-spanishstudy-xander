@@ -4,79 +4,266 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}{{ title }}{% endblock %} — Estudio Abroad</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;1,8..60,300&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0e0d0b;
-      --surface: #16140f;
-      --surface2: #1e1c15;
-      --accent: #c8a96e;
-      --accent2: #7eb8a0;
-      --text: #e8e0d0;
-      --text-dim: #8a7f6e;
-      --border: #3a3530;
+      --color-red: #CA0E1F;
+      --color-red-dark: #A30B18;
+      --color-red-light: #FFF0F0;
+      --color-yellow: #FFC400;
+      --color-yellow-light: #FFFBEB;
+      --color-navy: #1A1A2B;
+      --color-bg: #F8F1F2;
+      --color-surface: #FFFFFF;
+      --color-text: #2D2D3A;
+      --color-muted: #6B7280;
+      --color-border: #E5E7EB;
+      --color-green: #4BCC01;
+      --font-display: 'Nunito', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --shadow-sm: 0 1px 3px rgba(26, 26, 43, 0.06);
+      --shadow-md: 0 4px 16px rgba(26, 26, 43, 0.08);
+      --shadow-lg: 0 8px 32px rgba(26, 26, 43, 0.1);
       --fog-lens-radius: 80px;
     }
+
     body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Source Serif 4', Georgia, serif;
+      background: var(--color-bg);
+      color: var(--color-text);
+      font-family: var(--font-body);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
-    .navbar { background: var(--surface) !important; border-bottom: 1px solid var(--border); }
-    .navbar-brand, .nav-link { color: var(--text) !important; }
-    .nav-link:hover, .nav-link.active { color: var(--accent) !important; }
+
+    h1, h2, h3, h4, h5, h6, .navbar-brand {
+      font-family: var(--font-display);
+    }
+
+    .navbar {
+      background: var(--color-surface) !important;
+      border-bottom: 1px solid var(--color-border);
+      box-shadow: var(--shadow-sm);
+    }
+    .navbar-brand {
+      color: var(--color-navy) !important;
+      font-weight: 800;
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .navbar-brand img {
+      height: 38px;
+      width: auto;
+    }
+    .nav-link {
+      color: var(--color-muted) !important;
+      font-weight: 500;
+      font-size: 0.9rem;
+      padding: 0.5rem 0.75rem !important;
+      position: relative;
+    }
+    .nav-link:hover {
+      color: var(--color-red) !important;
+    }
+    .nav-link.active {
+      color: var(--color-red) !important;
+      font-weight: 600;
+    }
+    .nav-link.active::after {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-red);
+    }
+
     main { flex: 1; }
+
     .card-panel {
-      background: var(--surface);
-      border: 1px solid rgba(200, 169, 110, 0.15);
-      border-radius: 0.75rem;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
       margin-bottom: 1rem;
     }
     .card-panel .card-header {
       background: transparent;
-      border-bottom: 1px solid var(--border);
-      color: var(--accent);
-      font-size: 0.85rem;
-      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-muted);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
-    footer {
-      border-top: 1px solid var(--border);
-      color: var(--text-dim);
-      font-size: 0.85rem;
-    }
-    .badge-cat { background: var(--accent2); color: var(--bg); }
 
-    /* Click-to-reveal (home, vocab, phrasebook) */
-    .click-reveal {
-      cursor: pointer;
+    footer {
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+      color: var(--color-muted);
+      font-size: 0.85rem;
     }
-    .click-reveal-es {
-      color: var(--text);
+    footer img {
+      height: 24px;
+      width: auto;
+      vertical-align: middle;
+      margin-right: 6px;
     }
+    footer a {
+      color: var(--color-red);
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    .section-tag {
+      display: inline-block;
+      background: var(--color-red-light);
+      color: var(--color-red);
+      font-family: var(--font-display);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 0.75rem;
+    }
+
+    .btn-primary {
+      background: var(--color-red);
+      border-color: var(--color-red);
+      color: #fff;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      padding: 0.5rem 1.25rem;
+    }
+    .btn-primary:hover, .btn-primary:focus {
+      background: var(--color-red-dark);
+      border-color: var(--color-red-dark);
+      color: #fff;
+    }
+    .btn-outline-primary {
+      color: var(--color-red);
+      border-color: var(--color-red);
+      font-weight: 600;
+      border-radius: var(--radius-md);
+    }
+    .btn-outline-primary:hover {
+      background: var(--color-red-light);
+      color: var(--color-red-dark);
+      border-color: var(--color-red);
+    }
+    .btn-success-pill {
+      background: var(--color-green);
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 0.4rem 1.25rem;
+    }
+    .btn-success-pill:hover {
+      background: #3db801;
+      color: #fff;
+    }
+    .btn-fail-pill {
+      background: transparent;
+      border: 2px solid var(--color-red);
+      color: var(--color-red);
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 0.35rem 1.25rem;
+    }
+    .btn-fail-pill:hover {
+      background: var(--color-red-light);
+      color: var(--color-red-dark);
+    }
+
+    .form-control, .form-select {
+      border-radius: var(--radius-md);
+      border: 1.5px solid var(--color-border);
+      font-family: var(--font-body);
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--color-red);
+      box-shadow: 0 0 0 0.2rem rgba(202, 14, 31, 0.15);
+    }
+
+    .alert-success {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #065f46;
+    }
+    .alert-warning {
+      background: var(--color-yellow-light);
+      border-color: #fde68a;
+      color: #92400e;
+    }
+    .alert-danger {
+      background: var(--color-red-light);
+      border-color: #fecaca;
+      color: var(--color-red-dark);
+    }
+    .alert-info {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1e40af;
+    }
+
+    .cache-banner {
+      background: var(--color-yellow-light);
+      border: 1px solid #fde68a;
+      color: #92400e;
+      border-radius: var(--radius-md);
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+    .section-error {
+      color: var(--color-muted);
+      margin-bottom: 1rem;
+    }
+
+    .badge-cat {
+      font-family: var(--font-display);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    /* Click-to-reveal */
+    .click-reveal { cursor: pointer; }
+    .click-reveal-es { color: var(--color-text); }
     .click-reveal-en {
       display: none;
       margin-top: 0.5rem;
-      color: var(--accent2);
+      color: var(--color-red);
       font-style: italic;
     }
-    .click-reveal.is-open .click-reveal-en {
-      display: block;
-    }
+    .click-reveal.is-open .click-reveal-en { display: block; }
     .click-reveal-hint {
       display: flex;
       align-items: center;
       gap: 10px;
-      background: var(--surface2);
-      border: 1px solid rgba(200, 169, 110, 0.2);
-      border-radius: 8px;
+      background: var(--color-yellow-light);
+      border: 1px solid #fde68a;
+      border-radius: var(--radius-md);
       padding: 12px 18px;
       font-size: 13px;
-      color: var(--accent);
-      letter-spacing: 0.04em;
+      color: #92400e;
+      font-weight: 500;
       margin-bottom: 1.25rem;
     }
 
@@ -85,25 +272,23 @@
       position: fixed;
       width: 36px;
       height: 36px;
-      border: 2px solid var(--accent);
+      border: 2px solid var(--color-red);
       border-radius: 50%;
       pointer-events: none;
       z-index: 9999;
       transform: translate(-50%, -50%);
       transition: opacity 0.12s ease, width 0.15s ease, height 0.15s ease, border-color 0.15s ease;
-      box-shadow: 0 0 12px rgba(200, 169, 110, 0.35);
+      box-shadow: 0 0 12px rgba(202, 14, 31, 0.25);
       left: -100px;
       top: -100px;
       opacity: 0;
     }
-    #fog-cursor.visible {
-      opacity: 1;
-    }
+    #fog-cursor.visible { opacity: 1; }
     #fog-cursor.active {
       width: calc(var(--fog-lens-radius) * 2);
       height: calc(var(--fog-lens-radius) * 2);
-      border-color: var(--accent2);
-      box-shadow: 0 0 24px rgba(126, 184, 160, 0.4);
+      border-color: var(--color-yellow);
+      box-shadow: 0 0 24px rgba(255, 196, 0, 0.45);
     }
 
     {% block inline_css %}{% endblock %}
@@ -114,9 +299,12 @@
   {% if page == 'reader' %}
   <div id="fog-cursor" aria-hidden="true"></div>
   {% endif %}
-  <nav class="navbar navbar-expand-lg">
+  <nav class="navbar navbar-expand-lg navbar-light">
     <div class="container">
-      <a class="navbar-brand fw-semibold" href="{{ url_for('home') }}" style="font-family: 'Playfair Display', serif;">Estudio Abroad</a>
+      <a class="navbar-brand" href="{{ url_for('home') }}">
+        <img src="{{ url_for('static', filename='img/pez.svg') }}" alt="" width="38" height="28">
+        Estudio Abroad
+      </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav"
               aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
@@ -151,10 +339,13 @@
   </main>
 
   <footer class="container py-3 text-center">
-    <p class="mb-1">Estudio Abroad — estudio de español en Barcelona</p>
+    <p class="mb-1">
+      <img src="{{ url_for('static', filename='img/pez.svg') }}" alt="">
+      Estudio Abroad — estudio de español en Barcelona
+    </p>
     {% block footer_extra %}{% endblock %}
     <p class="mb-0 mt-2 small">
-      Created by and for <a href="https://github.com/xandermckie" style="color: var(--accent);">Xander McKie</a>
+      Created by and for <a href="https://github.com/xandermckie">Xander McKie</a>
     </p>
   </footer>
 

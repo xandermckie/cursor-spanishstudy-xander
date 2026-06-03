@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220" aria-label="Pez mascot">
+  <!-- Tail fin -->
+  <polygon points="228,88 278,68 278,98" fill="#FFC400"/>
+  <polygon points="228,118 278,98 278,148" fill="#FFC400"/>
+  <line x1="228" y1="103" x2="278" y2="123" stroke="#1A1A2B" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Body -->
+  <rect x="22" y="72" width="212" height="108" rx="26" ry="26" fill="#CA0E1F"/>
+  <!-- Belly shadow band -->
+  <path d="M22 138 Q22 180 48 180 L208 180 Q234 180 234 138 L234 180 L22 180 Z" fill="#A30B18"/>
+
+  <!-- Gill dots -->
+  <circle cx="195" cy="108" r="5" fill="#A30B18"/>
+  <circle cx="210" cy="108" r="5" fill="#A30B18"/>
+  <circle cx="195" cy="125" r="5" fill="#A30B18"/>
+  <circle cx="210" cy="125" r="5" fill="#A30B18"/>
+  <circle cx="202" cy="142" r="5" fill="#A30B18"/>
+
+  <!-- Dorsal fin -->
+  <polygon points="128,72 143,42 158,72" fill="#FFC400"/>
+
+  <!-- Beret -->
+  <ellipse cx="118" cy="58" rx="38" ry="10" fill="#1A1A2B"/>
+  <ellipse cx="112" cy="52" rx="28" ry="14" fill="#1A1A2B"/>
+
+  <!-- Eye -->
+  <circle cx="78" cy="122" r="36" fill="#F8F1F2"/>
+  <circle cx="82" cy="124" r="22" fill="#1A1A2B"/>
+  <circle cx="88" cy="128" r="9" fill="#1A1A2B"/>
+  <circle cx="74" cy="112" r="6" fill="#F8F1F2"/>
+  <circle cx="92" cy="118" r="3" fill="#F8F1F2"/>
+
+  <!-- Smile -->
+  <path d="M52 162 Q 62 172 74 162" stroke="#F8F1F2" stroke-width="4" fill="none" stroke-linecap="round"/>
+</svg>

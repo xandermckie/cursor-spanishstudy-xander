@@ -3,34 +3,49 @@
 
 {% block extra_head %}
 <style>
-  #historyTabs .nav-link.active {
-    color: var(--accent) !important;
-    background: var(--surface);
-    border-color: var(--border);
+  #historyTabs {
+    border-bottom-color: var(--color-border);
+  }
+  #historyTabs .nav-link {
+    color: var(--color-muted);
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-weight: 500;
+    padding: 0.75rem 1rem;
   }
   #historyTabs .nav-link:hover {
-    color: var(--accent) !important;
+    color: var(--color-red);
+    border-bottom-color: transparent;
+  }
+  #historyTabs .nav-link.active {
+    color: var(--color-red) !important;
+    background: transparent;
+    border-bottom: 3px solid var(--color-red);
+    font-weight: 700;
   }
   .history-translate-btn {
-    background: var(--accent);
-    color: var(--bg);
+    background: var(--color-red);
+    color: #fff;
     border: none;
+    border-radius: 999px;
+    font-weight: 600;
     margin-bottom: 1rem;
   }
   .history-translate-btn:hover {
-    background: var(--accent2);
-    color: var(--bg);
+    background: var(--color-red-dark);
+    color: #fff;
   }
   .history-summary-en {
     font-style: italic;
+    color: var(--color-red);
     margin-bottom: 1.25rem;
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-3" style="color: var(--accent); font-family: 'Playfair Display', serif;">Historia de España</h1>
-<p class="mb-4" style="color: var(--text-dim);">Temas clave para entender la cultura española y catalana.</p>
+<h1 class="h3 mb-2" style="color: var(--color-navy); font-weight: 800;">Historia de España</h1>
+<p class="mb-4 text-muted">Temas clave para entender la cultura española y catalana.</p>
 
 {% include "partials/section_alerts.html" %}
 
@@ -39,8 +54,7 @@
   {% for topic in topics %}
   <li class="nav-item" role="presentation">
     <button class="nav-link{% if loop.first %} active{% endif %}" id="tab-{{ topic.key }}"
-            data-bs-toggle="tab" data-bs-target="#panel-{{ topic.key }}" type="button" role="tab"
-            style="color: var(--text-dim);">
+            data-bs-toggle="tab" data-bs-target="#panel-{{ topic.key }}" type="button" role="tab">
       {{ topic.title_es }}
     </button>
   </li>
@@ -51,18 +65,18 @@
   {% for topic in topics %}
   <div class="tab-pane fade{% if loop.first %} show active{% endif %}" id="panel-{{ topic.key }}" role="tabpanel">
     <div class="card-panel p-4">
-      <h2 class="h4 mb-2" style="color: var(--text); font-family: 'Playfair Display', serif;">{{ topic.title_es }}</h2>
-      <p class="mb-3" style="color: var(--text-dim);">{{ topic.intro_es }}</p>
-      <p class="history-summary-es mb-3" style="line-height: 1.75; color: var(--text);">{{ topic.summary_es }}</p>
+      <h2 class="h4 mb-2" style="color: var(--color-navy); font-weight: 700;">{{ topic.title_es }}</h2>
+      <p class="mb-3 text-muted">{{ topic.intro_es }}</p>
+      <p class="history-summary-es mb-3" style="line-height: 1.75;">{{ topic.summary_es }}</p>
       <button type="button" class="btn btn-sm history-translate-btn"
               data-target="en-{{ topic.key }}" aria-expanded="false"
               aria-controls="en-{{ topic.key }}">
         Ver en inglés
       </button>
-      <div id="en-{{ topic.key }}" class="history-summary-en d-none" style="line-height: 1.75; color: var(--accent2);">
+      <div id="en-{{ topic.key }}" class="history-summary-en d-none" style="line-height: 1.75;">
         {{ topic.summary_en }}
       </div>
-      <a href="{{ topic.wiki_url }}" target="_blank" rel="noopener" style="color: var(--accent);">
+      <a href="{{ topic.wiki_url }}" target="_blank" rel="noopener" style="color: var(--color-red); font-weight: 600;">
         Leer más en Wikipedia
       </a>
     </div>

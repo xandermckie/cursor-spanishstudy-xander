@@ -16,9 +16,9 @@
   body.travel-page #travel-map {
     width: 100%;
     height: 420px;
-    border-radius: 0.75rem;
-    border: 1px solid var(--border);
-    background: var(--surface2);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
     overflow: hidden;
     z-index: 0;
   }
@@ -33,33 +33,36 @@
     overflow-x: clip;
   }
   .filter-panel {
-    background: var(--surface);
-    border: 1px solid rgba(200, 169, 110, 0.15);
-    border-radius: 0.75rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
     padding: 1.25rem;
   }
   .filter-panel label {
-    color: var(--text-dim);
+    color: var(--color-muted);
     font-size: 0.85rem;
-  }
-  .filter-panel .form-select {
-    background: var(--bg);
-    color: var(--text);
-    border-color: var(--border);
+    font-weight: 500;
   }
   .rec-card {
-    background: var(--surface2);
-    border: 1px solid rgba(200, 169, 110, 0.12);
-    border-radius: 0.5rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
     padding: 1rem 1.25rem;
     margin-bottom: 0.75rem;
+  }
+  .rec-card h3 {
+    color: var(--color-navy);
+    font-family: var(--font-display);
+    font-weight: 700;
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-3" style="color: var(--accent); font-family: 'Playfair Display', serif;">Viajes y recomendaciones</h1>
-<p class="mb-3" style="color: var(--text-dim);">Planes cerca de la Universidad de Barcelona y por la ciudad.</p>
+<h1 class="h3 mb-2" style="color: var(--color-navy); font-weight: 800;">Viajes y recomendaciones</h1>
+<p class="mb-3 text-muted">Planes cerca de la Universidad de Barcelona y por la ciudad.</p>
 
 <div class="click-reveal-hint" role="note">
   ◎ &nbsp;Toca el texto para ver inglés
@@ -71,7 +74,7 @@
 <div class="row g-4">
   <div class="col-lg-4">
     <aside class="filter-panel">
-      <h2 class="h6 mb-3" style="color: var(--accent);">Filtros</h2>
+      <h2 class="h6 mb-3" style="color: var(--color-red); font-weight: 700;">Filtros</h2>
       <form method="post" action="{{ url_for('travel') }}">
         <div class="mb-3">
           <label class="form-label" for="time">Tiempo disponible</label>
@@ -111,7 +114,7 @@
             <option value="cultural"{% if filters.mood == 'cultural' %} selected{% endif %}>Cultural</option>
           </select>
         </div>
-        <button type="submit" class="btn w-100" style="background: var(--accent); color: var(--bg);">
+        <button type="submit" class="btn btn-primary w-100">
           Buscar recomendaciones
         </button>
       </form>
@@ -120,28 +123,28 @@
 
   <div class="col-lg-8 travel-map-column">
     <div id="travel-map" class="mb-2" role="region" aria-label="Mapa de Barcelona (orientación)"></div>
-    <p class="small mb-3" style="color: var(--text-dim);">Mapa de orientación — las direcciones están en cada recomendación.</p>
+    <p class="small mb-3 text-muted">Mapa de orientación — las direcciones están en cada recomendación.</p>
     {% if searched %}
       {% if recommendations %}
-      <h2 class="h6 mb-3" style="color: var(--accent);">Recomendaciones ({{ recommendations|length }})</h2>
+      <h2 class="h6 mb-3" style="color: var(--color-red); font-weight: 700;">Recomendaciones ({{ recommendations|length }})</h2>
       {% for rec in recommendations %}
       <article class="rec-card">
         <h3 class="h5 mb-1">{{ rec.name_es }}</h3>
-        <p class="small mb-2" style="color: var(--text-dim);">{{ rec.address }} · {{ rec.travel_time_ub }}</p>
+        <p class="small mb-2 text-muted">{{ rec.address }} · {{ rec.travel_time_ub }}</p>
         <div class="click-reveal mb-2">
           <div class="click-reveal-es">{{ rec.description_es }}</div>
           <div class="click-reveal-en">{{ rec.description_en }}</div>
         </div>
-        <a href="{{ rec.google_maps_url }}" target="_blank" rel="noopener" style="color: var(--accent2); font-size: 0.9rem;">
+        <a href="{{ rec.google_maps_url }}" target="_blank" rel="noopener" style="color: var(--color-green); font-size: 0.9rem; font-weight: 600;">
           Abrir en Google Maps
         </a>
       </article>
       {% endfor %}
       {% else %}
-      <p style="color: var(--text-dim);">No hay resultados con esos filtros. Prueba otras opciones.</p>
+      <p class="text-muted">No hay resultados con esos filtros. Prueba otras opciones.</p>
       {% endif %}
     {% else %}
-    <p style="color: var(--text-dim);">Elige filtros y pulsa «Buscar recomendaciones» para ver tarjetas con dirección y enlace a Google Maps.</p>
+    <p class="text-muted">Elige filtros y pulsa «Buscar recomendaciones» para ver tarjetas con dirección y enlace a Google Maps.</p>
     {% endif %}
   </div>
 </div>

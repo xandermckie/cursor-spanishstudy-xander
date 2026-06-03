@@ -8,17 +8,19 @@
 {% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-4" style="color: var(--accent); font-family: 'Playfair Display', serif;">Inicio</h1>
+<div class="d-flex align-items-center gap-3 mb-4">
+  <img src="{{ url_for('static', filename='img/pez.svg') }}" alt="" width="56" height="41">
+  <h1 class="h2 mb-0" style="color: var(--color-navy); font-weight: 800;">¡Hola, estudiante!</h1>
+</div>
 
 {% if homepage and homepage.error and not homepage.daily_sentence %}
-<p class="mb-0" style="color: var(--text-dim);">
+<p class="section-error mb-0">
   No se pudo cargar esta sección. Inténtalo más tarde.
 </p>
 {% elif homepage %}
 
 {% if homepage.error and homepage.last_refresh_display %}
-<div class="alert py-2 small mb-3" role="status"
-     style="background: var(--surface2); border-color: var(--border); color: var(--text-dim);">
+<div class="cache-banner" role="status">
   Mostrando datos guardados del {{ homepage.last_refresh_display }}
 </div>
 {% endif %}
@@ -29,9 +31,11 @@
 
 {% if homepage.word_of_day %}
 <div class="card-panel">
-  <div class="card-header px-3 py-2">Palabra del día</div>
+  <div class="card-header px-3 py-2">
+    <span class="section-tag mb-0">📖 Vocabulario</span>
+  </div>
   <div class="p-4">
-    <h2 class="display-6 fw-bold mb-3" style="color: var(--text); font-family: 'Playfair Display', serif;">
+    <h2 class="mb-3" style="color: var(--color-red); font-family: var(--font-display); font-size: 2.5rem; font-weight: 800;">
       {{ homepage.word_of_day.es }}
     </h2>
     <div class="click-reveal mb-3">
@@ -45,7 +49,7 @@
     </div>
     {% endif %}
     <div class="click-reveal mb-0">
-      <p class="small mb-1" style="color: var(--text-dim);">Ejemplo</p>
+      <p class="small mb-1 text-muted">Ejemplo</p>
       <div class="click-reveal-es fs-5">{{ homepage.word_of_day.example_es }}</div>
       <div class="click-reveal-en">{{ homepage.word_of_day.example_en }}</div>
     </div>
@@ -55,10 +59,12 @@
 
 {% if homepage.daily_phrase %}
 <div class="card-panel">
-  <div class="card-header px-3 py-2">Frase corta del día</div>
+  <div class="card-header px-3 py-2">
+    <span class="section-tag mb-0">💬 Frase corta</span>
+  </div>
   <div class="p-4">
     <div class="click-reveal mb-0">
-      <div class="click-reveal-es fs-5" style="font-family: 'Playfair Display', serif;">{{ homepage.daily_phrase.es }}</div>
+      <div class="click-reveal-es fs-5" style="font-family: var(--font-display); font-weight: 600;">{{ homepage.daily_phrase.es }}</div>
       <div class="click-reveal-en">{{ homepage.daily_phrase.en }}</div>
     </div>
   </div>
@@ -67,10 +73,12 @@
 
 {% if homepage.daily_sentence %}
 <div class="card-panel">
-  <div class="card-header px-3 py-2">Frase del día</div>
+  <div class="card-header px-3 py-2">
+    <span class="section-tag mb-0">📝 Frase del día</span>
+  </div>
   <div class="p-4">
     <div class="click-reveal mb-0">
-      <div class="click-reveal-es fs-5" style="font-family: 'Playfair Display', serif;">{{ homepage.daily_sentence.es }}</div>
+      <div class="click-reveal-es fs-5" style="font-family: var(--font-display); font-weight: 600;">{{ homepage.daily_sentence.es }}</div>
       <div class="click-reveal-en">{{ homepage.daily_sentence.en }}</div>
     </div>
   </div>
@@ -81,24 +89,28 @@
   <div class="card-header px-3 py-2">Palabras débiles</div>
   <div class="p-3">
     {% if homepage.weak_words %}
-    <ol class="mb-0 ps-3">
+    <div class="d-flex flex-column gap-2">
       {% for w in homepage.weak_words %}
-      <li class="mb-3">
-        <div class="click-reveal">
-          <div class="click-reveal-es"><strong>{{ w.es }}</strong>
-            <span class="text-muted small">— {{ w.miss_count }} error{{ 'es' if w.miss_count != 1 else '' }}</span>
-          </div>
-          <div class="click-reveal-en">{{ w.en }}</div>
+      <div class="click-reveal p-3 rounded-3" style="background: var(--color-surface); border-left: 4px solid var(--color-red); box-shadow: var(--shadow-sm);">
+        <div class="click-reveal-es d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <strong style="font-family: var(--font-display); color: var(--color-navy);">{{ w.es }}</strong>
+          <span class="badge rounded-pill" style="background: var(--color-red-light); color: var(--color-red); font-weight: 600;">
+            {{ w.miss_count }} error{{ 'es' if w.miss_count != 1 else '' }}
+          </span>
         </div>
-      </li>
+        <div class="click-reveal-en">{{ w.en }}</div>
+      </div>
       {% endfor %}
-    </ol>
+    </div>
     {% else %}
-    <p class="mb-2 text-muted" style="color: var(--text-dim) !important;">
-      Aún no hay palabras marcadas. Practica en
-      <a href="{{ url_for('vocab') }}" style="color: var(--accent);">Tarjetas</a>
-      y marca las que fallas.
-    </p>
+    <div class="text-center py-4">
+      <img src="{{ url_for('static', filename='img/pez.svg') }}" alt="" width="64" height="47" style="opacity: 0.5; margin-bottom: 1rem;">
+      <p class="mb-2 text-muted">
+        Aún no hay palabras marcadas. Practica en
+        <a href="{{ url_for('vocab') }}" style="color: var(--color-red); font-weight: 600;">Tarjetas</a>
+        y marca las que fallas.
+      </p>
+    </div>
     {% endif %}
   </div>
 </div>

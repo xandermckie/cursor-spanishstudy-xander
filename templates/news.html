@@ -2,14 +2,14 @@
 {% block title %}Noticias{% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-3" style="color: var(--accent); font-family: 'Playfair Display', serif;">Noticias de España</h1>
-<p class="mb-4" style="color: var(--text-dim);">Titulares en español de medios españoles, filtrados para noticias sobre España.</p>
+<h1 class="h3 mb-2" style="color: var(--color-navy); font-weight: 800;">Noticias de España</h1>
+<p class="mb-4 text-muted">Titulares en español de medios españoles, filtrados para noticias sobre España.</p>
 
 {% include "partials/section_alerts.html" %}
 
 {% if not section_failed %}
 {% if news.error and news.articles %}
-<div class="alert alert-warning py-2 small mb-3" role="alert" style="background: var(--surface2); border-color: var(--border); color: var(--text-dim);">
+<div class="cache-banner mb-3" role="alert">
   {{ news.error }}
 </div>
 {% endif %}
@@ -19,14 +19,14 @@
   {% for article in news.articles %}
   <div class="col-md-6">
     <article class="card-panel h-100 p-3">
-      <h2 class="h6 mb-2" style="color: var(--text);">{{ article.title }}</h2>
-      <p class="small mb-2" style="color: var(--text-dim);">
-        {{ article.source }}
-        {% if article.published_display %} · {{ article.published_display }}{% endif %}
-      </p>
+      <span class="section-tag">{{ article.source }}</span>
+      <h2 class="h6 mb-2" style="color: var(--color-navy); font-weight: 700;">{{ article.title }}</h2>
+      {% if article.published_display %}
+      <p class="small mb-2 text-muted">{{ article.published_display }}</p>
+      {% endif %}
       <p class="mb-3" style="font-size: 0.95rem;">{{ article.description }}</p>
       {% if article.url %}
-      <a href="{{ article.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-light">
+      <a href="{{ article.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
         Leer más
       </a>
       {% endif %}
@@ -35,7 +35,7 @@
   {% endfor %}
 </div>
 {% elif news.error and not cache_timestamp_display %}
-<p style="color: var(--text-dim);">{{ news.error }}</p>
+<p class="text-muted">{{ news.error }}</p>
 {% endif %}
 {% endif %}
 {% endblock %}

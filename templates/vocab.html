@@ -7,35 +7,37 @@
     margin: 0 auto;
   }
   .flashcard.click-reveal {
-    background: var(--surface);
-    border: 1px solid rgba(200, 169, 110, 0.2);
-    border-radius: 12px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
     padding: 3rem 2rem;
     text-align: center;
     min-height: 220px;
   }
   .flashcard-prompt {
-    font-size: 1.75rem;
-    font-family: 'Playfair Display', serif;
-    color: var(--text);
+    font-size: 2rem;
+    font-family: var(--font-display);
+    font-weight: 800;
+    color: var(--color-red);
     margin-bottom: 0;
   }
   .flashcard.click-reveal .click-reveal-en {
     font-size: 1.15rem;
     margin-top: 1.5rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--color-border);
   }
   .flashcard-meta {
     font-size: 0.8rem;
-    color: var(--text-dim);
+    color: var(--color-muted);
     margin-top: 1.5rem;
   }
 {% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-4 text-center" style="color: var(--accent); font-family: 'Playfair Display', serif;">Tarjetas</h1>
-<p class="text-center mb-4" style="color: var(--text-dim);">
+<h1 class="h3 mb-2 text-center" style="color: var(--color-navy); font-weight: 800;">Tarjetas</h1>
+<p class="text-center mb-4 text-muted">
   Español primero — toca la tarjeta para ver inglés. Marca «Fallé» para añadir a palabras débiles.
 </p>
 
@@ -53,8 +55,8 @@
     <input type="hidden" name="es" value="{{ session.card.es }}">
     <input type="hidden" name="en" value="{{ session.card.en }}">
     <input type="hidden" name="next_i" value="{{ session.next_index }}">
-    <button type="submit" name="missed" value="0" class="btn btn-sm" style="background: var(--accent2); color: var(--bg);">Correcto</button>
-    <button type="submit" name="missed" value="1" class="btn btn-sm btn-outline-warning">Fallé</button>
+    <button type="submit" name="missed" value="0" class="btn btn-sm btn-success-pill">Correcto</button>
+    <button type="submit" name="missed" value="1" class="btn btn-sm btn-fail-pill">Fallé</button>
   </form>
 </div>
 {% endif %}
