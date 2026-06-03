@@ -12,6 +12,10 @@
 
 {% if homepage %}
 
+<div class="fog-hint" role="note">
+  ◎ &nbsp;Pasa el cursor sobre el texto para ver inglés
+</div>
+
 {% if homepage.word_of_day %}
 <div class="card-panel">
   <div class="card-header px-3 py-2">Palabra del día</div>
@@ -19,16 +23,19 @@
     <h2 class="display-6 fw-bold mb-3" style="color: var(--text); font-family: 'Playfair Display', serif;">
       {{ homepage.word_of_day.es }}
     </h2>
-    <div class="passage-wrap fog-wrap--compact mb-2">
-      <div class="passage-layer target-lang">Significado</div>
+    <p class="small mb-1" style="color: var(--text-dim);">Significado</p>
+    <div class="passage-wrap fog-wrap--compact mb-3">
+      <div class="passage-layer target-lang">{{ homepage.word_of_day.es }}</div>
       <div class="passage-layer translation">{{ homepage.word_of_day.definition or homepage.word_of_day.en }}</div>
     </div>
     {% if homepage.word_of_day.phonetic %}
-    <div class="passage-wrap fog-wrap--compact mb-2">
-      <div class="passage-layer target-lang">Pronunciación (inglés)</div>
+    <p class="small mb-1" style="color: var(--text-dim);">Pronunciación (inglés)</p>
+    <div class="passage-wrap fog-wrap--compact mb-3">
+      <div class="passage-layer target-lang">{{ homepage.word_of_day.es }}</div>
       <div class="passage-layer translation"><em>{{ homepage.word_of_day.phonetic }}</em></div>
     </div>
     {% endif %}
+    <p class="small mb-1" style="color: var(--text-dim);">Ejemplo</p>
     <div class="passage-wrap fog-wrap--sentence mb-0">
       <div class="passage-layer target-lang">{{ homepage.word_of_day.example_es }}</div>
       <div class="passage-layer translation">{{ homepage.word_of_day.example_en }}</div>
@@ -53,11 +60,10 @@
     {% if homepage.weak_words %}
     <ol class="mb-0 ps-3">
       {% for w in homepage.weak_words %}
-      <li class="mb-2">
-        <strong>{{ w.es }}</strong>
+      <li class="mb-3">
         <span class="text-muted small">— {{ w.miss_count }} error{{ 'es' if w.miss_count != 1 else '' }}</span>
-        <div class="passage-wrap fog-wrap--compact d-inline-block ms-1" style="min-width: 8rem; vertical-align: top;">
-          <div class="passage-layer target-lang">·</div>
+        <div class="passage-wrap fog-wrap--compact mt-1">
+          <div class="passage-layer target-lang">{{ w.es }}</div>
           <div class="passage-layer translation">{{ w.en }}</div>
         </div>
       </li>

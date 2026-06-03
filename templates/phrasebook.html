@@ -7,6 +7,10 @@
   <a href="{{ url_for('phrasebook_export') }}" class="btn btn-sm btn-outline-light">Exportar CSV</a>
 </div>
 
+<div class="fog-hint" role="note">
+  ◎ &nbsp;Pasa el cursor sobre el texto para ver inglés
+</div>
+
 <div class="card-panel mb-4">
   <div class="card-header px-3 py-2">Añadir frase (inglés → español)</div>
   <div class="p-3">
@@ -31,22 +35,20 @@
       <table class="table table-dark table-hover mb-0" style="--bs-table-bg: transparent; color: var(--text);">
         <thead>
           <tr>
-            <th>Español</th>
-            <th>Inglés (origen)</th>
+            <th>Frase</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {% for p in phrases %}
           <tr>
-            <td class="fw-semibold fs-5">{{ p.es }}</td>
-            <td>
+            <td class="py-3">
               <div class="passage-wrap fog-wrap--compact">
-                <div class="passage-layer target-lang">Pasa el cursor para ver el inglés</div>
+                <div class="passage-layer target-lang">{{ p.es }}</div>
                 <div class="passage-layer translation">{{ p.input }}</div>
               </div>
             </td>
-            <td class="text-end text-nowrap">
+            <td class="text-end text-nowrap align-middle">
               <button type="button" class="btn btn-sm btn-outline-light" data-bs-toggle="collapse"
                       data-bs-target="#edit-{{ p.id }}">Editar</button>
               <form method="post" action="{{ url_for('phrasebook_delete', phrase_id=p.id) }}" class="d-inline"
@@ -56,7 +58,7 @@
             </td>
           </tr>
           <tr class="collapse" id="edit-{{ p.id }}">
-            <td colspan="3" class="pb-3">
+            <td colspan="2" class="pb-3">
               <form method="post" action="{{ url_for('phrasebook_edit', phrase_id=p.id) }}" class="input-group input-group-sm">
                 <input type="text" class="form-control" name="input" value="{{ p.input }}" required
                        style="background: var(--bg); color: var(--text);">

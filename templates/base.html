@@ -16,6 +16,7 @@
       --text: #e8e0d0;
       --text-dim: #8a7f6e;
       --border: #3a3530;
+      --fog-lens-radius: 80px;
     }
     body {
       background: var(--bg);
@@ -50,20 +51,6 @@
     .badge-cat { background: var(--accent2); color: var(--bg); }
 
     /* Fog-reveal lens (all pages except flashcards) */
-    body.fog-reveal-page { cursor: none; }
-    body.fog-reveal-page nav,
-    body.fog-reveal-page nav a,
-    body.fog-reveal-page button,
-    body.fog-reveal-page input,
-    body.fog-reveal-page select,
-    body.fog-reveal-page textarea,
-    body.fog-reveal-page label,
-    body.fog-reveal-page .btn,
-    body.fog-reveal-page .form-control,
-    body.fog-reveal-page footer a {
-      cursor: auto;
-    }
-
     #fog-cursor {
       position: fixed;
       width: 36px;
@@ -73,25 +60,50 @@
       pointer-events: none;
       z-index: 9999;
       transform: translate(-50%, -50%);
-      transition: width 0.15s ease, height 0.15s ease, border-color 0.15s ease;
+      transition: opacity 0.12s ease, width 0.15s ease, height 0.15s ease, border-color 0.15s ease;
       box-shadow: 0 0 12px rgba(200, 169, 110, 0.35);
       left: -100px;
       top: -100px;
+      opacity: 0;
+    }
+    #fog-cursor.visible {
+      opacity: 1;
     }
     #fog-cursor.active {
-      width: 140px;
-      height: 140px;
+      width: calc(var(--fog-lens-radius) * 2);
+      height: calc(var(--fog-lens-radius) * 2);
       border-color: var(--accent2);
       box-shadow: 0 0 24px rgba(126, 184, 160, 0.4);
     }
 
+    .fog-hint {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid rgba(200, 169, 110, 0.2);
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 13px;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      margin-bottom: 1.25rem;
+    }
+
     .passage-wrap {
+      display: grid;
       position: relative;
       cursor: none;
+      overflow: visible;
+      width: 100%;
     }
-    .passage-layer {
+    .passage-wrap > .passage-layer {
+      grid-area: 1 / 1;
+      margin: 0;
+      width: 100%;
       line-height: 1.75;
       font-size: 1rem;
+      font-family: inherit;
     }
     .passage-layer.target-lang {
       color: var(--text);
@@ -99,10 +111,7 @@
       z-index: 1;
     }
     .passage-layer.translation {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
+      position: relative;
       color: var(--accent2);
       font-style: italic;
       clip-path: circle(0px at var(--cx, 50%) var(--cy, 50%));
@@ -112,23 +121,29 @@
       background: var(--surface);
     }
     .passage-wrap.revealing .passage-layer.translation {
-      clip-path: circle(70px at var(--cx, 50%) var(--cy, 50%));
+      clip-path: circle(var(--fog-lens-radius) at var(--cx, 50%) var(--cy, 50%));
     }
-    .passage-wrap.fog-wrap--compact .passage-layer {
+    .passage-wrap.fog-wrap--compact > .passage-layer {
       font-size: 0.95rem;
       line-height: 1.6;
     }
-    .passage-wrap.fog-wrap--sentence .passage-layer {
+    .passage-wrap.fog-wrap--sentence > .passage-layer {
       font-size: 1.15rem;
       line-height: 1.85;
     }
-    .passage-wrap.fog-wrap--reader .passage-layer {
+    .passage-wrap.fog-wrap--reader > .passage-layer {
       line-height: 1.9;
       font-size: 17px;
     }
     .card-panel .passage-layer.translation,
     .reader-card .passage-layer.translation {
       background: var(--surface);
+    }
+    .table-responsive:has(.passage-wrap) {
+      overflow: visible;
+    }
+    .table td .passage-wrap {
+      min-width: 12rem;
     }
 
     {% block extra_css %}{% endblock %}
@@ -185,26 +200,51 @@
     const cursor = document.getElementById('fog-cursor');
     if (!cursor) return;
 
+    let activeWrap = null;
+
     document.addEventListener('mousemove', function (e) {
       cursor.style.left = e.clientX + 'px';
       cursor.style.top = e.clientY + 'px';
     });
 
+    function syncWrapHeights(wrap) {
+      const target = wrap.querySelector('.passage-layer.target-lang');
+      const translation = wrap.querySelector('.passage-layer.translation');
+      if (!target || !translation) return;
+      wrap.style.minHeight = Math.max(target.offsetHeight, translation.offsetHeight) + 'px';
+    }
+
     document.querySelectorAll('.passage-wrap').forEach(function (wrap) {
       const translation = wrap.querySelector('.passage-layer.translation');
       if (!translation) return;
 
+      syncWrapHeights(wrap);
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(function () { syncWrapHeights(wrap); });
+        ro.observe(wrap);
+        wrap.querySelectorAll('.passage-layer').forEach(function (layer) { ro.observe(layer); });
+      }
+
+      wrap.addEventListener('mouseenter', function () {
+        activeWrap = wrap;
+        cursor.classList.add('visible', 'active');
+      });
+
       wrap.addEventListener('mousemove', function (e) {
         const rect = wrap.getBoundingClientRect();
-        translation.style.setProperty('--cx', (e.clientX - rect.left) + 'px');
-        translation.style.setProperty('--cy', (e.clientY - rect.top) + 'px');
+        const cx = (e.clientX - rect.left) + 'px';
+        const cy = (e.clientY - rect.top) + 'px';
+        wrap.style.setProperty('--cx', cx);
+        wrap.style.setProperty('--cy', cy);
         wrap.classList.add('revealing');
-        cursor.classList.add('active');
       });
 
       wrap.addEventListener('mouseleave', function () {
         wrap.classList.remove('revealing');
-        cursor.classList.remove('active');
+        if (activeWrap === wrap) {
+          activeWrap = null;
+          cursor.classList.remove('active', 'visible');
+        }
       });
     });
   })();
