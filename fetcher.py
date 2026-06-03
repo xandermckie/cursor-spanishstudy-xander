@@ -16,6 +16,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import requests
@@ -85,7 +86,7 @@ def _reader_passage_index(pool_len: int) -> int:
     return (int(datetime.now(timezone.utc).timestamp()) // 900) % pool_len
 
 
-def _load_cache() -> dict[str, Any]:
+def _load_cache_from_disk() -> dict[str, Any]:
     if not CACHE_FILE.exists():
         return {}
     try:
@@ -97,6 +98,22 @@ def _load_cache() -> dict[str, Any]:
     except OSError as exc:
         logger.error("Failed to read cache file %s: %s", CACHE_FILE, exc)
         return {}
+
+
+def _load_cache() -> dict[str, Any]:
+    try:
+        from flask import g, has_request_context
+
+        if has_request_context():
+            cached = getattr(g, "_estudio_global_cache", None)
+            if cached is not None:
+                return cached
+            cached = _load_cache_from_disk()
+            g._estudio_global_cache = cached
+            return cached
+    except ImportError:
+        pass
+    return _load_cache_from_disk()
 
 
 def _save_cache(cache: dict[str, Any]) -> bool:
@@ -175,8 +192,12 @@ def fetch_definition(word: str) -> dict[str, Any] | None:
         return None
 
     key = word.strip().lower()
+    if not re.match(r"^[\w.-]+$", key):
+        return None
     try:
-        response = requests.get(f"{DICTIONARY_API_BASE}/{key}", timeout=10)
+        response = requests.get(
+            f"{DICTIONARY_API_BASE}/{quote(key, safe='')}", timeout=10
+        )
         if response.status_code == 404:
             return None
         response.raise_for_status()
@@ -285,18 +306,41 @@ def _xp_next_level_threshold(level: int) -> int | None:
     return {1: 100, 2: 250, 3: 500, 4: 1000}.get(level)
 
 
-def _ensure_user_stats(cache: dict[str, Any]) -> dict[str, Any]:
+def _ensure_user_stats(cache: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    mutated = False
     stats = cache.get("user_stats")
     if not stats:
         stats = _default_user_stats()
         cache["user_stats"] = stats
+        mutated = True
     for key, val in _default_user_stats().items():
-        stats.setdefault(key, val)
-    return stats
+        if key not in stats:
+            stats[key] = val
+            mutated = True
+    return stats, mutated
+
+
+def _load_user_cache_from_disk(user_id: str) -> dict[str, Any]:
+    return user_store.load_user(user_id) or {}
 
 
 def _load_user_cache(user_id: str) -> dict[str, Any]:
-    return user_store.load_user(user_id) or {}
+    try:
+        from flask import g, has_request_context
+
+        if has_request_context():
+            caches = getattr(g, "_estudio_user_caches", None)
+            if caches is None:
+                caches = {}
+                g._estudio_user_caches = caches
+            if user_id in caches:
+                return caches[user_id]
+            loaded = _load_user_cache_from_disk(user_id)
+            caches[user_id] = loaded
+            return loaded
+    except ImportError:
+        pass
+    return _load_user_cache_from_disk(user_id)
 
 
 def _save_user_cache(user_id: str, cache: dict[str, Any]) -> bool:
@@ -308,13 +352,12 @@ def update_streak(user_id: str, cache: dict[str, Any] | None = None) -> None:
     own_cache = cache is None
     if own_cache:
         cache = _load_user_cache(user_id)
-    stats = _ensure_user_stats(cache)
+    stats, _ = _ensure_user_stats(cache)
     today = _activity_today()
     last = stats.get("last_activity_date")
     if last == today:
-        if own_cache:
-            _save_user_cache(user_id, cache)
         return
+    stats["xp_today"] = 0
     if not last:
         stats["streak_days"] = 1
     else:
@@ -339,7 +382,7 @@ def update_xp(user_id: str, amount: int, cache: dict[str, Any] | None = None) ->
     own_cache = cache is None
     if own_cache:
         cache = _load_user_cache(user_id)
-    stats = _ensure_user_stats(cache)
+    stats, _ = _ensure_user_stats(cache)
     update_streak(user_id, cache)
     stats["xp_total"] = stats.get("xp_total", 0) + amount
     stats["xp_today"] = stats.get("xp_today", 0) + amount
@@ -348,37 +391,56 @@ def update_xp(user_id: str, amount: int, cache: dict[str, Any] | None = None) ->
         _save_user_cache(user_id, cache)
 
 
+def _compute_user_stats(
+    cache: dict[str, Any], global_cache: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    stats, _ = _ensure_user_stats(cache)
+    if global_cache is None:
+        global_cache = _load_cache()
+    deck = global_cache.get("flashcard_deck") or FLASHCARD_DECK_SEED
+    weak = cache.get("weak_words") or {}
+    answered = stats.get("total_answered", 0)
+    correct = stats.get("total_correct", 0)
+    level = _level_from_xp(stats.get("xp_total", 0))
+    floor_xp = _xp_threshold_for_level(level)
+    next_xp = _xp_next_level_threshold(level)
+    result = dict(stats)
+    result["words_learned"] = max(0, len(deck) - len(weak))
+    result["accuracy_pct"] = round(100 * correct / answered) if answered > 0 else 0
+    result["level"] = level
+    result["xp_in_level"] = stats.get("xp_total", 0) - floor_xp
+    if next_xp is not None:
+        result["xp_level_max"] = next_xp - floor_xp
+        result["xp_to_next_level"] = next_xp - stats.get("xp_total", 0)
+    else:
+        result["xp_level_max"] = 500
+        result["xp_to_next_level"] = 0
+    return result
+
+
 def get_user_stats(user_id: str | None = None) -> dict[str, Any]:
     if not user_id:
         return _default_user_stats()
     try:
         cache = _load_user_cache(user_id)
-        stats = _ensure_user_stats(cache)
+        stats, mutated = _ensure_user_stats(cache)
+        if mutated:
+            _save_user_cache(user_id, cache)
         global_cache = _load_cache()
-        deck = global_cache.get("flashcard_deck") or FLASHCARD_DECK_SEED
-        weak = cache.get("weak_words") or {}
-        stats["words_learned"] = max(0, len(deck) - len(weak))
-        answered = stats.get("total_answered", 0)
-        correct = stats.get("total_correct", 0)
-        stats["accuracy_pct"] = (
-            round(100 * correct / answered) if answered > 0 else 0
-        )
-        level = _level_from_xp(stats.get("xp_total", 0))
-        stats["level"] = level
-        floor_xp = _xp_threshold_for_level(level)
-        next_xp = _xp_next_level_threshold(level)
-        stats["xp_in_level"] = stats.get("xp_total", 0) - floor_xp
-        if next_xp is not None:
-            stats["xp_level_max"] = next_xp - floor_xp
-            stats["xp_to_next_level"] = next_xp - stats.get("xp_total", 0)
-        else:
-            stats["xp_level_max"] = 500
-            stats["xp_to_next_level"] = 0
-        _save_user_cache(user_id, cache)
-        return stats
+        return _compute_user_stats(cache, global_cache)
     except Exception as exc:
         logger.exception("get_user_stats failed: %s", exc)
         return _default_user_stats()
+
+
+def get_user_nav_info(user_id: str) -> dict[str, Any]:
+    """Lightweight user info for nav (avatar ext without extra disk reads)."""
+    cache = _load_user_cache(user_id)
+    profile = cache.get("profile") or {}
+    return {
+        "email": cache.get("email"),
+        "avatar_ext": profile.get("avatar_ext"),
+    }
 
 
 def get_last_refresh_display() -> str:
@@ -394,6 +456,8 @@ def reset_vocab_session(user_id: str) -> None:
         "correct_count": 0,
         "missed_count": 0,
         "complete": False,
+        "expected_index": 0,
+        "visited_indices": [],
     }
     _save_user_cache(user_id, cache)
 
@@ -407,8 +471,12 @@ def _ensure_vocab_session(cache: dict[str, Any]) -> dict[str, Any]:
             "correct_count": 0,
             "missed_count": 0,
             "complete": False,
+            "expected_index": 0,
+            "visited_indices": [],
         }
         cache["vocab_session"] = session
+    session.setdefault("expected_index", 0)
+    session.setdefault("visited_indices", [])
     return session
 
 
@@ -530,22 +598,12 @@ def get_homepage(
             if _refreshing:
                 logger.error("get_homepage: cache still empty after refresh attempt")
                 return _homepage_fallback(user_id)
-            try:
-                return refresh_homepage()
-            except Exception as exc:
-                logger.exception("refresh_homepage failed: %s", exc)
-                return _homepage_from_cache(cache, user_id) or _homepage_fallback(user_id)
+            logger.info("get_homepage: cache miss; returning fallback (scheduler will refresh)")
+            return _homepage_from_cache(cache, user_id) or _homepage_fallback(user_id)
 
         wod = cache.get("word_of_day")
         if wod and not wod.get("es"):
-            try:
-                refresh_homepage()
-                cache = _load_cache()
-                daily = cache.get("daily_sentence")
-                daily_phrase = cache.get("daily_phrase")
-                wod = cache.get("word_of_day")
-            except Exception as exc:
-                logger.exception("refresh_homepage (word_of_day) failed: %s", exc)
+            logger.info("get_homepage: word_of_day incomplete; skipping inline refresh")
 
         return {
             "daily_sentence": daily,
@@ -620,7 +678,9 @@ def get_vocab_session(user_id: str | None, index: int = 0) -> dict[str, Any]:
             _ensure_vocab_session(cache)
             _save_user_cache(user_id, cache)
             session = cache["vocab_session"]
-        idx = index % total if total else 0
+        idx = session.get("expected_index", 0)
+        if total:
+            idx = idx % total
         card = deck[idx] if total else {"es": "", "en": ""}
         at_last = total > 0 and idx >= total - 1
         return {
@@ -659,15 +719,31 @@ def record_flashcard_result(
         if total == 0 or index < 0 or index >= total:
             logger.warning("record_flashcard_result: invalid index %s", index)
             return False
+        cache = _load_user_cache(user_id)
+        session = _ensure_vocab_session(cache)
+        if session.get("complete"):
+            logger.warning("record_flashcard_result: session already complete")
+            return False
+        expected = session.get("expected_index", 0)
+        if index != expected:
+            logger.warning(
+                "record_flashcard_result: index %s != expected %s",
+                index,
+                expected,
+            )
+            return False
+        visited = session.setdefault("visited_indices", [])
+        if index in visited:
+            logger.warning("record_flashcard_result: index %s already visited", index)
+            return False
         card = deck[index]
         if card.get("es", "").strip() != es.strip() or card.get("en", "").strip() != en.strip():
             logger.warning("record_flashcard_result: card mismatch at index %s", index)
             return False
-        cache = _load_user_cache(user_id)
-        session = _ensure_vocab_session(cache)
         session.setdefault("results", [])
         session["results"].append({"es": es, "en": en, "missed": missed})
-        stats = _ensure_user_stats(cache)
+        visited.append(index)
+        stats, _ = _ensure_user_stats(cache)
         stats["total_answered"] = stats.get("total_answered", 0) + 1
         if missed:
             session["missed_count"] = session.get("missed_count", 0) + 1
@@ -688,8 +764,10 @@ def record_flashcard_result(
             stats["total_correct"] = stats.get("total_correct", 0) + 1
             update_xp(user_id, 10, cache)
         update_streak(user_id, cache)
-        if total > 0 and index >= total - 1:
+        if index >= total - 1:
             session["complete"] = True
+        else:
+            session["expected_index"] = index + 1
         return _save_user_cache(user_id, cache)
     except Exception as exc:
         logger.exception("record_flashcard_result failed: %s", exc)
@@ -711,7 +789,7 @@ def add_phrase(user_id: str, user_input: str) -> dict[str, Any] | None:
     if not user_id:
         return None
     text = user_input.strip()
-    if not text:
+    if not text or len(text) > PHRASE_MAX_LENGTH:
         return None
     try:
         es_text, _ = fetch_translation(text, "en", "es")
