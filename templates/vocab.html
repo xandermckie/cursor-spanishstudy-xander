@@ -1,63 +1,52 @@
 {% extends "base.html" %}
 {% block title %}Tarjetas{% endblock %}
-{% block body_class %}no-reveal{% endblock %}
 
 {% block extra_css %}
   .flashcard-zone {
     max-width: 520px;
     margin: 0 auto;
   }
-  .flashcard {
+  .flashcard.click-reveal {
     background: var(--surface);
     border: 1px solid rgba(200, 169, 110, 0.2);
     border-radius: 12px;
     padding: 3rem 2rem;
     text-align: center;
     min-height: 220px;
-    perspective: 800px;
   }
   .flashcard-prompt {
     font-size: 1.75rem;
     font-family: 'Playfair Display', serif;
     color: var(--text);
-    margin-bottom: 1.5rem;
+    margin-bottom: 0;
   }
-  .flashcard-answer {
-    display: none;
+  .flashcard.click-reveal .click-reveal-en {
     font-size: 1.15rem;
-    color: var(--accent2);
-    font-style: italic;
-    margin-bottom: 1.5rem;
+    margin-top: 1.5rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border);
-  }
-  .flashcard.show-answer .flashcard-answer {
-    display: block;
   }
   .flashcard-meta {
     font-size: 0.8rem;
     color: var(--text-dim);
+    margin-top: 1.5rem;
   }
 {% endblock %}
 
 {% block content %}
 <h1 class="h3 mb-4 text-center" style="color: var(--accent); font-family: 'Playfair Display', serif;">Tarjetas</h1>
 <p class="text-center mb-4" style="color: var(--text-dim);">
-  Español primero — toca «Mostrar» para comprobar. Marca «Fallé» para añadir a palabras débiles.
+  Español primero — toca la tarjeta para ver inglés. Marca «Fallé» para añadir a palabras débiles.
 </p>
 
 <div class="flashcard-zone">
-  <div class="flashcard" id="flashcard">
-    <p class="flashcard-prompt">{{ session.card.es }}</p>
-    <p class="flashcard-answer" id="flashAnswer">{{ session.card.en }}</p>
+  <div class="flashcard click-reveal" id="flashcard">
+    <div class="click-reveal-es flashcard-prompt">{{ session.card.es }}</div>
+    <div class="click-reveal-en" id="flashAnswer">{{ session.card.en }}</div>
     <p class="flashcard-meta">Tarjeta {{ session.index + 1 }} de {{ session.total }}</p>
   </div>
 
-  <div class="d-flex flex-wrap justify-content-center gap-2 mt-4">
-    <button type="button" class="btn btn-outline-light btn-sm" id="btnShow">Mostrar respuesta</button>
-  </div>
-
-  <form method="post" action="{{ url_for('vocab_record') }}" class="d-flex flex-wrap justify-content-center gap-2 mt-3">
+  <form method="post" action="{{ url_for('vocab_record') }}" class="d-flex flex-wrap justify-content-center gap-2 mt-4">
     <input type="hidden" name="es" value="{{ session.card.es }}">
     <input type="hidden" name="en" value="{{ session.card.en }}">
     <input type="hidden" name="next_i" value="{{ session.next_index }}">
@@ -65,20 +54,4 @@
     <button type="submit" name="missed" value="1" class="btn btn-sm btn-outline-warning">Fallé</button>
   </form>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-(function () {
-  const card = document.getElementById('flashcard');
-  const btn = document.getElementById('btnShow');
-  if (card && btn) {
-    btn.addEventListener('click', function () {
-      card.classList.add('show-answer');
-      btn.textContent = 'Respuesta visible';
-      btn.disabled = true;
-    });
-  }
-})();
-</script>
 {% endblock %}

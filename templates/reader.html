@@ -4,6 +4,10 @@
 {% block main_class %}reader-main{% endblock %}
 
 {% block extra_css %}
+  body.fog-reveal-page .passage-wrap {
+    cursor: none;
+  }
+
   .reader-main {
     max-width: 680px;
     width: 100%;
@@ -84,9 +88,43 @@
     border-radius: 4px;
     margin-right: 6px;
   }
-  .lang-badge.ca {
+
+  .passage-wrap.fog-wrap--reader {
+    display: block;
+    position: relative;
+    overflow: visible;
+    width: 100%;
+  }
+  .passage-wrap.fog-wrap--reader .passage-layer {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 17px;
+    line-height: 1.9;
+    letter-spacing: normal;
+    word-spacing: normal;
+  }
+  .passage-wrap.fog-wrap--reader .passage-layer.target-lang {
+    color: var(--text);
+    position: relative;
+    z-index: 1;
+  }
+  .passage-wrap.fog-wrap--reader .passage-layer.translation {
+    position: absolute;
+    top: 0;
+    left: 0;
     color: var(--accent2);
-    background: rgba(126, 184, 160, 0.12);
+    font-style: italic;
+    clip-path: circle(0px at var(--cx, 50%) var(--cy, 50%));
+    transition: clip-path 0.08s ease;
+    pointer-events: none;
+    z-index: 2;
+    background: var(--surface);
+  }
+  .passage-wrap.fog-wrap--reader.revealing .passage-layer.translation {
+    clip-path: circle(var(--fog-lens-radius) at var(--cx, 50%) var(--cy, 50%));
   }
 
   .progress-section {
@@ -103,19 +141,19 @@
   <div class="reader-logo">✦ Estudio Abroad</div>
   <h1>Read in Spanish.<br><em>Hover to remember.</em></h1>
   <p class="reader-subtitle">
-    Move your cursor over the passages below — a lens reveals the English translation
-    hidden beneath the Spanish or Catalan.
+    Move your cursor over the passage below — a lens reveals the English translation
+    hidden beneath the Spanish text.
   </p>
 </header>
 
 <div class="instruction" role="note">
-  ◎ &nbsp;Hover over a passage — the fog clears where your cursor moves
+  ◎ &nbsp;Hover over the passage — the fog clears where your cursor moves
 </div>
 
 {% for passage in reader.passages %}
 <article class="reader-card">
   <div class="card-label">
-    <span class="lang-badge{% if passage.lang == 'ca' %} ca{% endif %}">{{ passage.lang | upper }}</span>
+    <span class="lang-badge">{{ passage.lang | upper }}</span>
     {{ passage.title }}
   </div>
   <div class="passage-wrap fog-wrap--reader" data-passage-id="{{ passage.id }}">
@@ -139,4 +177,27 @@
   <p class="mt-3 mb-0 small"><a href="{{ url_for('vocab') }}" style="color: var(--accent);">Practicar tarjetas</a></p>
 </section>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  document.querySelectorAll('.passage-wrap.fog-wrap--reader').forEach(function (wrap) {
+    const target = wrap.querySelector('.passage-layer.target-lang');
+    const translation = wrap.querySelector('.passage-layer.translation');
+    if (!target || !translation) return;
+
+    function syncHeight() {
+      wrap.style.minHeight = Math.max(target.offsetHeight, translation.offsetHeight) + 'px';
+    }
+    syncHeight();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(syncHeight);
+      ro.observe(wrap);
+      ro.observe(target);
+      ro.observe(translation);
+    }
+  });
+})();
+</script>
 {% endblock %}

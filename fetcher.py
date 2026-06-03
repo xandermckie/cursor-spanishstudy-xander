@@ -20,6 +20,13 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+from fetcher_seeds import (
+    DAILY_PHRASES_ES,
+    DAILY_SENTENCES_ES,
+    FLASHCARD_DECK_SEED,
+    READER_PASSAGES_SEED,
+)
+
 logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -33,63 +40,22 @@ DICTIONARY_API_BASE = os.environ.get(
     "DICTIONARY_API_BASE", "https://api.dictionaryapi.dev/api/v2/entries/en"
 ).rstrip("/")
 
-DAILY_SENTENCE_ES = (
-    "¿Dónde está la estación de metro más cercana a la Plaça de Catalunya?"
-)
-
 SPANISH_STOPWORDS = {
     "el", "la", "los", "las", "un", "una", "de", "del", "al", "a", "en", "y",
     "o", "que", "es", "está", "están", "más", "por", "con", "se", "su", "sus",
     "¿", "donde", "dónde", "cómo", "como", "qué", "me", "te", "le", "lo",
 }
 
-FLASHCARD_DECK_SEED = [
-    {"es": "la estación de metro", "en": "the metro station"},
-    {"es": "¿Cuánto cuesta?", "en": "How much does it cost?"},
-    {"es": "el menú del día", "en": "the set lunch menu"},
-    {"es": "la cuenta, por favor", "en": "the bill, please"},
-    {"es": "¿Dónde está el baño?", "en": "Where is the bathroom?"},
-    {"es": "un billete de bus", "en": "a bus ticket"},
-    {"es": "la playa", "en": "the beach"},
-    {"es": "buenos días", "en": "good morning"},
-    {"es": "gracias", "en": "thank you"},
-    {"es": "necesito ayuda", "en": "I need help"},
-]
+def _utc_day_index(pool_len: int) -> int:
+    if pool_len <= 0:
+        return 0
+    return datetime.now(timezone.utc).timetuple().tm_yday % pool_len
 
-READER_PASSAGES_SEED = [
-    {
-        "id": "es-barcelona",
-        "lang": "es",
-        "title": "Lectura del día — La Ciudad Condal",
-        "body": (
-            "Barcelona es una ciudad única en el mundo. Sus calles están llenas de "
-            "historia, arte y vida. Puedes pasear por el Barrio Gótico, visitar el "
-            "mercado de La Boqueria, o simplemente sentarte en la terraza de un café "
-            "y observar la gente pasar. El idioma de la calle es el catalán, pero "
-            "todo el mundo habla castellano también."
-        ),
-        "en": (
-            "Barcelona is a unique city in the world. Its streets are full of "
-            "history, art and life. You can walk through the Gothic Quarter, visit "
-            "La Boqueria market, or simply sit on a café terrace and watch people "
-            "pass by. The language of the street is Catalan, but everyone speaks "
-            "Spanish too."
-        ),
-    },
-    {
-        "id": "ca-phrases",
-        "lang": "ca",
-        "title": "Frase en Català",
-        "body": (
-            "Bon dia! Com estàs? Vull un cafè amb llet, si us plau. Quant costa? "
-            "Moltes gràcies, fins aviat."
-        ),
-        "en": (
-            "Good morning! How are you? I'd like a coffee with milk, please. "
-            "How much does it cost? Thank you very much, see you soon."
-        ),
-    },
-]
+
+def _reader_passage_index(pool_len: int) -> int:
+    if pool_len <= 0:
+        return 0
+    return (int(datetime.now(timezone.utc).timestamp()) // 900) % pool_len
 
 
 def _load_cache() -> dict[str, Any]:
@@ -237,20 +203,36 @@ def format_refresh_time(iso_timestamp: str | None) -> str:
 
 
 def refresh_homepage() -> dict[str, Any]:
-    """Fetch daily sentence + Spanish word-of-day; write cache."""
+    """Fetch daily sentence, phrase, and word-of-day; write cache."""
     logger.info("Refreshing homepage data from APIs…")
 
-    en_text, _ = fetch_translation(DAILY_SENTENCE_ES, "es", "en")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    day_idx = _utc_day_index(len(DAILY_SENTENCES_ES))
+    phrase_idx = (day_idx + 11) % len(DAILY_PHRASES_ES) if DAILY_PHRASES_ES else 0
+
+    sentence_es = DAILY_SENTENCES_ES[day_idx]
+    phrase_es = DAILY_PHRASES_ES[phrase_idx]
+
+    en_text, _ = fetch_translation(sentence_es, "es", "en")
     if not en_text:
-        en_text = "Where is the nearest metro station to Plaça de Catalunya?"
+        en_text = sentence_es
+
+    phrase_en, _ = fetch_translation(phrase_es, "es", "en")
+    if not phrase_en:
+        phrase_en = phrase_es
 
     daily = {
-        "es": DAILY_SENTENCE_ES,
+        "es": sentence_es,
         "en": en_text,
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "fetched_at": now_iso,
+    }
+    daily_phrase = {
+        "es": phrase_es,
+        "en": phrase_en,
+        "fetched_at": now_iso,
     }
 
-    es_word = _pick_spanish_headword(DAILY_SENTENCE_ES)
+    es_word = _pick_spanish_headword(sentence_es)
     en_gloss, _ = fetch_translation(es_word, "es", "en")
     if not en_gloss:
         en_gloss = es_word
@@ -263,16 +245,17 @@ def refresh_homepage() -> dict[str, Any]:
         "en": en_gloss,
         "definition": dict_data.get("definition", "") if dict_data else "",
         "phonetic": dict_data.get("phonetic", "") if dict_data else "",
-        "example_es": DAILY_SENTENCE_ES,
+        "example_es": sentence_es,
         "example_en": en_text,
     }
 
     cache = _load_cache()
     cache["daily_sentence"] = daily
+    cache["daily_phrase"] = daily_phrase
     cache["word_of_day"] = word_of_day
     cache.setdefault("weak_words", {})
     cache.setdefault("phrasebook", [])
-    cache["last_refresh"] = datetime.now(timezone.utc).isoformat()
+    cache["last_refresh"] = now_iso
     _save_cache(cache)
 
     return get_homepage()
@@ -281,8 +264,9 @@ def refresh_homepage() -> dict[str, Any]:
 def get_homepage() -> dict[str, Any]:
     cache = _load_cache()
     daily = cache.get("daily_sentence")
+    daily_phrase = cache.get("daily_phrase")
 
-    if not daily or not daily.get("en"):
+    if not daily or not daily.get("en") or not daily_phrase or not daily_phrase.get("en"):
         return refresh_homepage()
 
     wod = cache.get("word_of_day")
@@ -290,9 +274,11 @@ def get_homepage() -> dict[str, Any]:
         refresh_homepage()
         cache = _load_cache()
         wod = cache.get("word_of_day")
+        daily_phrase = cache.get("daily_phrase")
 
     return {
         "daily_sentence": daily,
+        "daily_phrase": daily_phrase,
         "word_of_day": wod,
         "weak_words": get_weak_words(),
         "last_refresh": cache.get("last_refresh"),
@@ -310,7 +296,7 @@ def get_weak_words() -> list[dict[str, Any]]:
 
 def _ensure_flashcard_deck(cache: dict[str, Any]) -> list[dict[str, str]]:
     deck = cache.get("flashcard_deck")
-    if not deck:
+    if not deck or len(deck) < len(FLASHCARD_DECK_SEED):
         deck = [dict(c) for c in FLASHCARD_DECK_SEED]
         cache["flashcard_deck"] = deck
         _save_cache(cache)
@@ -423,7 +409,7 @@ def export_phrasebook_csv() -> str:
 
 def _ensure_reader_passages(cache: dict[str, Any]) -> list[dict[str, Any]]:
     passages = cache.get("reader_passages")
-    if not passages:
+    if not passages or len(passages) < len(READER_PASSAGES_SEED):
         passages = [dict(p) for p in READER_PASSAGES_SEED]
         cache["reader_passages"] = passages
         _save_cache(cache)
@@ -447,9 +433,10 @@ def _ensure_reader_passages(cache: dict[str, Any]) -> list[dict[str, Any]]:
 def get_reader() -> dict[str, Any]:
     cache = _load_cache()
     passages = _ensure_reader_passages(cache)
+    idx = _reader_passage_index(len(passages))
     weak_top = get_weak_words()[:5]
     return {
-        "passages": passages,
+        "passages": [passages[idx]] if passages else [],
         "weak_words_top": weak_top,
     }
 

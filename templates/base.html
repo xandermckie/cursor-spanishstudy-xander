@@ -50,7 +50,37 @@
     }
     .badge-cat { background: var(--accent2); color: var(--bg); }
 
-    /* Fog-reveal lens (all pages except flashcards) */
+    /* Click-to-reveal (home, vocab, phrasebook) */
+    .click-reveal {
+      cursor: pointer;
+    }
+    .click-reveal-es {
+      color: var(--text);
+    }
+    .click-reveal-en {
+      display: none;
+      margin-top: 0.5rem;
+      color: var(--accent2);
+      font-style: italic;
+    }
+    .click-reveal.is-open .click-reveal-en {
+      display: block;
+    }
+    .click-reveal-hint {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid rgba(200, 169, 110, 0.2);
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 13px;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      margin-bottom: 1.25rem;
+    }
+
+    /* Fog-reveal lens (reader page only) */
     #fog-cursor {
       position: fixed;
       width: 36px;
@@ -76,81 +106,11 @@
       box-shadow: 0 0 24px rgba(126, 184, 160, 0.4);
     }
 
-    .fog-hint {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--surface2);
-      border: 1px solid rgba(200, 169, 110, 0.2);
-      border-radius: 8px;
-      padding: 12px 18px;
-      font-size: 13px;
-      color: var(--accent);
-      letter-spacing: 0.04em;
-      margin-bottom: 1.25rem;
-    }
-
-    .passage-wrap {
-      display: grid;
-      position: relative;
-      cursor: none;
-      overflow: visible;
-      width: 100%;
-    }
-    .passage-wrap > .passage-layer {
-      grid-area: 1 / 1;
-      margin: 0;
-      width: 100%;
-      line-height: 1.75;
-      font-size: 1rem;
-      font-family: inherit;
-    }
-    .passage-layer.target-lang {
-      color: var(--text);
-      position: relative;
-      z-index: 1;
-    }
-    .passage-layer.translation {
-      position: relative;
-      color: var(--accent2);
-      font-style: italic;
-      clip-path: circle(0px at var(--cx, 50%) var(--cy, 50%));
-      transition: clip-path 0.08s ease;
-      pointer-events: none;
-      z-index: 2;
-      background: var(--surface);
-    }
-    .passage-wrap.revealing .passage-layer.translation {
-      clip-path: circle(var(--fog-lens-radius) at var(--cx, 50%) var(--cy, 50%));
-    }
-    .passage-wrap.fog-wrap--compact > .passage-layer {
-      font-size: 0.95rem;
-      line-height: 1.6;
-    }
-    .passage-wrap.fog-wrap--sentence > .passage-layer {
-      font-size: 1.15rem;
-      line-height: 1.85;
-    }
-    .passage-wrap.fog-wrap--reader > .passage-layer {
-      line-height: 1.9;
-      font-size: 17px;
-    }
-    .card-panel .passage-layer.translation,
-    .reader-card .passage-layer.translation {
-      background: var(--surface);
-    }
-    .table-responsive:has(.passage-wrap) {
-      overflow: visible;
-    }
-    .table td .passage-wrap {
-      min-width: 12rem;
-    }
-
     {% block extra_css %}{% endblock %}
   </style>
 </head>
-<body class="{% block body_class %}{% endblock %}{% if page != 'vocab' %} fog-reveal-page{% endif %}">
-  {% if page != 'vocab' %}
+<body class="{% block body_class %}{% endblock %}{% if page == 'reader' %} fog-reveal-page{% endif %}">
+  {% if page == 'reader' %}
   <div id="fog-cursor" aria-hidden="true"></div>
   {% endif %}
   <nav class="navbar navbar-expand-lg">
@@ -194,7 +154,19 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  {% if page != 'vocab' %}
+  {% if page != 'reader' %}
+  <script>
+  (function () {
+    document.querySelectorAll('.click-reveal').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        if (e.target.closest('a, button, input, textarea, select, label')) return;
+        el.classList.toggle('is-open');
+      });
+    });
+  })();
+  </script>
+  {% endif %}
+  {% if page == 'reader' %}
   <script>
   (function () {
     const cursor = document.getElementById('fog-cursor');

@@ -7,16 +7,17 @@
   <a href="{{ url_for('phrasebook_export') }}" class="btn btn-sm btn-outline-light">Exportar CSV</a>
 </div>
 
-<div class="fog-hint" role="note">
-  ◎ &nbsp;Pasa el cursor sobre el texto para ver inglés
+<div class="click-reveal-hint" role="note">
+  ◎ &nbsp;Toca el texto para ver inglés
 </div>
 
 <div class="card-panel mb-4">
-  <div class="card-header px-3 py-2">Añadir frase (inglés → español)</div>
+  <div class="card-header px-3 py-2">Enter phrase in English</div>
   <div class="p-3">
     <form method="post" action="{{ url_for('phrasebook') }}">
+      <label class="form-label small" style="color: var(--text-dim);">Escribe la frase en inglés; se traduce al español al guardar.</label>
       <div class="input-group">
-        <input type="text" class="form-control" name="input" placeholder="Where is the bathroom?" required maxlength="500"
+        <input type="text" class="form-control" name="input" placeholder="e.g. I need to renew my student visa" required maxlength="500"
                style="background: var(--bg); color: var(--text); border-color: var(--border);">
         <button type="submit" class="btn" style="background: var(--accent); color: var(--bg);">Traducir y guardar</button>
       </div>
@@ -43,9 +44,9 @@
           {% for p in phrases %}
           <tr>
             <td class="py-3">
-              <div class="passage-wrap fog-wrap--compact">
-                <div class="passage-layer target-lang">{{ p.es }}</div>
-                <div class="passage-layer translation">{{ p.input }}</div>
+              <div class="click-reveal">
+                <div class="click-reveal-es fw-semibold fs-5">{{ p.es }}</div>
+                <div class="click-reveal-en">{{ p.input }}</div>
               </div>
             </td>
             <td class="text-end text-nowrap align-middle">
