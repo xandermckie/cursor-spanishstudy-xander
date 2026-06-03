@@ -33,7 +33,9 @@
   {% endfor %}
 </div>
 {% elif news.error %}
-<p class="text-muted">{{ news.error }}</p>
+<div class="card-panel p-4 text-center">
+  <p class="text-muted mb-0">{{ news.error }}</p>
+</div>
 {% endif %}
 
 {% if cache_timestamp_display %}

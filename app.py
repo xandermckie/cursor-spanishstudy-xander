@@ -140,6 +140,8 @@ def register_routes(app: Flask) -> None:
             text = request.form.get("input", "").strip()
             if not text:
                 flash("Escribe una frase en inglés.", "warning")
+            elif len(text) > 500:
+                flash("La frase es demasiado larga (máximo 500 caracteres).", "warning")
             else:
                 try:
                     if fetcher.add_phrase(text):

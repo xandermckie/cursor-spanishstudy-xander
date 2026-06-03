@@ -436,9 +436,11 @@ def refresh_homepage() -> dict[str, Any]:
     cache.setdefault("weak_words", {})
     cache.setdefault("phrasebook", [])
     cache["last_refresh"] = now_iso
-    _save_cache(cache)
+    if not _save_cache(cache):
+        logger.error("refresh_homepage: failed to write cache")
+        return _homepage_fallback()
 
-    return get_homepage()
+    return get_homepage(_refreshing=True)
 
 
 def _homepage_fallback() -> dict[str, Any]:
@@ -471,13 +473,16 @@ def _homepage_from_cache(cache: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def get_homepage() -> dict[str, Any]:
+def get_homepage(*, _refreshing: bool = False) -> dict[str, Any]:
     try:
         cache = _load_cache()
         daily = cache.get("daily_sentence")
         daily_phrase = cache.get("daily_phrase")
 
         if not daily or not daily.get("en") or not daily_phrase or not daily_phrase.get("en"):
+            if _refreshing:
+                logger.error("get_homepage: cache still empty after refresh attempt")
+                return _homepage_fallback()
             try:
                 return refresh_homepage()
             except Exception as exc:
