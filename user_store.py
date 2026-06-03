@@ -160,7 +160,23 @@ def save_user(user_id: str, data: dict[str, Any]) -> bool:
         return False
 
 
+def _global_cache_has_legacy_user_data() -> bool:
+    if not GLOBAL_CACHE_FILE.exists():
+        return False
+    try:
+        with GLOBAL_CACHE_FILE.open(encoding="utf-8") as f:
+            global_cache = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return False
+    return any(global_cache.get(key) for key in LEGACY_USER_KEYS)
+
+
 def _migrate_legacy_user_data(user_id: str, user_data: dict[str, Any]) -> None:
+    index = _load_index()
+    if index:
+        return
+    if not _global_cache_has_legacy_user_data():
+        return
     if not GLOBAL_CACHE_FILE.exists():
         return
     try:
@@ -215,6 +231,10 @@ def register_user(email: str, password: str) -> str | None:
     index = _load_index()
     index[normalized] = user_id
     if not _save_index(index):
+        try:
+            _user_file(user_id).unlink(missing_ok=True)
+        except OSError as exc:
+            logger.error("Failed to roll back user file after index save failure: %s", exc)
         return None
 
     return user_id

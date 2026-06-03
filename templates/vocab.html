@@ -93,7 +93,10 @@
     {% endfor %}
   </div>
   {% endif %}
-  <a href="{{ url_for('vocab', restart=1) }}" class="btn btn-primary">Practicar de nuevo</a>
+  <form method="post" action="{{ url_for('vocab_restart') }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-primary">Practicar de nuevo</button>
+  </form>
 </div>
 {% else %}
 <h1 class="page-title text-center">Tarjetas</h1>

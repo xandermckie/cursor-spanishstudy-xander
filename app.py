@@ -85,12 +85,23 @@ def _safe_next_url(target: str | None) -> str:
     return target
 
 
+def _establish_session(user_id: str, email: str) -> None:
+    """Regenerate session ID after authentication to prevent session fixation."""
+    session.clear()
+    session["user_id"] = user_id
+    session["email"] = email
+    generate_csrf_token()
+
+
 def _current_user_context() -> dict[str, Any]:
     user_id = get_current_user_id()
     email = get_current_user_email()
     avatar_url = None
-    if user_id and user_store.has_avatar(user_id):
-        avatar_url = url_for("profile_avatar")
+    if user_id:
+        nav = fetcher.get_user_nav_info(user_id)
+        email = nav.get("email") or email
+        if nav.get("avatar_ext"):
+            avatar_url = url_for("profile_avatar")
     return {
         "is_authenticated": bool(user_id),
         "email": email,
@@ -178,8 +189,9 @@ def register_routes(app: Flask) -> None:
             else:
                 user_id = user_store.register_user(email, password)
                 if user_id:
-                    session["user_id"] = user_id
-                    session["email"] = user_store.normalize_email(email)
+                    _establish_session(
+                        user_id, user_store.normalize_email(email) or ""
+                    )
                     flash("Cuenta creada. ¡Bienvenido!", "success")
                     return redirect(url_for("profile"))
                 flash("Ese correo ya está registrado.", "warning")
@@ -201,8 +213,9 @@ def register_routes(app: Flask) -> None:
             password = request.form.get("password", "")
             user_id = user_store.authenticate(email, password)
             if user_id:
-                session["user_id"] = user_id
-                session["email"] = user_store.normalize_email(email)
+                _establish_session(
+                    user_id, user_store.normalize_email(email) or ""
+                )
                 flash("Sesión iniciada.", "success")
                 return redirect(_safe_next_url(request.args.get("next")))
             flash("Correo o contraseña incorrectos.", "warning")
@@ -307,15 +320,8 @@ def register_routes(app: Flask) -> None:
     @app.route("/vocab")
     def vocab():
         user_id = get_current_user_id()
-        if request.args.get("restart"):
-            if not user_id:
-                flash("Inicia sesión para guardar tu progreso.", "warning")
-                return redirect(url_for("login", next=url_for("vocab")))
-            fetcher.reset_vocab_session(user_id)
-            return redirect(url_for("vocab"))
-        idx = request.args.get("i", 0, type=int)
         try:
-            vocab_session = fetcher.get_vocab_session(user_id, idx)
+            vocab_session = fetcher.get_vocab_session(user_id)
         except Exception as exc:
             logger.exception("vocab route failed: %s", exc)
             vocab_session = {
@@ -334,6 +340,16 @@ def register_routes(app: Flask) -> None:
             section_failed=vocab_session.get("section_failed", False),
         )
 
+    @app.route("/vocab/restart", methods=["POST"])
+    @login_required
+    def vocab_restart():
+        if not validate_csrf(request.form.get("csrf_token")):
+            flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
+            return redirect(url_for("vocab"))
+        user_id = get_current_user_id()
+        fetcher.reset_vocab_session(user_id)
+        return redirect(url_for("vocab"))
+
     @app.route("/vocab/record", methods=["POST"])
     @login_required
     def vocab_record():
@@ -344,7 +360,6 @@ def register_routes(app: Flask) -> None:
         es = request.form.get("es", "")
         en = request.form.get("en", "")
         missed = request.form.get("missed") == "1"
-        next_i = request.form.get("next_i", 0, type=int)
         current_i = request.form.get("current_i", 0, type=int)
         try:
             if not fetcher.record_flashcard_result(
@@ -354,10 +369,7 @@ def register_routes(app: Flask) -> None:
                     "No se pudo guardar el resultado. Inténtalo de nuevo.",
                     "warning",
                 )
-            next_session = fetcher.get_vocab_session(user_id, next_i)
-            if next_session.get("complete"):
-                return redirect(url_for("vocab"))
-            return redirect(url_for("vocab", i=next_i))
+            return redirect(url_for("vocab"))
         except Exception as exc:
             logger.exception("vocab_record failed: %s", exc)
             flash(
