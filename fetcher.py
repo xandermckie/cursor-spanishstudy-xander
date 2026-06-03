@@ -494,8 +494,9 @@ def get_homepage(*, _refreshing: bool = False) -> dict[str, Any]:
             try:
                 refresh_homepage()
                 cache = _load_cache()
-                wod = cache.get("word_of_day")
+                daily = cache.get("daily_sentence")
                 daily_phrase = cache.get("daily_phrase")
+                wod = cache.get("word_of_day")
             except Exception as exc:
                 logger.exception("refresh_homepage (word_of_day) failed: %s", exc)
 
