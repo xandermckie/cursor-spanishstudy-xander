@@ -30,6 +30,8 @@ def ensure_cache_file() -> None:
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-change-me")
+    if os.environ.get("FLASK_DEBUG", "0") == "1":
+        app.config["TEMPLATES_AUTO_RELOAD"] = True
 
     logging.basicConfig(
         level=logging.INFO,
