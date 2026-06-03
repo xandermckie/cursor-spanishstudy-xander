@@ -4,30 +4,6 @@
 {% block main_class %}reader-main{% endblock %}
 
 {% block extra_css %}
-  body.reader-page { cursor: none; }
-  body.reader-page a, body.reader-page button { cursor: none; }
-
-  #fog-cursor {
-    position: fixed;
-    width: 36px;
-    height: 36px;
-    border: 2px solid var(--accent);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 9999;
-    transform: translate(-50%, -50%);
-    transition: width 0.15s ease, height 0.15s ease, border-color 0.15s ease;
-    box-shadow: 0 0 12px rgba(200, 169, 110, 0.35);
-    left: -100px;
-    top: -100px;
-  }
-  #fog-cursor.active {
-    width: 140px;
-    height: 140px;
-    border-color: var(--accent2);
-    box-shadow: 0 0 24px rgba(126, 184, 160, 0.4);
-  }
-
   .reader-main {
     max-width: 680px;
     width: 100%;
@@ -113,40 +89,6 @@
     background: rgba(126, 184, 160, 0.12);
   }
 
-  .passage-wrap {
-    position: relative;
-    cursor: none;
-  }
-
-  .passage-layer {
-    line-height: 1.9;
-    font-size: 17px;
-  }
-
-  .passage-layer.target-lang {
-    color: var(--text);
-    position: relative;
-    z-index: 1;
-  }
-
-  .passage-layer.translation {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    color: var(--accent2);
-    font-style: italic;
-    clip-path: circle(0px at var(--cx, 50%) var(--cy, 50%));
-    transition: clip-path 0.08s ease;
-    pointer-events: none;
-    z-index: 2;
-    background: var(--surface);
-  }
-
-  .passage-wrap.revealing .passage-layer.translation {
-    clip-path: circle(70px at var(--cx, 50%) var(--cy, 50%));
-  }
-
   .progress-section {
     background: var(--surface);
     border: 1px solid rgba(200, 169, 110, 0.15);
@@ -154,44 +96,9 @@
     padding: 1.75rem 2rem;
     margin-top: 0.5rem;
   }
-  .progress-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-  .progress-row:last-child { margin-bottom: 0; }
-  .progress-label {
-    font-size: 12px;
-    color: var(--text-dim);
-    width: 100px;
-    flex-shrink: 0;
-  }
-  .progress-bar-bg {
-    flex: 1;
-    height: 4px;
-    background: var(--surface2);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .progress-bar-fill {
-    height: 100%;
-    border-radius: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    width: 0;
-    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .progress-pct {
-    font-size: 12px;
-    color: var(--accent);
-    width: 36px;
-    text-align: right;
-  }
 {% endblock %}
 
 {% block content %}
-<div id="fog-cursor" aria-hidden="true"></div>
-
 <header class="reader-hero">
   <div class="reader-logo">✦ Estudio Abroad</div>
   <h1>Read in Spanish.<br><em>Hover to remember.</em></h1>
@@ -211,7 +118,7 @@
     <span class="lang-badge{% if passage.lang == 'ca' %} ca{% endif %}">{{ passage.lang | upper }}</span>
     {{ passage.title }}
   </div>
-  <div class="passage-wrap" data-passage-id="{{ passage.id }}">
+  <div class="passage-wrap fog-wrap--reader" data-passage-id="{{ passage.id }}">
     <div class="passage-layer target-lang">{{ passage.body }}</div>
     <div class="passage-layer translation">{{ passage.en }}</div>
   </div>
@@ -232,39 +139,4 @@
   <p class="mt-3 mb-0 small"><a href="{{ url_for('vocab') }}" style="color: var(--accent);">Practicar tarjetas</a></p>
 </section>
 {% endif %}
-{% endblock %}
-
-{% block extra_js %}
-<script>
-(function () {
-  const cursor = document.getElementById('fog-cursor');
-  if (!cursor) return;
-
-  document.addEventListener('mousemove', function (e) {
-    cursor.style.left = e.clientX + 'px';
-    cursor.style.top = e.clientY + 'px';
-  });
-
-  document.querySelectorAll('.passage-wrap').forEach(function (wrap) {
-    const translation = wrap.querySelector('.passage-layer.translation');
-    if (!translation) return;
-
-    wrap.addEventListener('mousemove', function (e) {
-      const rect = wrap.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      translation.style.setProperty('--cx', x + 'px');
-      translation.style.setProperty('--cy', y + 'px');
-      wrap.classList.add('revealing');
-      cursor.classList.add('active');
-    });
-
-    wrap.addEventListener('mouseleave', function () {
-      wrap.classList.remove('revealing');
-      cursor.classList.remove('active');
-    });
-  });
-
-})();
-</script>
 {% endblock %}

@@ -123,3 +123,55 @@ Just me. I'm leaving for Barcelona in summer 2026 and want to arrive fluent in p
 - **Offline mode** — service worker + localStorage so the app works without internet (using cached data only)
 - **Dark/light theme toggle** — currently locked to dark theme, add a toggle that respects `prefers-color-scheme`
 - **Analytics dashboard** — track learning velocity: words learned per day, quiz improvement over time, time spent on reader, heatmap of weak categories
+
+Great — before I craft the prompt, let me fill in the gaps so Cursor has everything it needs. Based on what you wrote, here are my questions:Got everything I need. Here's your polished Cursor prompt:
+
+---
+
+**You are a senior full-stack engineer working on a Flask web application called Estudio Abroad** — a Spanish learning tool for senior college students studying abroad in Barcelona. The app uses LibreTranslate and Google Translate API for translations and caches data to stay below API rate limits. Keep all existing rate-limiting and caching best practices in place, and extend them to any new translation calls you add.
+
+**Make the following changes. Work feature by feature, and do light cleanup on any code you touch:**
+
+**1. Rename & rebrand**
+- Change the app name from "Estudio Personal" to "Estudio Abroad" everywhere (title, nav, headings, metadata).
+
+**2. Site-wide Spanish-first reveal behavior**
+- All user-facing text should display in Spanish by default.
+- English is revealed only on hover/cursor-over (tooltip or inline reveal — your choice, but it must be site-wide and consistent).
+- **Exception:** Flash card sections and any quiz-style interactions should remain challenge-only — do not apply the reveal behavior there.
+
+**3. Fix the Daily Word feature**
+- Currently the word is not displayed in Spanish and lacks emphasis. Fix it to:
+  - Show the Spanish word prominently (larger font or bold heading)
+  - Include English meaning, pronunciation guide, and an example sentence using the word in context
+- Add a **Daily Sentence** section in the same format directly below it.
+
+**4. Build out the Weak Words section**
+- Display words ranked by most frequent misses from the flashcard feature (descending).
+- This list should update dynamically as flashcard session data is recorded.
+- If no data exists yet, show a placeholder state.
+
+**5. Remove the Quiz page**
+- Delete the quiz page and all routes, nav links, and references to it entirely. It was not implemented correctly and will be rebuilt later.
+
+**6. Build the Phrase Book**
+- Users can input a word or phrase; it gets translated to Spanish via the existing translation API (cache results using the same mechanism already in use).
+- The phrase book persists in the cache so users can return to it across sessions.
+- Users can add, edit, and delete entries.
+- Include an **Export to CSV** button directly on the phrase book page.
+- Remove any standalone "Refresh" button — browser refresh handles this.
+
+**7. Footer cleanup**
+- Remove the Quick Links section from the bottom of the landing page.
+- Keep the "Last Cache Refresh" timestamp but reformat it to: `2026-06-03 10:25 AM CST`
+- Add a signature line at the very bottom: `Created by and for` **[Xander McKie](https://github.com/xandermckie)** — hyperlink the name to `https://github.com/xandermckie`.
+
+**Constraints:**
+- Do not break existing flashcard functionality.
+- Do not introduce new translation API calls without caching — stay under rate limits.
+- Keep all changes within the existing Flask + separate API architecture.
+- If anything is ambiguous (e.g., the exact cache format or where phrase book data lives), ask one clarifying question before proceeding.
+
+---
+
+**What I changed and why:** Your original was a solid brain-dump but read like a stream of consciousness — Cursor would've tried to do everything at once and missed details. The rewrite groups changes by feature, leads with role + tech context so Cursor knows the constraints upfront, promotes the rate-limiting rule to a top-level requirement (not buried at the end), and adds the "ask one clarifying question" escape hatch so it doesn't silently make wrong assumptions about your cache format.

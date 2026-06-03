@@ -19,27 +19,20 @@
     <h2 class="display-6 fw-bold mb-3" style="color: var(--text); font-family: 'Playfair Display', serif;">
       {{ homepage.word_of_day.es }}
     </h2>
-    <p class="mb-2 reveal-block">
-      <span class="reveal-pair" tabindex="0">
-        <span class="reveal-es">Significado</span>
-        <span class="reveal-en">{{ homepage.word_of_day.definition or homepage.word_of_day.en }}</span>
-      </span>
-    </p>
+    <div class="passage-wrap fog-wrap--compact mb-2">
+      <div class="passage-layer target-lang">Significado</div>
+      <div class="passage-layer translation">{{ homepage.word_of_day.definition or homepage.word_of_day.en }}</div>
+    </div>
     {% if homepage.word_of_day.phonetic %}
-    <p class="mb-2 reveal-block">
-      <span class="reveal-pair" tabindex="0">
-        <span class="reveal-es">Pronunciación (inglés)</span>
-        <span class="reveal-en"><em>{{ homepage.word_of_day.phonetic }}</em></span>
-      </span>
-    </p>
+    <div class="passage-wrap fog-wrap--compact mb-2">
+      <div class="passage-layer target-lang">Pronunciación (inglés)</div>
+      <div class="passage-layer translation"><em>{{ homepage.word_of_day.phonetic }}</em></div>
+    </div>
     {% endif %}
-    <p class="mb-0 reveal-block">
-      <span class="reveal-es d-block mb-1">{{ homepage.word_of_day.example_es }}</span>
-      <span class="reveal-pair" tabindex="0">
-        <span class="reveal-es">Traducción del ejemplo</span>
-        <span class="reveal-en">{{ homepage.word_of_day.example_en }}</span>
-      </span>
-    </p>
+    <div class="passage-wrap fog-wrap--sentence mb-0">
+      <div class="passage-layer target-lang">{{ homepage.word_of_day.example_es }}</div>
+      <div class="passage-layer translation">{{ homepage.word_of_day.example_en }}</div>
+    </div>
   </div>
 </div>
 {% endif %}
@@ -47,13 +40,10 @@
 <div class="card-panel">
   <div class="card-header px-3 py-2">Frase del día</div>
   <div class="p-4">
-    <p class="mb-3 fs-5" style="font-family: 'Playfair Display', serif;">{{ homepage.daily_sentence.es }}</p>
-    <p class="mb-0 reveal-block">
-      <span class="reveal-pair" tabindex="0">
-        <span class="reveal-es">Pasa el cursor para ver inglés</span>
-        <span class="reveal-en">{{ homepage.daily_sentence.en }}</span>
-      </span>
-    </p>
+    <div class="passage-wrap fog-wrap--sentence mb-0">
+      <div class="passage-layer target-lang">{{ homepage.daily_sentence.es }}</div>
+      <div class="passage-layer translation">{{ homepage.daily_sentence.en }}</div>
+    </div>
   </div>
 </div>
 
@@ -66,10 +56,10 @@
       <li class="mb-2">
         <strong>{{ w.es }}</strong>
         <span class="text-muted small">— {{ w.miss_count }} error{{ 'es' if w.miss_count != 1 else '' }}</span>
-        <span class="reveal-pair ms-1" tabindex="0">
-          <span class="reveal-es">·</span>
-          <span class="reveal-en">{{ w.en }}</span>
-        </span>
+        <div class="passage-wrap fog-wrap--compact d-inline-block ms-1" style="min-width: 8rem; vertical-align: top;">
+          <div class="passage-layer target-lang">·</div>
+          <div class="passage-layer translation">{{ w.en }}</div>
+        </div>
       </li>
       {% endfor %}
     </ol>

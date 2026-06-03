@@ -41,10 +41,10 @@
           <tr>
             <td class="fw-semibold fs-5">{{ p.es }}</td>
             <td>
-              <span class="reveal-pair" tabindex="0">
-                <span class="reveal-es">{{ p.input[:40] }}{% if p.input|length > 40 %}…{% endif %}</span>
-                <span class="reveal-en">{{ p.input }}</span>
-              </span>
+              <div class="passage-wrap fog-wrap--compact">
+                <div class="passage-layer target-lang">Pasa el cursor para ver el inglés</div>
+                <div class="passage-layer translation">{{ p.input }}</div>
+              </div>
             </td>
             <td class="text-end text-nowrap">
               <button type="button" class="btn btn-sm btn-outline-light" data-bs-toggle="collapse"

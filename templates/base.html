@@ -49,44 +49,95 @@
     }
     .badge-cat { background: var(--accent2); color: var(--bg); }
 
-    /* Site-wide Spanish-first reveal */
-    .reveal-pair {
-      display: inline;
-      cursor: help;
-      border-bottom: 1px dotted rgba(200, 169, 110, 0.35);
+    /* Fog-reveal lens (all pages except flashcards) */
+    body.fog-reveal-page { cursor: none; }
+    body.fog-reveal-page nav,
+    body.fog-reveal-page nav a,
+    body.fog-reveal-page button,
+    body.fog-reveal-page input,
+    body.fog-reveal-page select,
+    body.fog-reveal-page textarea,
+    body.fog-reveal-page label,
+    body.fog-reveal-page .btn,
+    body.fog-reveal-page .form-control,
+    body.fog-reveal-page footer a {
+      cursor: auto;
     }
-    .reveal-pair .reveal-es { color: var(--text); }
-    .reveal-pair .reveal-en {
-      display: none;
+
+    #fog-cursor {
+      position: fixed;
+      width: 36px;
+      height: 36px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: width 0.15s ease, height 0.15s ease, border-color 0.15s ease;
+      box-shadow: 0 0 12px rgba(200, 169, 110, 0.35);
+      left: -100px;
+      top: -100px;
+    }
+    #fog-cursor.active {
+      width: 140px;
+      height: 140px;
+      border-color: var(--accent2);
+      box-shadow: 0 0 24px rgba(126, 184, 160, 0.4);
+    }
+
+    .passage-wrap {
+      position: relative;
+      cursor: none;
+    }
+    .passage-layer {
+      line-height: 1.75;
+      font-size: 1rem;
+    }
+    .passage-layer.target-lang {
+      color: var(--text);
+      position: relative;
+      z-index: 1;
+    }
+    .passage-layer.translation {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
       color: var(--accent2);
       font-style: italic;
-      margin-left: 0.35em;
+      clip-path: circle(0px at var(--cx, 50%) var(--cy, 50%));
+      transition: clip-path 0.08s ease;
+      pointer-events: none;
+      z-index: 2;
+      background: var(--surface);
     }
-    .reveal-pair:hover .reveal-en,
-    .reveal-pair:focus-within .reveal-en {
-      display: inline;
+    .passage-wrap.revealing .passage-layer.translation {
+      clip-path: circle(70px at var(--cx, 50%) var(--cy, 50%));
     }
-    .reveal-block .reveal-en {
-      display: block;
-      max-height: 0;
-      overflow: hidden;
-      opacity: 0;
-      margin-top: 0;
-      transition: max-height 0.2s ease, opacity 0.15s ease, margin 0.15s ease;
+    .passage-wrap.fog-wrap--compact .passage-layer {
+      font-size: 0.95rem;
+      line-height: 1.6;
     }
-    .reveal-block:hover .reveal-en,
-    .reveal-block:focus-within .reveal-en {
-      max-height: 8rem;
-      opacity: 1;
-      margin-top: 0.5rem;
+    .passage-wrap.fog-wrap--sentence .passage-layer {
+      font-size: 1.15rem;
+      line-height: 1.85;
     }
-    .no-reveal .reveal-pair { border-bottom: none; cursor: default; }
-    .no-reveal .reveal-pair .reveal-en { display: none !important; }
+    .passage-wrap.fog-wrap--reader .passage-layer {
+      line-height: 1.9;
+      font-size: 17px;
+    }
+    .card-panel .passage-layer.translation,
+    .reader-card .passage-layer.translation {
+      background: var(--surface);
+    }
 
     {% block extra_css %}{% endblock %}
   </style>
 </head>
-<body class="{% block body_class %}{% endblock %}">
+<body class="{% block body_class %}{% endblock %}{% if page != 'vocab' %} fog-reveal-page{% endif %}">
+  {% if page != 'vocab' %}
+  <div id="fog-cursor" aria-hidden="true"></div>
+  {% endif %}
   <nav class="navbar navbar-expand-lg">
     <div class="container">
       <a class="navbar-brand fw-semibold" href="{{ url_for('home') }}" style="font-family: 'Playfair Display', serif;">Estudio Abroad</a>
@@ -128,6 +179,37 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  {% if page != 'vocab' %}
+  <script>
+  (function () {
+    const cursor = document.getElementById('fog-cursor');
+    if (!cursor) return;
+
+    document.addEventListener('mousemove', function (e) {
+      cursor.style.left = e.clientX + 'px';
+      cursor.style.top = e.clientY + 'px';
+    });
+
+    document.querySelectorAll('.passage-wrap').forEach(function (wrap) {
+      const translation = wrap.querySelector('.passage-layer.translation');
+      if (!translation) return;
+
+      wrap.addEventListener('mousemove', function (e) {
+        const rect = wrap.getBoundingClientRect();
+        translation.style.setProperty('--cx', (e.clientX - rect.left) + 'px');
+        translation.style.setProperty('--cy', (e.clientY - rect.top) + 'px');
+        wrap.classList.add('revealing');
+        cursor.classList.add('active');
+      });
+
+      wrap.addEventListener('mouseleave', function () {
+        wrap.classList.remove('revealing');
+        cursor.classList.remove('active');
+      });
+    });
+  })();
+  </script>
+  {% endif %}
   {% block extra_js %}{% endblock %}
 </body>
 </html>
