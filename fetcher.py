@@ -641,6 +641,21 @@ def get_spain_news() -> dict[str, Any]:
         }
 
 
+def _wikipedia_hero_image(data: dict[str, Any]) -> str:
+    """Prefer a larger image URL; avoid upscaling tiny thumbs in the UI."""
+    original = data.get("originalimage") or {}
+    if original.get("source"):
+        return original["source"]
+    thumb = data.get("thumbnail") or {}
+    src = thumb.get("source", "")
+    if not src:
+        return ""
+    width = thumb.get("width") or 0
+    if width and width >= 640:
+        return src
+    return re.sub(r"/\d+px-", "/640px-", src, count=1)
+
+
 def _fetch_wikipedia_summary(wiki_title: str) -> dict[str, Any] | None:
     try:
         response = requests.get(
@@ -652,12 +667,11 @@ def _fetch_wikipedia_summary(wiki_title: str) -> dict[str, Any] | None:
             return None
         response.raise_for_status()
         data = response.json()
-        thumb = data.get("thumbnail") or {}
         urls = data.get("content_urls") or {}
         desktop = urls.get("desktop") or {}
         return {
             "extract": data.get("extract", ""),
-            "thumbnail": thumb.get("source", ""),
+            "thumbnail": _wikipedia_hero_image(data),
             "wiki_url": desktop.get("page", ""),
         }
     except (requests.RequestException, ValueError, KeyError) as exc:
@@ -674,6 +688,12 @@ def get_history_topics() -> list[dict[str, Any]]:
         key = meta["key"]
         entry = cache["history"].get(key)
         if entry and _cache_is_fresh(entry.get("fetched_at"), 86400):
+            thumb = entry.get("thumbnail", "")
+            if thumb and re.search(r"/\d{2,3}px-", thumb):
+                wiki = _fetch_wikipedia_summary(meta["wiki_title"])
+                if wiki and wiki.get("thumbnail"):
+                    entry = {**entry, "thumbnail": wiki["thumbnail"]}
+                    cache["history"][key] = entry
             topics_out.append({**meta, **entry})
             continue
 

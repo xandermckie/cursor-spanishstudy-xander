@@ -106,8 +106,9 @@
       box-shadow: 0 0 24px rgba(126, 184, 160, 0.4);
     }
 
-    {% block extra_css %}{% endblock %}
+    {% block inline_css %}{% endblock %}
   </style>
+  {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}{% if page == 'reader' %} fog-reveal-page{% endif %}">
   {% if page == 'reader' %}
