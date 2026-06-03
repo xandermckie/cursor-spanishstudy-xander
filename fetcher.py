@@ -26,6 +26,12 @@ from fetcher_seeds import (
     FLASHCARD_DECK_SEED,
     READER_PASSAGES_SEED,
 )
+from fetcher_travel import (
+    TRAVEL_RECOMMENDATIONS_SEED,
+    UB_LAT,
+    UB_LNG,
+    filter_travel_recommendations,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -450,3 +456,251 @@ def run_refresh() -> None:
     cache.setdefault("phrasebook", [])
     cache.setdefault("weak_words", {})
     _save_cache(cache)
+
+
+# --- Travel, news, history, resources pages ---
+
+NEWS_API_URL = os.environ.get(
+    "NEWS_API_URL", "https://newsapi.org/v2/everything"
+)
+NEWS_API_KEY = os.environ.get("NEWS_API_KEY", "")
+WIKIPEDIA_SUMMARY_URL = "https://en.wikipedia.org/api/rest_v1/page/summary"
+
+HISTORY_TOPICS = [
+    {
+        "key": "civil_war",
+        "title_es": "La Guerra Civil Española",
+        "intro_es": "Conflicto de 1936–1939 que transformó la España del siglo XX.",
+        "wiki_title": "Spanish_Civil_War",
+    },
+    {
+        "key": "picasso",
+        "title_es": "Pablo Picasso",
+        "intro_es": "Pintor malagueño; figura central del arte moderno y del Museo Picasso en Barcelona.",
+        "wiki_title": "Pablo_Picasso",
+    },
+    {
+        "key": "football",
+        "title_es": "El Fútbol Español (FC Barcelona y Real Madrid)",
+        "intro_es": "El clásico entre Barça y Madrid refleja rivalidad deportiva y cultural.",
+        "wiki_title": "El_Clásico",
+    },
+    {
+        "key": "gaudi",
+        "title_es": "La Sagrada Família y Antoni Gaudí",
+        "intro_es": "Arquitecto modernista; su obra define el paisaje urbano de Barcelona.",
+        "wiki_title": "Sagrada_Família",
+    },
+]
+
+STUDY_RESOURCES = [
+    {
+        "name": "SpanishPod101",
+        "url": "https://www.spanishpod101.com",
+        "skill": "listening",
+        "skill_es": "escucha",
+        "description_es": "Lecciones de audio y vídeo estructuradas por nivel, con vocabulario y diálogos reales.",
+        "description_en": "Structured audio and video lessons by level, with vocabulary and real dialogues.",
+    },
+    {
+        "name": "Dreaming Spanish",
+        "url": "https://www.youtube.com/c/DreamingSpanish",
+        "skill": "listening",
+        "skill_es": "escucha",
+        "description_es": "Canal de input comprensible: historias en español claro para acostumbrar el oído.",
+        "description_en": "Comprehensible input channel: clear Spanish stories to train your ear.",
+    },
+    {
+        "name": "Duolingo Spanish",
+        "url": "https://www.duolingo.com",
+        "skill": "vocabulary",
+        "skill_es": "vocabulario",
+        "description_es": "Práctica diaria gamificada; útil para repasar palabras y frases básicas.",
+        "description_en": "Gamified daily practice; useful for reviewing basic words and phrases.",
+    },
+    {
+        "name": "BBC Mundo",
+        "url": "https://www.bbc.com/mundo",
+        "skill": "reading",
+        "skill_es": "lectura",
+        "description_es": "Noticias en español con texto claro; ideal para leer sobre actualidad internacional.",
+        "description_en": "Spanish news with clear writing; ideal for reading about world events.",
+    },
+    {
+        "name": "Forvo",
+        "url": "https://forvo.com",
+        "skill": "speaking",
+        "skill_es": "pronunciación",
+        "description_es": "Pronunciación grabada por hablantes nativos; busca cualquier palabra en español.",
+        "description_en": "Pronunciation recorded by native speakers; look up any Spanish word.",
+    },
+    {
+        "name": "Conjuguemos",
+        "url": "https://conjuguemos.com",
+        "skill": "vocabulary",
+        "skill_es": "verbos",
+        "description_es": "Ejercicios de conjugación verbal; refuerza tiempos y modos del español.",
+        "description_en": "Verb conjugation drills; reinforces Spanish tenses and moods.",
+    },
+]
+
+
+def _cache_is_fresh(fetched_at: str | None, max_age_seconds: int) -> bool:
+    if not fetched_at:
+        return False
+    try:
+        dt = datetime.fromisoformat(fetched_at.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        age = (datetime.now(timezone.utc) - dt).total_seconds()
+        return age < max_age_seconds
+    except (ValueError, TypeError):
+        return False
+
+
+def format_news_date(iso_timestamp: str | None) -> str:
+    if not iso_timestamp:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.strftime("%d %b %Y, %H:%M UTC")
+    except (ValueError, TypeError):
+        return iso_timestamp
+
+
+def get_travel_map_center() -> dict[str, float]:
+    return {"lat": UB_LAT, "lng": UB_LNG}
+
+
+def get_spain_news() -> dict[str, Any]:
+    cache = _load_cache()
+    cached = cache.get("spain_news")
+    if cached and _cache_is_fresh(cached.get("fetched_at"), 3600):
+        return {
+            "articles": cached.get("articles", []),
+            "error": None,
+            "fetched_at": cached.get("fetched_at"),
+        }
+
+    if not NEWS_API_KEY:
+        return {
+            "articles": cached.get("articles", []) if cached else [],
+            "error": "Falta la clave NEWS_API_KEY en el archivo .env.",
+            "fetched_at": cached.get("fetched_at") if cached else None,
+        }
+
+    try:
+        response = requests.get(
+            NEWS_API_URL,
+            params={
+                "q": "Spain",
+                "language": "es",
+                "sortBy": "publishedAt",
+                "pageSize": 12,
+                "apiKey": NEWS_API_KEY,
+            },
+            timeout=15,
+        )
+        response.raise_for_status()
+        data = response.json()
+        raw = data.get("articles") or []
+        articles = []
+        for item in raw:
+            title = (item.get("title") or "").strip()
+            description = (item.get("description") or "").strip()
+            if not title or not description:
+                continue
+            source = item.get("source") or {}
+            articles.append({
+                "title": title,
+                "description": description,
+                "url": item.get("url", ""),
+                "source": source.get("name", "Desconocido"),
+                "publishedAt": item.get("publishedAt", ""),
+                "published_display": format_news_date(item.get("publishedAt")),
+            })
+        now = datetime.now(timezone.utc).isoformat()
+        cache["spain_news"] = {"articles": articles, "fetched_at": now}
+        _save_cache(cache)
+        if not articles:
+            return {
+                "articles": [],
+                "error": "No hay artículos disponibles en este momento.",
+                "fetched_at": now,
+            }
+        return {"articles": articles, "error": None, "fetched_at": now}
+    except (requests.RequestException, ValueError, KeyError) as exc:
+        logger.exception("get_spain_news failed: %s", exc)
+        stale = cached.get("articles", []) if cached else []
+        return {
+            "articles": stale,
+            "error": "No se pudieron cargar las noticias. Inténtalo más tarde.",
+            "fetched_at": cached.get("fetched_at") if cached else None,
+        }
+
+
+def _fetch_wikipedia_summary(wiki_title: str) -> dict[str, Any] | None:
+    try:
+        response = requests.get(
+            f"{WIKIPEDIA_SUMMARY_URL}/{wiki_title}",
+            timeout=15,
+            headers={"User-Agent": "EstudioAbroad/1.0 (language study app)"},
+        )
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        data = response.json()
+        thumb = data.get("thumbnail") or {}
+        urls = data.get("content_urls") or {}
+        desktop = urls.get("desktop") or {}
+        return {
+            "extract": data.get("extract", ""),
+            "thumbnail": thumb.get("source", ""),
+            "wiki_url": desktop.get("page", ""),
+        }
+    except (requests.RequestException, ValueError, KeyError) as exc:
+        logger.exception("Wikipedia fetch failed for %r: %s", wiki_title, exc)
+        return None
+
+
+def get_history_topics() -> list[dict[str, Any]]:
+    cache = _load_cache()
+    cache.setdefault("history", {})
+    topics_out = []
+
+    for meta in HISTORY_TOPICS:
+        key = meta["key"]
+        entry = cache["history"].get(key)
+        if entry and _cache_is_fresh(entry.get("fetched_at"), 86400):
+            topics_out.append({**meta, **entry})
+            continue
+
+        wiki = _fetch_wikipedia_summary(meta["wiki_title"])
+        now = datetime.now(timezone.utc).isoformat()
+        if wiki:
+            entry = {
+                "extract": wiki.get("extract", ""),
+                "thumbnail": wiki.get("thumbnail", ""),
+                "wiki_url": wiki.get("wiki_url", ""),
+                "fetched_at": now,
+            }
+        elif entry:
+            entry = dict(entry)
+        else:
+            entry = {
+                "extract": "",
+                "thumbnail": "",
+                "wiki_url": f"https://en.wikipedia.org/wiki/{meta['wiki_title']}",
+                "fetched_at": now,
+            }
+        cache["history"][key] = entry
+        topics_out.append({**meta, **entry})
+
+    _save_cache(cache)
+    return topics_out
+
+
+def get_study_resources() -> list[dict[str, Any]]:
+    return [dict(r) for r in STUDY_RESOURCES]

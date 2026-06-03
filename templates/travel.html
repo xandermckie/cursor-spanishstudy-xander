@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Viajes{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<style>
+  #travel-map {
+    min-height: 400px;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+    z-index: 1;
+  }
+  .filter-panel {
+    background: var(--surface);
+    border: 1px solid rgba(200, 169, 110, 0.15);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+  }
+  .filter-panel label {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+  .filter-panel .form-select {
+    background: var(--bg);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .rec-card {
+    background: var(--surface2);
+    border: 1px solid rgba(200, 169, 110, 0.12);
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3" style="color: var(--accent); font-family: 'Playfair Display', serif;">Viajes y recomendaciones</h1>
+<p class="mb-3" style="color: var(--text-dim);">Planes cerca de la Universidad de Barcelona y por la ciudad.</p>
+
+<div class="click-reveal-hint" role="note">
+  ◎ &nbsp;Toca el texto para ver inglés
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <aside class="filter-panel">
+      <h2 class="h6 mb-3" style="color: var(--accent);">Filtros</h2>
+      <form method="post" action="{{ url_for('travel') }}">
+        <div class="mb-3">
+          <label class="form-label" for="time">Tiempo disponible</label>
+          <select class="form-select form-select-sm" name="time" id="time">
+            <option value="">— Cualquiera —</option>
+            <option value="1-2h"{% if filters.time == '1-2h' %} selected{% endif %}>1–2 horas</option>
+            <option value="half"{% if filters.time == 'half' %} selected{% endif %}>Medio día</option>
+            <option value="full"{% if filters.time == 'full' %} selected{% endif %}>Día completo</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="location">Ubicación actual</label>
+          <select class="form-select form-select-sm" name="location" id="location">
+            <option value="">— Cualquiera —</option>
+            <option value="ub"{% if filters.location == 'ub' %} selected{% endif %}>En la Universitat de Barcelona</option>
+            <option value="barcelona"{% if filters.location == 'barcelona' %} selected{% endif %}>En otra zona de Barcelona</option>
+            <option value="spain"{% if filters.location == 'spain' %} selected{% endif %}>Otra ciudad de España</option>
+            <option value="beach"{% if filters.location == 'beach' %} selected{% endif %}>En la playa</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="distance">Distancia que recorrerías</label>
+          <select class="form-select form-select-sm" name="distance" id="distance">
+            <option value="">— Cualquiera —</option>
+            <option value="walk"{% if filters.distance == 'walk' %} selected{% endif %}>A pie (&lt; 1 km)</option>
+            <option value="transit"{% if filters.distance == 'transit' %} selected{% endif %}>Transporte corto (1–5 km)</option>
+            <option value="anywhere"{% if filters.distance == 'anywhere' %} selected{% endif %}>En cualquier parte de la ciudad</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="mood">Estado de ánimo</label>
+          <select class="form-select form-select-sm" name="mood" id="mood">
+            <option value="">— Cualquiera —</option>
+            <option value="hungry"{% if filters.mood == 'hungry' %} selected{% endif %}>Hambre</option>
+            <option value="adventure"{% if filters.mood == 'adventure' %} selected{% endif %}>Aventura</option>
+            <option value="chill"{% if filters.mood == 'chill' %} selected{% endif %}>Relax</option>
+            <option value="cultural"{% if filters.mood == 'cultural' %} selected{% endif %}>Cultural</option>
+          </select>
+        </div>
+        <button type="submit" class="btn w-100" style="background: var(--accent); color: var(--bg);">
+          Buscar recomendaciones
+        </button>
+      </form>
+    </aside>
+  </div>
+
+  <div class="col-lg-8">
+    <div id="travel-map" class="mb-3"></div>
+    {% if searched %}
+      {% if recommendations %}
+      <h2 class="h6 mb-3" style="color: var(--accent);">Recomendaciones ({{ recommendations|length }})</h2>
+      {% for rec in recommendations %}
+      <article class="rec-card">
+        <h3 class="h5 mb-1">{{ rec.name_es }}</h3>
+        <p class="small mb-2" style="color: var(--text-dim);">{{ rec.address }} · {{ rec.travel_time_ub }}</p>
+        <div class="click-reveal mb-2">
+          <div class="click-reveal-es">{{ rec.description_es }}</div>
+          <div class="click-reveal-en">{{ rec.description_en }}</div>
+        </div>
+        <a href="{{ rec.google_maps_url }}" target="_blank" rel="noopener" style="color: var(--accent2); font-size: 0.9rem;">
+          Abrir en Google Maps
+        </a>
+      </article>
+      {% endfor %}
+      {% else %}
+      <p style="color: var(--text-dim);">No hay resultados con esos filtros. Prueba otras opciones.</p>
+      {% endif %}
+    {% else %}
+    <p style="color: var(--text-dim);">Elige filtros y pulsa «Buscar recomendaciones» para ver el mapa y las tarjetas.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+(function () {
+  const center = {{ map_center | tojson }};
+  const recs = {{ recommendations | tojson }};
+  const map = L.map('travel-map').setView([center.lat, center.lng], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(map);
+
+  L.marker([center.lat, center.lng])
+    .addTo(map)
+    .bindPopup('<strong>Universitat de Barcelona</strong>');
+
+  const bounds = [[center.lat, center.lng]];
+  recs.forEach(function (r) {
+    const m = L.marker([r.lat, r.lng]).addTo(map);
+    m.bindPopup('<strong>' + r.name_es + '</strong><br>' + r.travel_time_ub);
+    bounds.push([r.lat, r.lng]);
+  });
+  if (recs.length) {
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+  }
+})();
+</script>
+{% endblock %}

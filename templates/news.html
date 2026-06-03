@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Noticias{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3" style="color: var(--accent); font-family: 'Playfair Display', serif;">Noticias de España</h1>
+<p class="mb-4" style="color: var(--text-dim);">Artículos en español para practicar lectura de actualidad.</p>
+
+{% if news.error and not news.articles %}
+<div class="alert alert-warning" role="alert" style="background: var(--surface2); border-color: var(--border); color: var(--text);">
+  {{ news.error }}
+</div>
+{% elif news.error %}
+<div class="alert alert-warning py-2 small" role="alert" style="background: var(--surface2); border-color: var(--border); color: var(--text-dim);">
+  {{ news.error }} (mostrando caché anterior si existe)
+</div>
+{% endif %}
+
+{% if news.articles %}
+<div class="row g-3">
+  {% for article in news.articles %}
+  <div class="col-md-6">
+    <article class="card-panel h-100 p-3">
+      <h2 class="h6 mb-2" style="color: var(--text);">{{ article.title }}</h2>
+      <p class="small mb-2" style="color: var(--text-dim);">
+        {{ article.source }}
+        {% if article.published_display %} · {{ article.published_display }}{% endif %}
+      </p>
+      <p class="mb-3" style="font-size: 0.95rem;">{{ article.description }}</p>
+      {% if article.url %}
+      <a href="{{ article.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-light">
+        Leer más
+      </a>
+      {% endif %}
+    </article>
+  </div>
+  {% endfor %}
+</div>
+{% elif not news.error %}
+<p style="color: var(--text-dim);">No hay artículos para mostrar.</p>
+{% endif %}
+
+{% if news.fetched_at %}
+<p class="mt-4 small" style="color: var(--text-dim);">Datos actualizados: caché del servidor</p>
+{% endif %}
+{% endblock %}

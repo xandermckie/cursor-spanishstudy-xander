@@ -121,11 +121,15 @@
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="nav">
-        <ul class="navbar-nav ms-auto">
+        <ul class="navbar-nav ms-auto flex-wrap justify-content-end" style="font-size: 0.9rem;">
           <li class="nav-item"><a class="nav-link{% if page == 'home' %} active{% endif %}" href="{{ url_for('home') }}">Inicio</a></li>
           <li class="nav-item"><a class="nav-link{% if page == 'reader' %} active{% endif %}" href="{{ url_for('reader') }}">Lector</a></li>
           <li class="nav-item"><a class="nav-link{% if page == 'vocab' %} active{% endif %}" href="{{ url_for('vocab') }}">Tarjetas</a></li>
           <li class="nav-item"><a class="nav-link{% if page == 'phrasebook' %} active{% endif %}" href="{{ url_for('phrasebook') }}">Frases</a></li>
+          <li class="nav-item"><a class="nav-link{% if page == 'travel' %} active{% endif %}" href="{{ url_for('travel') }}">Viajes</a></li>
+          <li class="nav-item"><a class="nav-link{% if page == 'news' %} active{% endif %}" href="{{ url_for('news') }}">Noticias</a></li>
+          <li class="nav-item"><a class="nav-link{% if page == 'history' %} active{% endif %}" href="{{ url_for('history') }}">Historia</a></li>
+          <li class="nav-item"><a class="nav-link{% if page == 'resources' %} active{% endif %}" href="{{ url_for('resources') }}">Recursos</a></li>
         </ul>
       </div>
     </div>

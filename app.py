@@ -135,6 +135,58 @@ def register_routes(app: Flask) -> None:
             download_name="estudio_abroad_phrasebook.csv",
         )
 
+    @app.route("/travel", methods=["GET", "POST"])
+    def travel():
+        filters = {
+            "time": request.values.get("time", "").strip() or None,
+            "location": request.values.get("location", "").strip() or None,
+            "distance": request.values.get("distance", "").strip() or None,
+            "mood": request.values.get("mood", "").strip() or None,
+        }
+        searched = request.method == "POST" or any(filters.values())
+        recommendations = (
+            fetcher.filter_travel_recommendations(**filters) if searched else []
+        )
+        return render_template(
+            "travel.html",
+            page="travel",
+            title="Viajes",
+            recommendations=recommendations,
+            filters=filters,
+            searched=searched,
+            map_center=fetcher.get_travel_map_center(),
+        )
+
+    @app.route("/news")
+    def news():
+        news_data = fetcher.get_spain_news()
+        return render_template(
+            "news.html",
+            page="news",
+            title="Noticias",
+            news=news_data,
+        )
+
+    @app.route("/history")
+    def history():
+        topics = fetcher.get_history_topics()
+        return render_template(
+            "history.html",
+            page="history",
+            title="Historia",
+            topics=topics,
+        )
+
+    @app.route("/resources")
+    def resources():
+        resources_list = fetcher.get_study_resources()
+        return render_template(
+            "resources.html",
+            page="resources",
+            title="Recursos",
+            resources=resources_list,
+        )
+
 
 app = create_app()
 

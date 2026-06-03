@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Recursos{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3" style="color: var(--accent); font-family: 'Playfair Display', serif;">Recursos de estudio</h1>
+<p class="mb-3" style="color: var(--text-dim);">Sitios recomendados para mejorar tu español fuera de clase.</p>
+
+<div class="click-reveal-hint" role="note">
+  ◎ &nbsp;Toca el texto para ver inglés
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+  {% for r in resources %}
+  <div class="col">
+    <article class="card-panel h-100 p-3 d-flex flex-column">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <h2 class="h5 mb-0" style="color: var(--text);">{{ r.name }}</h2>
+        <span class="badge badge-cat">{{ r.skill_es }}</span>
+      </div>
+      <div class="click-reveal flex-grow-1 mb-3">
+        <div class="click-reveal-es">{{ r.description_es }}</div>
+        <div class="click-reveal-en">{{ r.description_en }}</div>
+      </div>
+      <a href="{{ r.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-light mt-auto align-self-start">
+        Visitar sitio
+      </a>
+    </article>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
