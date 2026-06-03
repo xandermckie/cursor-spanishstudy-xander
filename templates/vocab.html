@@ -115,6 +115,7 @@
   </div>
 
   <form method="post" action="{{ url_for('vocab_record') }}" id="vocab-form" class="flex justify-center gap-2 mt-4 hidden">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="es" value="{{ session.card.es }}">
     <input type="hidden" name="en" value="{{ session.card.en }}">
     <input type="hidden" name="next_i" value="{{ session.next_index }}">

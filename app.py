@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 from io import BytesIO
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, render_template, request, send_file, url_for
+from flask import Flask, flash, redirect, render_template, request, send_file, session, url_for
 
 import fetcher
 from scheduler import init_scheduler
@@ -19,6 +20,35 @@ logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 CACHE_FILE = DATA_DIR / "cache.json"
+DEFAULT_SECRET_KEY = "dev-change-me"
+PHRASE_MAX_LENGTH = 500
+
+
+def _parse_refresh_interval_minutes() -> int:
+    raw = os.environ.get("REFRESH_INTERVAL_MINUTES", "15")
+    try:
+        interval = int(raw)
+        if interval < 1:
+            raise ValueError("interval must be positive")
+        return interval
+    except ValueError:
+        logger.warning(
+            "Invalid REFRESH_INTERVAL_MINUTES=%r; using 15.", raw
+        )
+        return 15
+
+
+def generate_csrf_token() -> str:
+    token = session.get("csrf_token")
+    if not token:
+        token = secrets.token_hex(16)
+        session["csrf_token"] = token
+    return token
+
+
+def validate_csrf(token: str | None) -> bool:
+    expected = session.get("csrf_token")
+    return bool(token and expected and secrets.compare_digest(token, expected))
 
 
 def ensure_cache_file() -> None:
@@ -29,8 +59,15 @@ def ensure_cache_file() -> None:
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-change-me")
-    if os.environ.get("FLASK_DEBUG", "0") == "1":
+    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
+    secret_key = os.environ.get("SECRET_KEY", DEFAULT_SECRET_KEY)
+    if not debug and secret_key in ("", DEFAULT_SECRET_KEY):
+        raise RuntimeError(
+            "SECRET_KEY must be set to a unique value in production "
+            "(FLASK_DEBUG=0)."
+        )
+    app.config["SECRET_KEY"] = secret_key
+    if debug:
         app.config["TEMPLATES_AUTO_RELOAD"] = True
 
     logging.basicConfig(
@@ -40,7 +77,7 @@ def create_app() -> Flask:
 
     ensure_cache_file()
 
-    interval = int(os.environ.get("REFRESH_INTERVAL_MINUTES", "15"))
+    interval = _parse_refresh_interval_minutes()
     scheduler_on = os.environ.get("SCHEDULER_ENABLED", "true").lower() == "true"
     init_scheduler(app, interval_minutes=interval, enabled=scheduler_on)
 
@@ -49,6 +86,7 @@ def create_app() -> Flask:
         return {
             "last_refresh_display": fetcher.get_last_refresh_display(),
             "user_stats": fetcher.get_user_stats(),
+            "csrf_token": generate_csrf_token,
         }
 
     register_routes(app)
@@ -112,6 +150,9 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/vocab/record", methods=["POST"])
     def vocab_record():
+        if not validate_csrf(request.form.get("csrf_token")):
+            flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
+            return redirect(url_for("vocab"))
         es = request.form.get("es", "")
         en = request.form.get("en", "")
         missed = request.form.get("missed") == "1"
@@ -123,25 +164,32 @@ def register_routes(app: Flask) -> None:
                     "No se pudo guardar el resultado. Inténtalo de nuevo.",
                     "warning",
                 )
+            next_session = fetcher.get_vocab_session(next_i)
+            if next_session.get("complete"):
+                return redirect(url_for("vocab"))
+            return redirect(url_for("vocab", i=next_i))
         except Exception as exc:
             logger.exception("vocab_record failed: %s", exc)
             flash(
                 "No se pudo guardar el resultado. Inténtalo de nuevo.",
                 "warning",
             )
-        session = fetcher.get_vocab_session(next_i)
-        if session.get("complete"):
             return redirect(url_for("vocab"))
-        return redirect(url_for("vocab", i=next_i))
 
     @app.route("/phrasebook", methods=["GET", "POST"])
     def phrasebook():
         if request.method == "POST":
+            if not validate_csrf(request.form.get("csrf_token")):
+                flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
+                return redirect(url_for("phrasebook"))
             text = request.form.get("input", "").strip()
             if not text:
                 flash("Escribe una frase en inglés.", "warning")
-            elif len(text) > 500:
-                flash("La frase es demasiado larga (máximo 500 caracteres).", "warning")
+            elif len(text) > PHRASE_MAX_LENGTH:
+                flash(
+                    f"La frase es demasiado larga (máximo {PHRASE_MAX_LENGTH} caracteres).",
+                    "warning",
+                )
             else:
                 try:
                     if fetcher.add_phrase(text):
@@ -174,9 +222,17 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/phrasebook/<phrase_id>/edit", methods=["POST"])
     def phrasebook_edit(phrase_id: str):
+        if not validate_csrf(request.form.get("csrf_token")):
+            flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
+            return redirect(url_for("phrasebook"))
         text = request.form.get("input", "").strip()
         if not text:
             flash("La frase no puede estar vacía.", "warning")
+        elif len(text) > PHRASE_MAX_LENGTH:
+            flash(
+                f"La frase es demasiado larga (máximo {PHRASE_MAX_LENGTH} caracteres).",
+                "warning",
+            )
         else:
             try:
                 if fetcher.update_phrase(phrase_id, text):
@@ -193,6 +249,9 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/phrasebook/<phrase_id>/delete", methods=["POST"])
     def phrasebook_delete(phrase_id: str):
+        if not validate_csrf(request.form.get("csrf_token")):
+            flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
+            return redirect(url_for("phrasebook"))
         try:
             if fetcher.delete_phrase(phrase_id):
                 flash("Frase eliminada.", "success")

@@ -52,6 +52,26 @@ SPANISH_STOPWORDS = {
     "¿", "donde", "dónde", "cómo", "como", "qué", "me", "te", "le", "lo",
 }
 
+PHRASE_MAX_LENGTH = 500
+
+
+def _safe_https_url(url: str | None) -> str | None:
+    if not url or not isinstance(url, str):
+        return None
+    trimmed = url.strip()
+    if trimmed.lower().startswith("https://"):
+        return trimmed
+    return None
+
+
+def _csv_cell(value: str | None) -> str:
+    if not value:
+        return ""
+    text = str(value)
+    if text and text[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return f"'{text}"
+    return text
+
 def _utc_day_index(pool_len: int) -> int:
     if pool_len <= 0:
         return 0
@@ -70,18 +90,29 @@ def _load_cache() -> dict[str, Any]:
     try:
         with CACHE_FILE.open(encoding="utf-8") as f:
             return json.load(f)
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError as exc:
+        logger.error("Corrupt cache file %s: %s", CACHE_FILE, exc)
+        return {}
+    except OSError as exc:
+        logger.error("Failed to read cache file %s: %s", CACHE_FILE, exc)
         return {}
 
 
 def _save_cache(cache: dict[str, Any]) -> bool:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
+    tmp_path = CACHE_FILE.with_suffix(".json.tmp")
     try:
-        with CACHE_FILE.open("w", encoding="utf-8") as f:
+        with tmp_path.open("w", encoding="utf-8") as f:
             json.dump(cache, f, ensure_ascii=False, indent=2)
+        tmp_path.replace(CACHE_FILE)
         return True
     except OSError as exc:
         logger.error("Failed to write cache file: %s", exc)
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
         return False
 
 
@@ -587,6 +618,13 @@ def record_flashcard_result(
         cache = _load_cache()
         deck = _ensure_flashcard_deck(cache)
         total = len(deck)
+        if total == 0 or index < 0 or index >= total:
+            logger.warning("record_flashcard_result: invalid index %s", index)
+            return False
+        card = deck[index]
+        if card.get("es", "").strip() != es.strip() or card.get("en", "").strip() != en.strip():
+            logger.warning("record_flashcard_result: card mismatch at index %s", index)
+            return False
         session = _ensure_vocab_session(cache)
         session.setdefault("results", [])
         session["results"].append({"es": es, "en": en, "missed": missed})
@@ -660,7 +698,7 @@ def add_phrase(user_input: str) -> dict[str, Any] | None:
 
 def update_phrase(phrase_id: str, user_input: str) -> bool:
     text = user_input.strip()
-    if not text:
+    if not text or len(text) > PHRASE_MAX_LENGTH:
         return False
     try:
         es_text, _ = fetch_translation(text, "en", "es")
@@ -704,10 +742,10 @@ def export_phrasebook_csv() -> str:
             if not isinstance(entry, dict):
                 continue
             writer.writerow([
-                entry.get("input", ""),
-                entry.get("es", ""),
-                entry.get("created_at", ""),
-                entry.get("updated_at", ""),
+                _csv_cell(entry.get("input", "")),
+                _csv_cell(entry.get("es", "")),
+                _csv_cell(entry.get("created_at", "")),
+                _csv_cell(entry.get("updated_at", "")),
             ])
         return output.getvalue()
     except Exception as exc:
@@ -987,10 +1025,13 @@ def _parse_news_api_articles(
         if spain_only and not _is_spain_related_article(title, description):
             continue
         source = item.get("source") or {}
+        safe_url = _safe_https_url(item.get("url", ""))
+        if not safe_url:
+            continue
         articles.append({
             "title": title,
             "description": description,
-            "url": item.get("url", ""),
+            "url": safe_url,
             "source": source.get("name", "Desconocido"),
             "publishedAt": item.get("publishedAt", ""),
             "published_display": format_news_date(item.get("publishedAt")),

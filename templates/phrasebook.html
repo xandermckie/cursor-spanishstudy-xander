@@ -14,6 +14,7 @@
 <div class="card mb-4">
   <h2 class="h3" style="font-size: 16px; font-weight: 700; margin: 0 0 12px;">Añadir frase</h2>
   <form method="post" action="{{ url_for('phrasebook') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label class="form-label">Escribe la frase en inglés; se traduce al español al guardar.</label>
     <div class="flex gap-2 flex-wrap">
       <input type="text" class="form-control" name="input" placeholder="e.g. I need to renew my student visa" required maxlength="500" style="flex: 1; min-width: 200px;">
@@ -33,12 +34,14 @@
       <button type="button" class="btn btn-secondary btn-sm phrase-edit-btn" data-target="edit-{{ p.id }}">Editar</button>
       <form method="post" action="{{ url_for('phrasebook_delete', phrase_id=p.id) }}" class="inline-form"
             onsubmit="return confirm('¿Eliminar esta frase?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
       </form>
     </div>
     <div id="edit-{{ p.id }}" class="phrase-edit-panel hidden mt-2">
       <form method="post" action="{{ url_for('phrasebook_edit', phrase_id=p.id) }}" class="flex gap-2">
-        <input type="text" class="form-control" name="input" value="{{ p.input }}" required>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="text" class="form-control" name="input" value="{{ p.input }}" required maxlength="500">
         <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
       </form>
     </div>
