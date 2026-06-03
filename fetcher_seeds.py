@@ -407,3 +407,73 @@ READER_PASSAGES_SEED = [
         ),
     },
 ]
+
+# History page — long Spanish body + English (click-to-reveal); keyed by HISTORY_TOPICS in fetcher.py
+HISTORY_TOPICS_BODY: dict[str, dict[str, str]] = {
+    "civil_war": {
+        "body_es": (
+            "La Guerra Civil Española (1936–1939) enfrentó al bando republicano, apoyado por anarquistas, socialistas y catalanes que defendían la Segunda República, contra los sublevados nacionalistas liderados por Francisco Franco, con apoyo de la Alemania nazi y la Italia fascista. "
+            "El conflicto empezó con un golpe militar contra el gobierno elegido y se extendió por casi tres años de combates brutales, bombardeos sobre ciudades como Barcelona y Madrid, y una profunda división social. "
+            "En Cataluña, el republicanismo y el autogobierno catalán formaron parte del frente leal a la República; Barcelona vivió episodios decisivos y, al final, la ocupación franquista suprimió la Generalitat y el catalán en la escuela y la administración durante décadas. "
+            "La guerra dejó cientos de miles de muertos, exilio masivo y un régimen autoritario que duró hasta la muerte de Franco en 1975. "
+            "Para entender la España actual — debates sobre memoria histórica, estatutos autonómicos y símbolos en la calle — conviene conocer cómo esta guerra marcó familias, instituciones y el lenguaje político que aún se usa hoy."
+        ),
+        "body_en": (
+            "The Spanish Civil War (1936–1939) pitted the Republican side—backed by anarchists, socialists, and Catalans defending the Second Republic—against Nationalist rebels led by Francisco Franco, with support from Nazi Germany and Fascist Italy. "
+            "The conflict began with a military coup against the elected government and lasted nearly three years of brutal fighting, air raids on cities such as Barcelona and Madrid, and deep social division. "
+            "In Catalonia, republicanism and Catalan self-government were part of the loyal front; Barcelona saw decisive episodes and, in the end, Francoist occupation suppressed the Generalitat and Catalan in schools and public life for decades. "
+            "The war left hundreds of thousands dead, mass exile, and an authoritarian regime that lasted until Franco's death in 1975. "
+            "To understand Spain today—debates on historical memory, autonomy statutes, and symbols in the street—it helps to see how this war shaped families, institutions, and the political language still used now."
+        ),
+    },
+    "picasso": {
+        "body_es": (
+            "Pablo Ruiz Picasso nació en Málaga en 1881 y se formó como artista entre España y Francia, pero mantuvo lazos fuertes con Barcelona, donde abrió estudios y expuso en sus primeros años de fama. "
+            "En la ciudad catalana convivió con el modernismo y con otros creadores; el Museu Picasso de Barcelona conserva una de las mejores colecciones de su obra juvenil y de las etapas azul y rosa. "
+            "Picasso revolucionó el arte del siglo XX: del realismo académico pasó al cubismo, colaboró con Georges Braque y reinterpretó formas, perspectiva y materiales en pintura, escultura y cerámica. "
+            "Su mural «Guernica» (1937) se convirtió en símbolo universal contra el bombardeo de la villa vasca durante la Guerra Civil y sigue siendo referencia en protestas y museos de todo el mundo. "
+            "Estudiar su trayectoria en español permite conectar vocabulario de arte, política y ciudad: ver una obra en el museo del Born o en Málaga después de leer sobre ella en clase da contexto cultural real, no solo nombres en un libro de texto."
+        ),
+        "body_en": (
+            "Pablo Ruiz Picasso was born in Málaga in 1881 and trained as an artist in Spain and France, but kept strong ties with Barcelona, where he opened studios and showed work in his early years of fame. "
+            "In the Catalan city he moved among modernism and other creators; the Picasso Museum in Barcelona holds one of the finest collections of his youth and Blue and Rose periods. "
+            "Picasso revolutionized twentieth-century art: from academic realism he moved to Cubism, worked with Georges Braque, and reshaped form, perspective, and materials in painting, sculpture, and ceramics. "
+            "His mural «Guernica» (1937) became a universal symbol against the bombing of the Basque town during the Civil War and remains a reference in protests and museums worldwide. "
+            "Studying his career in Spanish connects art, politics, and city vocabulary: seeing a work in the Born museum or in Málaga after reading about it in class gives real cultural context, not only names in a textbook."
+        ),
+    },
+    "football": {
+        "body_es": (
+            "El fútbol en España es mucho más que deporte: es identidad regional, economía de medios y ritual social semanal. "
+            "El FC Barcelona y el Real Madrid encarnan el «clásico», el partido más visto del país, donde se mezclan rivalidad deportiva, símbolos catalanes y castellanos y narrativas políticas según el momento histórico. "
+            "El Barça se identifica con el lema «Més que un club» y con la defensa del catalán en el estadio; el Madrid, con éxitos europeos y una imagen internacional muy marcada. "
+            "La Liga, la Copa del Rey y la Champions generan un vocabulario útil para estudiantes: gol, fuera de juego, entrenador, afición, descenso, fichaje. "
+            "En Barcelona, ir a un partido en el Spotify Camp Nou o verlo en un bar del barrio es una inmersión lingüística: escucharás gritos, cánticos y análisis en español y catalán. "
+            "Aunque no sigas el deporte, entender por qué un domingo de clásico vacía calles o llena terrazas ayuda a leer la cultura popular española con más matices."
+        ),
+        "body_en": (
+            "Football in Spain is far more than sport: it is regional identity, media business, and a weekly social ritual. "
+            "FC Barcelona and Real Madrid embody «El Clásico», the country's most watched match, mixing sporting rivalry, Catalan and Castilian symbols, and political narratives depending on the historical moment. "
+            "Barça is tied to the motto «More than a club» and to defending Catalan in the stadium; Madrid, to European success and a strong international image. "
+            "La Liga, the Copa del Rey, and the Champions League offer useful vocabulary for learners: goal, offside, coach, fans, relegation, signing. "
+            "In Barcelona, attending a match at Spotify Camp Nou or watching in a neighborhood bar is language immersion: you will hear shouts, chants, and analysis in Spanish and Catalan. "
+            "Even if you do not follow the sport, understanding why a Clásico Sunday empties streets or fills terraces helps you read Spanish popular culture with more nuance."
+        ),
+    },
+    "gaudi": {
+        "body_es": (
+            "Antoni Gaudí i Cornet (1852–1926) es el arquitecto más emblemático del modernismo catalán y define, para muchos visitantes, la imagen de Barcelona. "
+            "Su obra mezcla inspiración natural —formas de plantas, animales y oleaje— con estructuras innovadoras, trencadís (mosaico de cerámica rota) y una fe católica que impregna proyectos como la Sagrada Família, aún en construcción más de un siglo después de su inicio. "
+            "Además del templo expiatorio, diseñó o intervino en la Casa Batlló, la Pedrera, el Park Güell y la Casa Vicens; caminar por el Eixample o subir al parque permite ver cómo el urbanismo de la ciudad se volvió escenario de su imaginación. "
+            "Gaudí murió tras un accidente con un tranvía cuando la Sagrada Família llevaba solo una parte levantada; desde entonces arquitectos y artesanos han continuado el proyecto según sus planos y modelos. "
+            "Para un estudiante en Barcelona, visitar estas obras conociendo vocabulario de arquitectura —fachada, nave, catenaria, balcón— convierte una salida de fin de semana en práctica de español ligada al entorno inmediato de la universidad y del metro que usa cada día."
+        ),
+        "body_en": (
+            "Antoni Gaudí i Cornet (1852–1926) is the most emblematic architect of Catalan modernism and, for many visitors, defines the image of Barcelona. "
+            "His work blends natural inspiration—shapes of plants, animals, and waves—with innovative structures, trencadís (broken-tile mosaic), and a Catholic faith that runs through projects such as the Sagrada Família, still under construction more than a century after it began. "
+            "Beyond the expiatory temple, he designed or shaped Casa Batlló, La Pedrera, Park Güell, and Casa Vicens; walking the Eixample or climbing the park shows how the city's urban plan became a stage for his imagination. "
+            "Gaudí died after a tram accident when the Sagrada Família had only part of its structure raised; since then architects and craftspeople have continued the project from his plans and models. "
+            "For a student in Barcelona, visiting these sites with architecture vocabulary—façade, nave, catenary, balcony—turns a weekend outing into Spanish practice tied to the university setting and the metro used every day."
+        ),
+    },
+}

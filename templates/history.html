@@ -41,7 +41,7 @@
 <p class="mb-3" style="color: var(--text-dim);">Temas clave para entender la cultura española y catalana.</p>
 
 <div class="click-reveal-hint" role="note">
-  ◎ &nbsp;Toca el texto para ver el resumen en inglés
+  ◎ &nbsp;Toca el texto para ver inglés
 </div>
 
 <ul class="nav nav-tabs mb-3" id="historyTabs" role="tablist">
@@ -68,13 +68,13 @@
       {% endif %}
       <h2 class="h4 mb-2" style="color: var(--text); font-family: 'Playfair Display', serif;">{{ topic.title_es }}</h2>
       <p class="mb-3" style="color: var(--text-dim);">{{ topic.intro_es }}</p>
-      {% if topic.extract %}
+      {% if topic.body_es %}
       <div class="click-reveal mb-3">
-        <div class="click-reveal-es">Resumen en inglés — toca para ver</div>
-        <div class="click-reveal-en" style="line-height: 1.75;">{{ topic.extract }}</div>
+        <div class="click-reveal-es" style="line-height: 1.75;">{{ topic.body_es }}</div>
+        <div class="click-reveal-en" style="line-height: 1.75;">{{ topic.body_en }}</div>
       </div>
       {% else %}
-      <p class="text-muted" style="color: var(--text-dim);">No se pudo cargar el resumen. Inténtalo más tarde.</p>
+      <p style="color: var(--text-dim);">No se pudo cargar el texto. Inténtalo más tarde.</p>
       {% endif %}
       {% if topic.wiki_url %}
       <a href="{{ topic.wiki_url }}" target="_blank" rel="noopener" style="color: var(--accent);">

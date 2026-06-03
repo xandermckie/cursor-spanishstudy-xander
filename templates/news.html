@@ -3,7 +3,7 @@
 
 {% block content %}
 <h1 class="h3 mb-3" style="color: var(--accent); font-family: 'Playfair Display', serif;">Noticias de España</h1>
-<p class="mb-4" style="color: var(--text-dim);">Artículos en español para practicar lectura de actualidad.</p>
+<p class="mb-4" style="color: var(--text-dim);">Titulares en español de medios españoles, filtrados para noticias sobre España.</p>
 
 {% if news.error and not news.articles %}
 <div class="alert alert-warning" role="alert" style="background: var(--surface2); border-color: var(--border); color: var(--text);">
@@ -40,6 +40,6 @@
 {% endif %}
 
 {% if news.fetched_at %}
-<p class="mt-4 small" style="color: var(--text-dim);">Datos actualizados: caché del servidor</p>
+<p class="mt-4 small" style="color: var(--text-dim);">Fuentes: NewsAPI (español, filtro España). Caché del servidor ~1 hora.</p>
 {% endif %}
 {% endblock %}

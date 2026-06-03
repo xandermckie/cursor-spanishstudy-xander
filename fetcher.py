@@ -24,6 +24,7 @@ from fetcher_seeds import (
     DAILY_PHRASES_ES,
     DAILY_SENTENCES_ES,
     FLASHCARD_DECK_SEED,
+    HISTORY_TOPICS_BODY,
     READER_PASSAGES_SEED,
 )
 from fetcher_travel import (
@@ -456,6 +457,8 @@ def run_refresh() -> None:
     cache.setdefault("phrasebook", [])
     cache.setdefault("weak_words", {})
     _save_cache(cache)
+    if NEWS_API_KEY:
+        get_spain_news()
 
 
 # --- Travel, news, history, resources pages ---
@@ -464,7 +467,14 @@ NEWS_API_URL = os.environ.get(
     "NEWS_API_URL", "https://newsapi.org/v2/everything"
 )
 NEWS_API_KEY = os.environ.get("NEWS_API_KEY", "")
+SPAIN_NEWS_RE = re.compile(
+    r"\b(españa|espana|español|espanol|española|espanola|barcelona|madrid|"
+    r"cataluña|catalunya|valencia|sevilla|andaluc|galicia|bilbao|zaragoza|"
+    r"ibex|sánchez|sanchez|gobierno\s+español|reino\s+de\s+españa)\b",
+    re.IGNORECASE,
+)
 WIKIPEDIA_SUMMARY_URL = "https://en.wikipedia.org/api/rest_v1/page/summary"
+HISTORY_CACHE_VERSION = 2
 
 HISTORY_TOPICS = [
     {
@@ -574,6 +584,51 @@ def get_travel_map_center() -> dict[str, float]:
     return {"lat": UB_LAT, "lng": UB_LNG}
 
 
+def _news_api_request_params() -> dict[str, str | int]:
+    """Build NewsAPI query params for Spain-focused Spanish articles."""
+    params: dict[str, str | int] = {"pageSize": 12, "apiKey": NEWS_API_KEY}
+    if "top-headlines" in NEWS_API_URL:
+        params["country"] = "es"
+        params["category"] = "general"
+    else:
+        params["q"] = (
+            '(España OR Spain OR Madrid OR Barcelona OR Valencia OR Cataluña) '
+            "AND NOT (Mexico OR Argentina OR Chile)"
+        )
+        params["language"] = "es"
+        params["searchIn"] = "title,description"
+        params["sortBy"] = "publishedAt"
+    return params
+
+
+def _is_spain_related_article(title: str, description: str) -> bool:
+    """Keep articles that clearly mention Spain (filters generic world news)."""
+    return bool(SPAIN_NEWS_RE.search(f"{title} {description}"))
+
+
+def _parse_news_api_articles(
+    raw: list[dict[str, Any]], *, spain_only: bool = True
+) -> list[dict[str, Any]]:
+    articles: list[dict[str, Any]] = []
+    for item in raw:
+        title = (item.get("title") or "").strip()
+        description = (item.get("description") or "").strip()
+        if not title or not description:
+            continue
+        if spain_only and not _is_spain_related_article(title, description):
+            continue
+        source = item.get("source") or {}
+        articles.append({
+            "title": title,
+            "description": description,
+            "url": item.get("url", ""),
+            "source": source.get("name", "Desconocido"),
+            "publishedAt": item.get("publishedAt", ""),
+            "published_display": format_news_date(item.get("publishedAt")),
+        })
+    return articles
+
+
 def get_spain_news() -> dict[str, Any]:
     cache = _load_cache()
     cached = cache.get("spain_news")
@@ -594,33 +649,17 @@ def get_spain_news() -> dict[str, Any]:
     try:
         response = requests.get(
             NEWS_API_URL,
-            params={
-                "q": "Spain",
-                "language": "es",
-                "sortBy": "publishedAt",
-                "pageSize": 12,
-                "apiKey": NEWS_API_KEY,
-            },
+            params=_news_api_request_params(),
             timeout=15,
         )
         response.raise_for_status()
         data = response.json()
+        if data.get("status") == "error":
+            raise ValueError(data.get("message", "NewsAPI error"))
         raw = data.get("articles") or []
-        articles = []
-        for item in raw:
-            title = (item.get("title") or "").strip()
-            description = (item.get("description") or "").strip()
-            if not title or not description:
-                continue
-            source = item.get("source") or {}
-            articles.append({
-                "title": title,
-                "description": description,
-                "url": item.get("url", ""),
-                "source": source.get("name", "Desconocido"),
-                "publishedAt": item.get("publishedAt", ""),
-                "published_display": format_news_date(item.get("publishedAt")),
-            })
+        articles = _parse_news_api_articles(raw)
+        if not articles and raw:
+            articles = _parse_news_api_articles(raw, spain_only=False)
         now = datetime.now(timezone.utc).isoformat()
         cache["spain_news"] = {"articles": articles, "fetched_at": now}
         _save_cache(cache)
@@ -679,6 +718,22 @@ def _fetch_wikipedia_summary(wiki_title: str) -> dict[str, Any] | None:
         return None
 
 
+def _history_body_for_key(key: str) -> dict[str, str]:
+    body = HISTORY_TOPICS_BODY.get(key, {})
+    return {
+        "body_es": body.get("body_es", ""),
+        "body_en": body.get("body_en", ""),
+    }
+
+
+def _history_cache_valid(entry: dict[str, Any] | None) -> bool:
+    return bool(
+        entry
+        and entry.get("version") == HISTORY_CACHE_VERSION
+        and _cache_is_fresh(entry.get("fetched_at"), 86400)
+    )
+
+
 def get_history_topics() -> list[dict[str, Any]]:
     cache = _load_cache()
     cache.setdefault("history", {})
@@ -686,37 +741,59 @@ def get_history_topics() -> list[dict[str, Any]]:
 
     for meta in HISTORY_TOPICS:
         key = meta["key"]
+        bodies = _history_body_for_key(key)
         entry = cache["history"].get(key)
-        if entry and _cache_is_fresh(entry.get("fetched_at"), 86400):
+
+        if _history_cache_valid(entry):
             thumb = entry.get("thumbnail", "")
             if thumb and re.search(r"/\d{2,3}px-", thumb):
                 wiki = _fetch_wikipedia_summary(meta["wiki_title"])
                 if wiki and wiki.get("thumbnail"):
                     entry = {**entry, "thumbnail": wiki["thumbnail"]}
                     cache["history"][key] = entry
-            topics_out.append({**meta, **entry})
+            topics_out.append({
+                **meta,
+                **bodies,
+                "thumbnail": entry.get("thumbnail", ""),
+                "wiki_url": entry.get("wiki_url", ""),
+            })
             continue
 
         wiki = _fetch_wikipedia_summary(meta["wiki_title"])
         now = datetime.now(timezone.utc).isoformat()
         if wiki:
             entry = {
-                "extract": wiki.get("extract", ""),
                 "thumbnail": wiki.get("thumbnail", ""),
                 "wiki_url": wiki.get("wiki_url", ""),
                 "fetched_at": now,
+                "version": HISTORY_CACHE_VERSION,
             }
         elif entry:
-            entry = dict(entry)
+            entry = {
+                "thumbnail": entry.get("thumbnail", ""),
+                "wiki_url": entry.get(
+                    "wiki_url",
+                    f"https://en.wikipedia.org/wiki/{meta['wiki_title']}",
+                ),
+                "fetched_at": now,
+                "version": HISTORY_CACHE_VERSION,
+            }
         else:
             entry = {
-                "extract": "",
                 "thumbnail": "",
                 "wiki_url": f"https://en.wikipedia.org/wiki/{meta['wiki_title']}",
                 "fetched_at": now,
+                "version": HISTORY_CACHE_VERSION,
             }
+        if not bodies["body_es"] and wiki and wiki.get("extract"):
+            bodies["body_es"] = wiki["extract"]
         cache["history"][key] = entry
-        topics_out.append({**meta, **entry})
+        topics_out.append({
+            **meta,
+            **bodies,
+            "thumbnail": entry.get("thumbnail", ""),
+            "wiki_url": entry.get("wiki_url", ""),
+        })
 
     _save_cache(cache)
     return topics_out

@@ -5,7 +5,7 @@
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
-  /* Bootstrap img { max-width: 100% } breaks Leaflet tiles only — do not style marker icons */
+  /* Bootstrap img { max-width: 100% } breaks Leaflet tiles */
   body.travel-page .leaflet-container img.leaflet-tile {
     max-width: none !important;
     max-height: none !important;
@@ -116,7 +116,8 @@
   </div>
 
   <div class="col-lg-8 travel-map-column">
-    <div id="travel-map" class="mb-3" role="region" aria-label="Mapa de Barcelona"></div>
+    <div id="travel-map" class="mb-2" role="region" aria-label="Mapa de Barcelona (orientación)"></div>
+    <p class="small mb-3" style="color: var(--text-dim);">Mapa de orientación — las direcciones están en cada recomendación.</p>
     {% if searched %}
       {% if recommendations %}
       <h2 class="h6 mb-3" style="color: var(--accent);">Recomendaciones ({{ recommendations|length }})</h2>
@@ -137,7 +138,7 @@
       <p style="color: var(--text-dim);">No hay resultados con esos filtros. Prueba otras opciones.</p>
       {% endif %}
     {% else %}
-    <p style="color: var(--text-dim);">Elige filtros y pulsa «Buscar recomendaciones» para ver lugares en el mapa y en las tarjetas (con dirección).</p>
+    <p style="color: var(--text-dim);">Elige filtros y pulsa «Buscar recomendaciones» para ver tarjetas con dirección y enlace a Google Maps.</p>
     {% endif %}
   </div>
 </div>
@@ -148,23 +149,6 @@
 <script>
 (function () {
   const center = {{ map_center | tojson }};
-  const recs = {{ recommendations | tojson }};
-
-  const placeStyle = {
-    radius: 7,
-    color: '#c8a96e',
-    weight: 2,
-    fillColor: '#7eb8a0',
-    fillOpacity: 0.9
-  };
-
-  function escapeHtml(s) {
-    return String(s)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
 
   function initTravelMap() {
     const el = document.getElementById('travel-map');
@@ -175,26 +159,13 @@
     const map = L.map(el, {
       scrollWheelZoom: true,
       attributionControl: true
-    }).setView([center.lat, center.lng], recs.length ? 12 : 13);
+    }).setView([center.lat, center.lng], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       subdomains: ['a', 'b', 'c'],
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
-
-    if (recs.length) {
-      const bounds = L.latLngBounds();
-      recs.forEach(function (r) {
-        const popup = '<strong>' + escapeHtml(r.name_es) + '</strong><br>' +
-          escapeHtml(r.address) + '<br><em>' + escapeHtml(r.travel_time_ub) + '</em>';
-        L.circleMarker([r.lat, r.lng], placeStyle)
-          .addTo(map)
-          .bindPopup(popup);
-        bounds.extend([r.lat, r.lng]);
-      });
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-    }
 
     let resizeTimer;
     function fixSize() {
