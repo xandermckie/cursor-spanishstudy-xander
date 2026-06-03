@@ -100,6 +100,17 @@ You can browse the reader, news, and travel pages without signing in. Phrasebook
 
 **Note:** On Render's free tier, disk storage is ephemeral — user files may not survive redeploys. Use local development for persistent testing.
 
+### Development
+
+Install dev dependencies and run the test suite:
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/ -v
+```
+
+Tests use a temporary `data/` directory (via `pytest.ini` + fixtures in `tests/conftest.py`) so your local cache and user files are not modified.
+
 ## How It Works
 
 Estudio Abroad is a Flask app with no database. Shared content (daily word, translations, news, reader passages) lives in `data/cache.json`. Each registered user gets their own JSON file at `data/users/{user_id}.json` for phrasebook entries, weak words, vocab session progress, and XP stats. Profile photos are stored under `data/uploads/{user_id}/`.
