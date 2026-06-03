@@ -1,111 +1,46 @@
-# Estudio Abroad — Cursor Handoff
+# Handoff — Estudio Abroad
+*Generated: 2026-06-03*
 
-## Project Overview
-Flask web app for senior college students studying abroad in Barcelona.
-Spanish-first UX: all text displays in Spanish by default; English revealed on hover (site-wide, except flashcards and quizzes).
+## Session goal
+Harden auth/vocab backend after user-account rollout: sequential flashcard sessions, session-fixation fix, request-scoped cache reads, legacy migration guard, and a pytest integration suite.
 
-**Repo:** https://github.com/xandermckie/cursor-spanishstudy-xander  
-**Stack:** Python/Flask + Jinja2 templates, no frontend framework  
-**Translation:** MyMemory API (`https://api.mymemory.translated.net/get`)  
-**Definitions:** DictionaryAPI.dev  
-**Cache:** `data/cache.json` (all translation results cached here to stay under rate limits — do not make uncached API calls)  
-**Deploy:** Render (gunicorn)
+## Status
+**Completed:**
+- User auth (register/login/profile/avatar) committed on `main` — per-user JSON in `data/users/`
+- Homepage UI: word of day, daily sentence, weak words, hover-reveal (`templates/index.html`)
+- **Uncommitted (working):** vocab session state machine (`expected_index`, `visited_indices`); POST `/vocab/restart` with CSRF (replaces GET `?restart=1`); `_establish_session()` clears session on login/register; Flask `g`-scoped cache for global + user files; `get_user_nav_info()` for nav avatar; `get_homepage()` no longer inline-refreshes; dictionary API URL encoding; registration rollback if index save fails; legacy migration only when index empty + global cache has legacy keys
+- **Tests:** `tests/` (11 tests) — all passing via `python -m pytest tests/ -q`
 
----
+**In progress:**
+- Four modified files + untracked `tests/`, `pytest.ini`, `requirements-dev.txt` — not committed
 
-## Current File Structure
-```
-app.py           — Flask app factory + all routes
-fetcher.py       — All API calls, cache read/write, data helpers
-scheduler.py     — APScheduler background refresh (every 15 min)
-templates/       — Jinja2 HTML templates
-data/cache.json  — Runtime cache (gitignored)
-planning/        — Planning docs (ignore)
-```
+**Next action:**
+- Review diff, commit the hardening + test suite, then push if desired
 
-## Routes (current)
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/` | Home — word of day, daily sentence, weak words |
-| GET | `/reader` | Fog-reveal reading passages |
-| GET | `/vocab` | Flashcard session |
-| POST | `/vocab/record` | Record flashcard miss/pass |
-| GET/POST | `/phrasebook` | Phrase book (add, view) |
-| POST | `/phrasebook/<id>/edit` | Edit a phrase |
-| POST | `/phrasebook/<id>/delete` | Delete a phrase |
-| GET | `/phrasebook/export` | Download CSV |
+## Key decisions
+- **Sequential vocab only:** Server tracks `expected_index`; client `next_i` URL param removed — prevents deck skip/cheat (`fetcher.record_flashcard_result`)
+- **No inline refresh on homepage miss:** Scheduler owns API refresh; avoids request-thread blocking and duplicate API calls
+- **Don't save on stats read:** `_compute_user_stats()` is read-only; `_ensure_user_stats()` only persists when defaults are backfilled
+- **Session regeneration:** `_establish_session()` in `app.py:88` — mitigates session fixation after auth
+- **Shared global cache + per-user files:** Translations/deck in `data/cache.json`; phrasebook/stats/vocab in `data/users/<uuid>.json` via `user_store.py`
 
----
+## Tried and abandoned
+- **GET `/vocab?restart=1`:** Replaced by POST `/vocab/restart` — restart must be CSRF-protected and login-required
+- **Index-based vocab navigation (`?i=`):** Removed — caused skip-to-last-card exploit
 
-## What's Already Working ✅
-- App renamed to **Estudio Abroad** (README says so, verify in templates)
-- Daily sentence (ES + EN) fetched and cached
-- Word of day: `es`, `en`, `definition`, `phonetic`, `example_es`, `example_en` all stored in cache
-- Weak words ranked by `miss_count` descending (`get_weak_words()` in fetcher.py)
-- Flashcard deck with 10 seed cards; misses recorded to `weak_words` in cache
-- Phrase book: add, edit, delete, export CSV — all working
-- Translation caching via SHA-256 keyed `cache["translations"]`
-- Last refresh formatted as `2026-06-03 10:25 AM CST` via `format_refresh_time()` in fetcher.py
-- APScheduler background refresh every 15 min (no manual refresh button)
-- Footer signature: "Created by and for Xander McKie" linking to https://github.com/xandermckie
+## Critical context
+- `app.py` — routes, `_establish_session`, `vocab_restart`, `_current_user_context` uses `fetcher.get_user_nav_info`
+- `fetcher.py` — `_load_cache`/`_load_user_cache` (Flask `g` memoization), `get_vocab_session(user_id)` (no index arg), `record_flashcard_result` validation
+- `user_store.py` — `_global_cache_has_legacy_user_data()`, registration rollback on index failure
+- `templates/vocab.html` — restart is POST form with CSRF
+- `tests/conftest.py` — tmp data dir, fake translations, `SCHEDULER_ENABLED=false`
+- Env: `SECRET_KEY` required when `FLASK_DEBUG=0`; optional `MYMEMORY_EMAIL`, `NEWSAPI_KEY`
+- Deploy: Render + gunicorn; demo URL in README
 
----
+## Open questions
+- Commit message scope: one commit for hardening + tests, or split?
+- `cursorhandoff.md` describes a full Duolingo-style redesign — not started in code; reference only
+- `notes/self-review.md` documents 32 deferred items (cache locking, `/travel` CSRF, etc.)
 
-## What Still Needs Work ❌
-
-### 1. Daily Word display (index.html)
-The `word_of_day` data is complete in the cache (`es`, `phonetic`, `definition`, `example_es`) but the template is not displaying it correctly. Fix the template to:
-- Show `word_of_day.es` prominently (large bold heading)
-- Show pronunciation: `word_of_day.phonetic`
-- Show English meaning: `word_of_day.en`
-- Show example sentence in Spanish: `word_of_day.example_es`
-
-### 2. Daily Sentence display (index.html)
-- Show `daily_sentence.es` as the primary text
-- English (`daily_sentence.en`) should only appear on hover (consistent with site-wide reveal behavior)
-
-### 3. Site-wide Spanish-first hover reveal
-Every piece of English text on the site should be hidden by default and revealed on cursor hover.
-- Implement as a CSS/JS utility class (e.g., `.reveal-on-hover`) applied globally
-- **Exception:** Do NOT apply to flashcard cards (`/vocab`) or any quiz UI — the challenge must remain intact
-
-### 4. Weak Words section (index.html)
-- Render the `weak_words` list passed from `get_homepage()`
-- Display ranked by `miss_count` descending (fetcher already sorts this)
-- Show ES word, EN meaning, miss count
-- If list is empty, show a placeholder: e.g. "Complete some flashcards to see your weak words here."
-
-### 5. Remove Quiz page
-- There is no quiz route in `app.py` currently, but check all templates for any nav links or references to a quiz/cuestionario page and remove them
-
-### 6. Footer cleanup (index.html / base template)
-- Remove Quick Links section from the landing page footer
-- Keep "Last Cache Refresh" — already formatted correctly via `homepage.last_refresh_display`
-- Signature line should read: `Created by and for` **[Xander McKie](https://github.com/xandermckie)**
-
----
-
-## Key Decisions Made
-- Phrase book persists in `data/cache.json` under `cache["phrasebook"]` — same mechanism as all other cached data
-- No standalone refresh button anywhere — browser refresh only
-- Export CSV button lives on the `/phrasebook` page (already implemented in route)
-- Translation rate limiting: MyMemory free tier allows ~1000 words/day unauthenticated; set `MYMEMORY_EMAIL` env var to raise limit to 10K/day. All calls go through `fetch_translation()` which checks cache first — never call the API directly
-- Background scheduler runs `run_refresh()` in `scheduler.py` every 15 minutes
-
----
-
-## Next Steps (in order)
-1. Fix `index.html` — Daily Word display
-2. Fix `index.html` — Daily Sentence display  
-3. Implement site-wide hover reveal CSS/JS (skip flashcard pages)
-4. Build out Weak Words section in `index.html`
-5. Audit all templates for quiz nav links and remove
-6. Clean up footer in base template
-
----
-
-## Do Not Touch
-- `fetch_translation()` logic in fetcher.py — caching is intentional
-- `scheduler.py` — background refresh is working correctly
-- `/phrasebook/export` route — already implemented
-- `format_refresh_time()` — already correct format
+## Resume instruction
+Continue from uncommitted backend hardening — review `git diff`, run `python -m pytest tests/ -q`, then commit the four modified files plus `tests/`, `pytest.ini`, and `requirements-dev.txt`. Start by reading `fetcher.py` (`record_flashcard_result`, `get_vocab_session`) and `tests/test_vocab.py`.
