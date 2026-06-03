@@ -1,13 +1,14 @@
-"""Estudio Personal — Flask skeleton (routes stubbed, no business logic yet)."""
+"""Estudio Abroad — Flask app for Barcelona Spanish study."""
 
 from __future__ import annotations
 
 import logging
 import os
+from io import BytesIO
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, flash, redirect, render_template, request, send_file, url_for
 
 import fetcher
 from scheduler import init_scheduler
@@ -52,7 +53,7 @@ def register_routes(app: Flask) -> None:
         return render_template(
             "index.html",
             page="home",
-            title="Estudio Personal",
+            title="Inicio",
             homepage=homepage,
         )
 
@@ -62,57 +63,76 @@ def register_routes(app: Flask) -> None:
         return render_template(
             "reader.html",
             page="reader",
-            title="Fog-reveal reader",
+            title="Lector",
             reader=reader_data,
         )
 
     @app.route("/vocab")
     def vocab():
-        category = request.args.get("category", "")
+        idx = request.args.get("i", 0, type=int)
+        session = fetcher.get_vocab_session(idx)
         return render_template(
-            "index.html",
+            "vocab.html",
             page="vocab",
-            title="Vocabulary",
-            message=f"Vocab browser placeholder{f' (category: {category})' if category else ''}.",
+            title="Tarjetas",
+            session=session,
         )
 
-    @app.route("/quiz")
-    def quiz():
-        return render_template(
-            "index.html",
-            page="quiz",
-            title="Quiz",
-            message="Quiz placeholder — Open Trivia DB + vocab questions will go here.",
-        )
+    @app.route("/vocab/record", methods=["POST"])
+    def vocab_record():
+        es = request.form.get("es", "")
+        en = request.form.get("en", "")
+        missed = request.form.get("missed") == "1"
+        next_i = request.form.get("next_i", 0, type=int)
+        fetcher.record_flashcard_result(es, en, missed)
+        return redirect(url_for("vocab", i=next_i))
 
     @app.route("/phrasebook", methods=["GET", "POST"])
     def phrasebook():
         if request.method == "POST":
-            return render_template(
-                "index.html",
-                page="phrasebook",
-                title="Phrasebook",
-                message="POST /phrasebook placeholder — phrase saving not implemented yet.",
-            )
+            text = request.form.get("input", "").strip()
+            if not text:
+                flash("Escribe una frase en inglés.", "warning")
+            else:
+                fetcher.add_phrase(text)
+                flash("Frase guardada.", "success")
+            return redirect(url_for("phrasebook"))
+
+        phrases = fetcher.get_phrasebook()
         return render_template(
-            "index.html",
+            "phrasebook.html",
             page="phrasebook",
-            title="Phrasebook",
-            message="Phrasebook placeholder — your saved phrases will appear here.",
+            title="Libro de frases",
+            phrases=phrases,
         )
 
-    @app.route("/refresh")
-    def refresh():
-        fetcher.run_refresh()
-        return redirect(url_for("home"))
+    @app.route("/phrasebook/<phrase_id>/edit", methods=["POST"])
+    def phrasebook_edit(phrase_id: str):
+        text = request.form.get("input", "").strip()
+        if not text:
+            flash("La frase no puede estar vacía.", "warning")
+        elif fetcher.update_phrase(phrase_id, text):
+            flash("Frase actualizada.", "success")
+        else:
+            flash("No se encontró la frase.", "warning")
+        return redirect(url_for("phrasebook"))
 
-    @app.route("/export")
-    def export():
-        return render_template(
-            "index.html",
-            page="export",
-            title="Export",
-            message="Export placeholder — CSV download of phrasebook will go here.",
+    @app.route("/phrasebook/<phrase_id>/delete", methods=["POST"])
+    def phrasebook_delete(phrase_id: str):
+        if fetcher.delete_phrase(phrase_id):
+            flash("Frase eliminada.", "success")
+        return redirect(url_for("phrasebook"))
+
+    @app.route("/phrasebook/export")
+    def phrasebook_export():
+        csv_content = fetcher.export_phrasebook_csv()
+        buffer = BytesIO(csv_content.encode("utf-8"))
+        buffer.seek(0)
+        return send_file(
+            buffer,
+            mimetype="text/csv",
+            as_attachment=True,
+            download_name="estudio_abroad_phrasebook.csv",
         )
 
 

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Libro de frases{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+  <h1 class="h3 mb-0" style="color: var(--accent); font-family: 'Playfair Display', serif;">Libro de frases</h1>
+  <a href="{{ url_for('phrasebook_export') }}" class="btn btn-sm btn-outline-light">Exportar CSV</a>
+</div>
+
+<div class="card-panel mb-4">
+  <div class="card-header px-3 py-2">Añadir frase (inglés → español)</div>
+  <div class="p-3">
+    <form method="post" action="{{ url_for('phrasebook') }}">
+      <div class="input-group">
+        <input type="text" class="form-control" name="input" placeholder="Where is the bathroom?" required maxlength="500"
+               style="background: var(--bg); color: var(--text); border-color: var(--border);">
+        <button type="submit" class="btn" style="background: var(--accent); color: var(--bg);">Traducir y guardar</button>
+      </div>
+      <small class="text-muted d-block mt-2" style="color: var(--text-dim) !important;">
+        La traducción se guarda en caché para no repetir llamadas a la API.
+      </small>
+    </form>
+  </div>
+</div>
+
+<div class="card-panel">
+  <div class="card-header px-3 py-2">Tus frases ({{ phrases|length }})</div>
+  <div class="p-0">
+    {% if phrases %}
+    <div class="table-responsive">
+      <table class="table table-dark table-hover mb-0" style="--bs-table-bg: transparent; color: var(--text);">
+        <thead>
+          <tr>
+            <th>Español</th>
+            <th>Inglés (origen)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in phrases %}
+          <tr>
+            <td class="fw-semibold fs-5">{{ p.es }}</td>
+            <td>
+              <span class="reveal-pair" tabindex="0">
+                <span class="reveal-es">{{ p.input[:40] }}{% if p.input|length > 40 %}…{% endif %}</span>
+                <span class="reveal-en">{{ p.input }}</span>
+              </span>
+            </td>
+            <td class="text-end text-nowrap">
+              <button type="button" class="btn btn-sm btn-outline-light" data-bs-toggle="collapse"
+                      data-bs-target="#edit-{{ p.id }}">Editar</button>
+              <form method="post" action="{{ url_for('phrasebook_delete', phrase_id=p.id) }}" class="d-inline"
+                    onsubmit="return confirm('¿Eliminar esta frase?');">
+                <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+              </form>
+            </td>
+          </tr>
+          <tr class="collapse" id="edit-{{ p.id }}">
+            <td colspan="3" class="pb-3">
+              <form method="post" action="{{ url_for('phrasebook_edit', phrase_id=p.id) }}" class="input-group input-group-sm">
+                <input type="text" class="form-control" name="input" value="{{ p.input }}" required
+                       style="background: var(--bg); color: var(--text);">
+                <button type="submit" class="btn btn-outline-light">Guardar</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="p-3 mb-0" style="color: var(--text-dim);">No hay frases guardadas. Añade la primera arriba.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

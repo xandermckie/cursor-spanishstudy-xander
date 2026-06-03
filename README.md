@@ -1,16 +1,20 @@
-# Estudio Personal
+# Estudio Abroad
 
-Flask skeleton for a Barcelona Spanish/Catalan study app. Routes and API fetchers are stubbed; business logic comes next.
+Flask app for studying Spanish before a study-abroad term in Barcelona. Spanish is shown first; English appears on hover. The fog-reveal reader uses a separate lens interaction.
 
-## Structure
+## Features
 
-```
-app.py          Routes (placeholder responses)
-fetcher.py      API call stubs (MyMemory, Glosbe, DictionaryAPI, Open Trivia DB)
-scheduler.py    APScheduler — refresh every 15 minutes
-templates/      index.html (Bootstrap 5 layout)
-data/cache.json Runtime cache (gitignored contents under data/)
-```
+- **Inicio** — Palabra del día (Spanish prominent), frase del día, palabras débiles from flashcards
+- **Lector** — Fog-reveal passages (Spanish/Catalan with English under cursor lens)
+- **Tarjetas** — Flashcards; mark misses to build weak-words list
+- **Libro de frases** — English input → cached Spanish translation; add, edit, delete, export CSV
+
+## APIs (all translation calls cached in `data/cache.json`)
+
+| Service | Use |
+|---------|-----|
+| [MyMemory](https://mymemory.translated.net/) | EN ↔ ES translation |
+| [DictionaryAPI.dev](https://dictionaryapi.dev/) | English definition / phonetic for word of the day |
 
 ## Setup
 
@@ -22,33 +26,23 @@ copy .env.example .env
 flask --app app run
 ```
 
-## Routes
-
-| Method | Path | Status |
-|--------|------|--------|
-| GET | `/` | Placeholder homepage |
-| GET | `/reader` | Placeholder fog reader |
-| GET | `/vocab` | Placeholder vocab browser |
-| GET | `/quiz` | Placeholder quiz |
-| GET/POST | `/phrasebook` | Placeholder phrasebook |
-| GET | `/refresh` | Runs `fetcher.run_refresh()` stub |
-| GET | `/export` | Placeholder export |
-
 ## Deploy on Render
 
-Render needs **gunicorn** (included in `requirements.txt`) and this start command:
+- Build: `pip install -r requirements.txt`
+- Start: `gunicorn app:app --bind 0.0.0.0:$PORT`
+- Set `SECRET_KEY` in environment variables
 
-```bash
-gunicorn app:app --bind 0.0.0.0:$PORT
-```
+## Routes
 
-The repo includes a `Procfile` and `render.yaml`. If deploy fails with **exit 127**, the start command is missing from the environment — set the Render start command to match the Procfile above, or connect the Blueprint from `render.yaml`.
+| Method | Path |
+|--------|------|
+| GET | `/` |
+| GET | `/reader` |
+| GET | `/vocab` |
+| POST | `/vocab/record` |
+| GET/POST | `/phrasebook` |
+| POST | `/phrasebook/<id>/edit` |
+| POST | `/phrasebook/<id>/delete` |
+| GET | `/phrasebook/export` |
 
-Set `SECRET_KEY` in the Render dashboard (or use `generateValue` in `render.yaml`).
-
-## APIs (stubs in `fetcher.py`)
-
-1. MyMemory — `fetch_translation()`
-2. Glosbe — `fetch_glosbe_examples()`
-3. DictionaryAPI.dev — `fetch_definition()`
-4. Open Trivia DB — `fetch_trivia_questions()`
+Background refresh runs every 15 minutes via APScheduler (no manual refresh button).

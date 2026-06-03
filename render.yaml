@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: estudio-personal
+    name: estudio-abroad
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -16,10 +16,6 @@ services:
         value: "true"
       - key: MYMEMORY_URL
         value: https://api.mymemory.translated.net/get
-      - key: GLOSBE_URL
-        value: https://glosbe.com/gapi/v0.1/translate
-      - key: GLOSBE_USER_AGENT
-        value: EstudioPersonal/1.0 (student project)
       - key: DICTIONARY_API_BASE
         value: https://api.dictionaryapi.dev/api/v2/entries/en
       - key: REFRESH_INTERVAL_MINUTES

@@ -1,65 +1,93 @@
 {% extends "base.html" %}
-{% block title %}{{ title }}{% endblock %}
+{% block title %}Inicio{% endblock %}
+
+{% block footer_extra %}
+{% if homepage and homepage.last_refresh_display %}
+<p class="mb-0 small">Última actualización de caché: {{ homepage.last_refresh_display }}</p>
+{% endif %}
+{% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-4" style="color: var(--accent); font-family: 'Playfair Display', serif;">{{ title }}</h1>
+<h1 class="h3 mb-4" style="color: var(--accent); font-family: 'Playfair Display', serif;">Inicio</h1>
 
-{% if page == 'home' and homepage %}
-<div class="card-panel">
-  <div class="card-header px-3 py-2">Daily sentence</div>
-  <div class="p-3">
-    <p class="mb-2 fs-5">{{ homepage.daily_sentence.es }}</p>
-    <p class="mb-0" style="color: var(--accent2); font-style: italic;">{{ homepage.daily_sentence.en }}</p>
-    {% if homepage.daily_sentence.fetched_at %}
-    <small class="text-muted d-block mt-2" style="color: var(--text-dim) !important;">Updated {{ homepage.daily_sentence.fetched_at }}</small>
-    {% endif %}
-  </div>
-</div>
+{% if homepage %}
 
 {% if homepage.word_of_day %}
 <div class="card-panel">
-  <div class="card-header px-3 py-2">Word of the day — {{ homepage.word_of_day.word }}</div>
-  <div class="p-3">
-    <p class="mb-1">{{ homepage.word_of_day.definition }}</p>
+  <div class="card-header px-3 py-2">Palabra del día</div>
+  <div class="p-4">
+    <h2 class="display-6 fw-bold mb-3" style="color: var(--text); font-family: 'Playfair Display', serif;">
+      {{ homepage.word_of_day.es }}
+    </h2>
+    <p class="mb-2 reveal-block">
+      <span class="reveal-pair" tabindex="0">
+        <span class="reveal-es">Significado</span>
+        <span class="reveal-en">{{ homepage.word_of_day.definition or homepage.word_of_day.en }}</span>
+      </span>
+    </p>
     {% if homepage.word_of_day.phonetic %}
-    <p class="mb-1" style="color: var(--accent2);"><em>{{ homepage.word_of_day.phonetic }}</em></p>
+    <p class="mb-2 reveal-block">
+      <span class="reveal-pair" tabindex="0">
+        <span class="reveal-es">Pronunciación (inglés)</span>
+        <span class="reveal-en"><em>{{ homepage.word_of_day.phonetic }}</em></span>
+      </span>
+    </p>
     {% endif %}
-    {% if homepage.word_of_day.example %}
-    <p class="mb-0 small" style="color: var(--text-dim);">Example: {{ homepage.word_of_day.example }}</p>
-    {% endif %}
+    <p class="mb-0 reveal-block">
+      <span class="reveal-es d-block mb-1">{{ homepage.word_of_day.example_es }}</span>
+      <span class="reveal-pair" tabindex="0">
+        <span class="reveal-es">Traducción del ejemplo</span>
+        <span class="reveal-en">{{ homepage.word_of_day.example_en }}</span>
+      </span>
+    </p>
   </div>
 </div>
 {% endif %}
 
 <div class="card-panel">
-  <div class="card-header px-3 py-2">Weak areas (quiz misses by category)</div>
-  <div class="p-3">
-    <ul class="list-unstyled mb-0">
-      {% for cat, count in homepage.weak_areas.items() %}
-      <li class="mb-1">
-        <span class="badge badge-cat me-2">{{ cat }}</span>
-        {{ count }} miss{{ 'es' if count != 1 else '' }}
-        — <a href="{{ url_for('vocab', category=cat) }}" style="color: var(--accent);">study</a>
-      </li>
-      {% endfor %}
-    </ul>
+  <div class="card-header px-3 py-2">Frase del día</div>
+  <div class="p-4">
+    <p class="mb-3 fs-5" style="font-family: 'Playfair Display', serif;">{{ homepage.daily_sentence.es }}</p>
+    <p class="mb-0 reveal-block">
+      <span class="reveal-pair" tabindex="0">
+        <span class="reveal-es">Pasa el cursor para ver inglés</span>
+        <span class="reveal-en">{{ homepage.daily_sentence.en }}</span>
+      </span>
+    </p>
   </div>
 </div>
 
-<div class="card-panel p-3">
-  <p class="mb-2 fw-semibold" style="color: var(--accent);">Quick links</p>
-  <a href="{{ url_for('reader') }}" class="btn btn-sm btn-outline-light me-1">Reader</a>
-  <a href="{{ url_for('vocab') }}" class="btn btn-sm btn-outline-light me-1">Vocab</a>
-  <a href="{{ url_for('quiz') }}" class="btn btn-sm btn-outline-light me-1">Quiz</a>
-  <a href="{{ url_for('refresh') }}" class="btn btn-sm btn-outline-light">Refresh cache</a>
-  {% if homepage.last_refresh %}
-  <p class="small mt-2 mb-0" style="color: var(--text-dim);">Last cache refresh: {{ homepage.last_refresh }}</p>
-  {% endif %}
+<div class="card-panel">
+  <div class="card-header px-3 py-2">Palabras débiles</div>
+  <div class="p-3">
+    {% if homepage.weak_words %}
+    <ol class="mb-0 ps-3">
+      {% for w in homepage.weak_words %}
+      <li class="mb-2">
+        <strong>{{ w.es }}</strong>
+        <span class="text-muted small">— {{ w.miss_count }} error{{ 'es' if w.miss_count != 1 else '' }}</span>
+        <span class="reveal-pair ms-1" tabindex="0">
+          <span class="reveal-es">·</span>
+          <span class="reveal-en">{{ w.en }}</span>
+        </span>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p class="mb-2 text-muted" style="color: var(--text-dim) !important;">
+      Aún no hay palabras marcadas. Practica en
+      <a href="{{ url_for('vocab') }}" style="color: var(--accent);">Tarjetas</a>
+      y marca las que fallas.
+    </p>
+    {% endif %}
+  </div>
 </div>
 
-{% else %}
-<div class="card-panel p-4">
-  <p class="mb-0">{{ message }}</p>
+<div class="d-flex gap-2 flex-wrap">
+  <a href="{{ url_for('reader') }}" class="btn btn-sm btn-outline-light">Lector</a>
+  <a href="{{ url_for('vocab') }}" class="btn btn-sm btn-outline-light">Tarjetas</a>
+  <a href="{{ url_for('phrasebook') }}" class="btn btn-sm btn-outline-light">Libro de frases</a>
 </div>
+
 {% endif %}
 {% endblock %}

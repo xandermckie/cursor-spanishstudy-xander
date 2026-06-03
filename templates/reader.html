@@ -193,7 +193,7 @@
 <div id="fog-cursor" aria-hidden="true"></div>
 
 <header class="reader-hero">
-  <div class="reader-logo">✦ Estudio Personal</div>
+  <div class="reader-logo">✦ Estudio Abroad</div>
   <h1>Read in Spanish.<br><em>Hover to remember.</em></h1>
   <p class="reader-subtitle">
     Move your cursor over the passages below — a lens reveals the English translation
@@ -218,18 +218,20 @@
 </article>
 {% endfor %}
 
-<section class="progress-section" aria-label="Study progress by category">
-  <div class="card-label" style="margin-bottom: 1.25rem;">Weak areas</div>
-  {% for row in reader.progress %}
-  <div class="progress-row">
-    <span class="progress-label">{{ row.label }}</span>
-    <div class="progress-bar-bg">
-      <div class="progress-bar-fill" data-pct="{{ row.pct }}"></div>
-    </div>
-    <span class="progress-pct">{{ row.pct }}%</span>
-  </div>
-  {% endfor %}
+{% if reader.weak_words_top %}
+<section class="progress-section" aria-label="Palabras débiles">
+  <div class="card-label" style="margin-bottom: 1.25rem;">Palabras débiles (tarjetas)</div>
+  <ul class="list-unstyled mb-0">
+    {% for w in reader.weak_words_top %}
+    <li class="mb-2" style="color: var(--text);">
+      <strong>{{ w.es }}</strong>
+      <span style="color: var(--text-dim); font-size: 0.85rem;"> — {{ w.miss_count }} fallo{{ 's' if w.miss_count != 1 else '' }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="mt-3 mb-0 small"><a href="{{ url_for('vocab') }}" style="color: var(--accent);">Practicar tarjetas</a></p>
 </section>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -263,11 +265,6 @@
     });
   });
 
-  setTimeout(function () {
-    document.querySelectorAll('.progress-bar-fill').forEach(function (bar) {
-      bar.style.width = bar.dataset.pct + '%';
-    });
-  }, 400);
 })();
 </script>
 {% endblock %}
