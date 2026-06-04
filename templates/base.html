@@ -21,6 +21,7 @@
 <body
   class="{% block body_class %}{% endblock %}{% if page == 'reader' %} fog-reveal-page{% endif %}{% if has_aquarium_dock %} has-aquarium-dock{% endif %}"
   {% if has_aquarium_dock %}data-page="{{ page }}"{% endif %}
+  {% if page in ['reader', 'vocab'] %}data-aquarium-immersive="true"{% endif %}
 >
   {% if page == 'reader' %}
   <div id="fog-cursor" aria-hidden="true"></div>

@@ -62,6 +62,7 @@
     this.wheelStartIndex = 0;
     this.state = 'peek';
     this.reducedMotion = prefersReducedMotion();
+    this.immersive = document.body.dataset.aquariumImmersive === 'true';
     this.scrollCollapse = this.dock.dataset.scrollCollapse !== 'off';
 
     this.initIndex();
@@ -75,6 +76,8 @@
       this.setState('hidden');
     } else if (saved === 'expanded') {
       this.setState('expanded');
+    } else if (this.immersive) {
+      this.setState('hidden');
     } else {
       this.setState('peek');
     }
@@ -268,8 +271,9 @@
         e.stopPropagation();
         if (self.state === 'expanded') {
           self.setState('peek');
+        } else {
+          self.setState('hidden');
         }
-        self.setState('hidden');
       });
     }
 
@@ -354,7 +358,7 @@
       if (self.state !== 'expanded') return;
       if (e.key === 'Escape') {
         e.preventDefault();
-        self.setState('peek');
+        self.setState(self.immersive ? 'hidden' : 'peek');
         if (self.peek) self.peek.focus();
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -419,12 +423,19 @@
       }.bind(this), { passive: true });
     }
 
+    var resizeTimer;
     window.addEventListener('resize', function () {
-      self.applyWheelLayout(0);
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        if (self.state === 'expanded' || self.reducedMotion) {
+          self.applyWheelLayout(0);
+        }
+      }, 100);
     });
   };
 
   function init() {
+    if (!document.body.classList.contains('has-aquarium-dock')) return;
     var dock = document.getElementById('aquarium-dock');
     if (!dock || dock.dataset.aquariumInit === '1') return;
     dock.dataset.aquariumInit = '1';
