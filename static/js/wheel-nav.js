@@ -273,23 +273,10 @@
     handleMouseUp() {
       if (this.isDragging) {
         const duration = Date.now() - this.mouseStartTime;
-        const deltaY = this.mouseStartY - (this.currentMouseY || this.mouseStartY);
+        const deltaY = Math.abs(this.mouseStartY - this.currentMouseY);
         
-        // Check if this was a click (not a drag)
-        const wasClick = duration < 300 && Math.abs(deltaY) < 10 && Math.abs(this.velocity) < 0.1;
-        
-        // Check for downward drag to minimize (only on non-homepage)
-        if (!this.isHomepage && this.state === 'expanded' && !wasClick) {
-          // Downward drag detected (negative deltaY)
-          if (deltaY < -CONFIG.SWIPE_THRESHOLD && duration < 1000) {
-            this.setState('minimized');
-            this.isDragging = false;
-            this.isSpinning = false;
-            this.track.classList.remove('spinning');
-            this.container.style.cursor = '';
-            return;
-          }
-        }
+        // Check if this was a click (not a drag) - short duration and minimal movement
+        const wasClick = duration < 300 && deltaY < 15;
         
         // Handle click to minimize when expanded
         if (wasClick && !this.isHomepage && this.state === 'expanded') {
@@ -299,6 +286,20 @@
           this.track.classList.remove('spinning');
           this.container.style.cursor = '';
           return;
+        }
+        
+        // Check for downward drag to minimize (only on non-homepage)
+        if (!this.isHomepage && this.state === 'expanded' && !wasClick) {
+          const dragDeltaY = this.mouseStartY - this.currentMouseY;
+          // Downward drag detected (negative dragDeltaY)
+          if (dragDeltaY < -CONFIG.SWIPE_THRESHOLD && duration < 1000) {
+            this.setState('minimized');
+            this.isDragging = false;
+            this.isSpinning = false;
+            this.track.classList.remove('spinning');
+            this.container.style.cursor = '';
+            return;
+          }
         }
         
         this.endDrag();
@@ -312,6 +313,7 @@
       
       // Store initial position and time for drag detection
       this.mouseStartY = y;
+      this.currentMouseY = y; // Initialize to start position
       this.mouseStartTime = Date.now();
       
       const rect = this.container.getBoundingClientRect();
