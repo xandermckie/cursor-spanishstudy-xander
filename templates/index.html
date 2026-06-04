@@ -7,11 +7,17 @@
 {% set stats = homepage.user_stats if homepage and homepage.user_stats else user_stats %}
 
 <div class="home-hero mb-4">
-  <div class="flex flex-wrap items-center gap-3">
-    {{ pez(size=64, expression='happy', speech='¡Hola! ¿Listo para aprender?', animated=true) }}
+  <div class="flex flex-wrap items-center gap-4">
+    <img
+      src="{{ url_for('static', filename='img/pez-logo.png') }}"
+      alt="Pez — mascota de Estudio Abroad"
+      class="home-hero-logo"
+      width="112"
+      height="112"
+    >
     <div>
       <h1 class="page-title mb-0">Buenos días</h1>
-      <p class="page-subtitle mb-0">Sigue con el ritmo — lo estás haciendo muy bien.</p>
+      <p class="page-subtitle mb-0">¡Hola! ¿Listo para aprender? Sigue con el ritmo.</p>
     </div>
   </div>
 </div>

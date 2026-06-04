@@ -1,8 +1,6 @@
 (function () {
   'use strict';
 
-  var MOBILE_MQ = window.matchMedia('(max-width: 900px)');
-
   var PEZ_BY_PAGE = {
     home: { expression: 'happy', hint: '¡Bienvenido!' },
     reader: { expression: 'thinking', hint: '¡A leer!' },
@@ -53,6 +51,7 @@
     this.peekIcon = document.getElementById('aquarium-peek-icon');
     this.peekLabel = document.getElementById('aquarium-peek-label');
     this.sheetGrab = document.getElementById('aquarium-sheet-grab');
+    this.minimizeBtn = document.getElementById('aquarium-peek-minimize');
 
     this.activeIndex = 0;
     this.dragOffset = 0;
@@ -63,7 +62,6 @@
     this.wheelStartIndex = 0;
     this.state = 'peek';
     this.reducedMotion = prefersReducedMotion();
-    this.immersive = document.body.dataset.aquariumImmersive === 'true';
     this.scrollCollapse = this.dock.dataset.scrollCollapse !== 'off';
 
     this.initIndex();
@@ -73,7 +71,7 @@
     this.syncPeekFromIndex(this.activeIndex);
 
     var saved = sessionStorage.getItem('aquariumDockState');
-    if (this.immersive) {
+    if (saved === 'hidden') {
       this.setState('hidden');
     } else if (saved === 'expanded') {
       this.setState('expanded');
@@ -123,7 +121,7 @@
         this.peek.setAttribute('aria-expanded', 'false');
         this.peek.setAttribute('aria-label', 'Abrir navegación');
       }
-      sessionStorage.removeItem('aquariumDockState');
+      sessionStorage.setItem('aquariumDockState', 'hidden');
       this.releaseFocus();
     } else {
       this.dock.classList.add('is-peek');
@@ -255,12 +253,23 @@
     var self = this;
 
     if (this.peek) {
-      this.peek.addEventListener('click', function () {
+      this.peek.addEventListener('click', function (e) {
+        if (e.target.closest('.aquarium-peek-minimize')) return;
         if (self.state === 'hidden' || self.state === 'peek') {
           self.setState('expanded');
         } else if (self.state === 'expanded') {
           self.setState('peek');
         }
+      });
+    }
+
+    if (this.minimizeBtn) {
+      this.minimizeBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (self.state === 'expanded') {
+          self.setState('peek');
+        }
+        self.setState('hidden');
       });
     }
 
@@ -317,6 +326,7 @@
     var dragHandle = this.sheetGrab || this.peek;
     if (dragHandle) {
       dragHandle.addEventListener('pointerdown', function (e) {
+        if (e.target.closest('.aquarium-peek-minimize')) return;
         if (self.state !== 'expanded' && self.state !== 'peek') return;
         self.sheetDragging = true;
         self.pointerStartY = e.clientY;
@@ -344,7 +354,7 @@
       if (self.state !== 'expanded') return;
       if (e.key === 'Escape') {
         e.preventDefault();
-        self.setState(self.immersive ? 'hidden' : 'peek');
+        self.setState('peek');
         if (self.peek) self.peek.focus();
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -410,13 +420,11 @@
     }
 
     window.addEventListener('resize', function () {
-      if (!MOBILE_MQ.matches) return;
       self.applyWheelLayout(0);
     });
   };
 
   function init() {
-    if (!MOBILE_MQ.matches) return;
     var dock = document.getElementById('aquarium-dock');
     if (!dock || dock.dataset.aquariumInit === '1') return;
     dock.dataset.aquariumInit = '1';
@@ -428,10 +436,4 @@
   } else {
     init();
   }
-
-  MOBILE_MQ.addEventListener('change', function () {
-    if (MOBILE_MQ.matches) {
-      init();
-    }
-  });
 })();

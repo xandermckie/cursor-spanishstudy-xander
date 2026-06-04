@@ -7,7 +7,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}{{ title }}{% endblock %} — Estudio Abroad</title>
-  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/pez-logo.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/pez-logo.png') }}">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/estudio.css') }}">
   <script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
@@ -20,7 +21,6 @@
 <body
   class="{% block body_class %}{% endblock %}{% if page == 'reader' %} fog-reveal-page{% endif %}{% if has_aquarium_dock %} has-aquarium-dock{% endif %}"
   {% if has_aquarium_dock %}data-page="{{ page }}"{% endif %}
-  {% if page in ['reader', 'vocab'] %}data-aquarium-immersive="true"{% endif %}
 >
   {% if page == 'reader' %}
   <div id="fog-cursor" aria-hidden="true"></div>
@@ -29,7 +29,13 @@
   <nav class="site-nav" aria-label="Principal">
     <div class="site-nav-inner">
       <a class="nav-brand" href="{{ url_for('home') }}">
-        {{ pez(size=36, expression='happy') }}
+        <img
+          src="{{ url_for('static', filename='img/pez-logo.png') }}"
+          alt=""
+          class="site-logo"
+          width="36"
+          height="36"
+        >
         <span>Estudio Abroad</span>
       </a>
       {% if not has_aquarium_dock %}

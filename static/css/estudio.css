@@ -272,6 +272,13 @@ main.container-narrow {
     box-shadow: none;
     padding: 0;
   }
+
+  body.has-aquarium-dock .nav-hamburger,
+  body.has-aquarium-dock .nav-links-wrap,
+  body.has-aquarium-dock .nav-auth--top,
+  body.has-aquarium-dock .theme-toggle--top {
+    display: none !important;
+  }
 }
 
 @media (max-width: 900px) {
@@ -958,14 +965,468 @@ main.container-narrow {
   margin: 0 0 16px;
 }
 
-/* ── Aquarium mobile navigation ── */
+/* ── Site logo (pixel Pez) ── */
+.site-logo,
+.home-hero-logo {
+  display: block;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.site-logo {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.home-hero-logo {
+  width: 112px;
+  height: 112px;
+}
+
+/* ── Aquarium navigation (all breakpoints on study pages) ── */
 :root {
   --aquarium-peek-h: 64px;
   --aquarium-sheet-max-h: min(72vh, 520px);
 }
 
+body.has-aquarium-dock {
+  padding-bottom: var(--aquarium-peek-h);
+}
+
+body.has-aquarium-dock main {
+  padding-bottom: 16px;
+}
+
+body.has-aquarium-dock .nav-hamburger,
+body.has-aquarium-dock .nav-links-wrap,
+body.has-aquarium-dock .nav-auth--top,
+body.has-aquarium-dock .theme-toggle--top {
+  display: none !important;
+}
+
+body.has-aquarium-dock .site-nav-inner {
+  justify-content: flex-start;
+}
+
 .aquarium-dock {
+  display: block;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 210;
+  pointer-events: none;
+}
+
+.aquarium-dock > * {
+  pointer-events: auto;
+}
+
+.aquarium-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 190;
+  background: rgba(26, 26, 46, 0.45);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.aquarium-dock.is-expanded .aquarium-scrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.aquarium-scrim[hidden] {
+  display: block;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.aquarium-dock.is-expanded .aquarium-scrim[hidden] {
+  visibility: visible;
+}
+
+.aquarium-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  max-height: var(--aquarium-sheet-max-h);
+  background: var(--surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(100%);
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  padding-bottom: calc(var(--aquarium-peek-h) + env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.aquarium-dock.is-expanded .aquarium-sheet {
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.aquarium-sheet-grab {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 4px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.aquarium-grab-pill {
+  width: 40px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--border);
+}
+
+.aquarium-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px 12px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.aquarium-simple-menu summary {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  list-style: none;
+}
+
+.aquarium-simple-menu summary::-webkit-details-marker {
   display: none;
+}
+
+.aquarium-simple-links {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.aquarium-simple-links a {
+  display: block;
+  padding: 10px 0;
+  text-decoration: none;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.aquarium-simple-links a[aria-current="page"] {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.aquarium-sheet-utils {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.aquarium-nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aquarium-wheel-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--teal-light) 0%, var(--surface) 55%);
+  position: relative;
+}
+
+.aquarium-wheel-wrap::before,
+.aquarium-wheel-wrap::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(46, 196, 182, 0.25);
+  animation: aquariumBubble 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.aquarium-wheel-wrap::before {
+  top: 18%;
+  left: 12%;
+}
+
+.aquarium-wheel-wrap::after {
+  top: 28%;
+  right: 14%;
+  animation-delay: 1.5s;
+}
+
+@keyframes aquariumBubble {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-8px); opacity: 0.7; }
+}
+
+.aquarium-wheel {
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 720px;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.aquarium-wheel.is-dragging {
+  touch-action: none;
+}
+
+.aquarium-wheel-track {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  transform-style: preserve-3d;
+}
+
+.aquarium-segment {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  min-width: 72px;
+  min-height: 72px;
+  transform-origin: center center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: opacity 0.15s ease, box-shadow 0.15s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.aquarium-segment-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.aquarium-segment-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.aquarium-segment.is-center {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+  z-index: 2;
+}
+
+.aquarium-segment.is-center .aquarium-segment-label {
+  color: var(--primary);
+}
+
+.aquarium-pez-glass {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px 16px;
+  gap: 4px;
+}
+
+.aquarium-pez-hint {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  min-height: 1.25em;
+  text-align: center;
+}
+
+.aquarium-pez-variants {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+
+.aquarium-pez-variant {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.aquarium-pez-variant.is-visible {
+  opacity: 1;
+}
+
+.aquarium-pez-variant .pez-wrapper {
+  align-items: center;
+}
+
+.aquarium-peek {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 211;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--aquarium-peek-h);
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  border: none;
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  font-family: var(--font-body);
+  width: 100%;
+  text-align: left;
+}
+
+.aquarium-peek-handle {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+}
+
+.aquarium-peek-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.aquarium-peek-label {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.aquarium-peek-logo {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+/* Dock states */
+.aquarium-dock.is-hidden .aquarium-sheet {
+  transform: translateY(100%);
+}
+
+.aquarium-dock.is-hidden .aquarium-peek {
+  min-height: 28px;
+  padding-top: 4px;
+  padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+}
+
+.aquarium-dock.is-hidden .aquarium-peek-label,
+.aquarium-dock.is-hidden .aquarium-peek-icon,
+.aquarium-dock.is-hidden .aquarium-peek-logo,
+.aquarium-dock.is-hidden .aquarium-peek-minimize {
+  display: none;
+}
+
+.aquarium-dock.is-hidden .aquarium-peek-handle {
+  width: 100%;
+}
+
+body.has-aquarium-dock.aquarium-dock-hidden {
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+}
+
+.aquarium-dock.is-expanded .aquarium-peek {
+  box-shadow: none;
+  background: transparent;
+  border-top: none;
+  pointer-events: none;
+}
+
+.aquarium-dock.is-expanded .aquarium-peek > * {
+  visibility: hidden;
+}
+
+/* Reduced motion: flat scroll-snap wheel */
+@media (prefers-reduced-motion: reduce) {
+  .aquarium-wheel-wrap::before,
+  .aquarium-wheel-wrap::after {
+    animation: none;
+  }
+
+  .aquarium-sheet,
+  .aquarium-scrim {
+    transition-duration: 0.01ms;
+  }
+
+  .aquarium-wheel {
+    perspective: none;
+    height: auto;
+    padding: 12px 0;
+  }
+
+  .aquarium-wheel-track {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 8px;
+    padding: 0 16px 8px;
+    height: auto;
+    position: static;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .aquarium-segment {
+    position: static;
+    margin: 0;
+    flex: 0 0 auto;
+    scroll-snap-align: center;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+
+.aquarium-peek-minimize {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  line-height: 1;
+}
+
+.aquarium-peek-minimize:hover {
+  background: var(--border-light);
+  color: var(--text);
 }
 
 @media (max-width: 900px) {
@@ -973,22 +1434,16 @@ main.container-narrow {
     padding-bottom: calc(var(--aquarium-peek-h) + env(safe-area-inset-bottom, 0px));
   }
 
-  body.has-aquarium-dock main {
-    padding-bottom: 16px;
+  .aquarium-sheet {
+    padding-bottom: calc(var(--aquarium-peek-h) + env(safe-area-inset-bottom, 0px));
   }
 
-  body.has-aquarium-dock .nav-hamburger,
-  body.has-aquarium-dock .nav-links-wrap {
-    display: none !important;
+  .aquarium-peek {
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
   }
 
-  body.has-aquarium-dock .nav-auth--top,
-  body.has-aquarium-dock .theme-toggle--top {
-    display: none !important;
-  }
-
-  body.has-aquarium-dock .site-nav-inner {
-    justify-content: space-between;
+  body.has-aquarium-dock.aquarium-dock-hidden {
+    padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   }
 
   .nav-mobile-home {
@@ -1008,415 +1463,50 @@ main.container-narrow {
   body:not(.has-aquarium-dock) .nav-hamburger {
     display: flex;
   }
-
-  .aquarium-dock {
-    display: block;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 210;
-    pointer-events: none;
-  }
-
-  .aquarium-dock > * {
-    pointer-events: auto;
-  }
-
-  .aquarium-scrim {
-    position: fixed;
-    inset: 0;
-    z-index: 190;
-    background: rgba(26, 26, 46, 0.45);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    pointer-events: none;
-  }
-
-  .aquarium-dock.is-expanded .aquarium-scrim {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .aquarium-scrim[hidden] {
-    display: block;
-    visibility: hidden;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .aquarium-dock.is-expanded .aquarium-scrim[hidden] {
-    visibility: visible;
-  }
-
-  .aquarium-sheet {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 200;
-    max-height: var(--aquarium-sheet-max-h);
-    background: var(--surface);
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    border: 1px solid var(--border);
-    border-bottom: none;
-    box-shadow: var(--shadow-lg);
-    transform: translateY(100%);
-    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
-    padding-bottom: calc(var(--aquarium-peek-h) + env(safe-area-inset-bottom, 0px));
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    pointer-events: none;
-  }
-
-  .aquarium-dock.is-expanded .aquarium-sheet {
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-
-  .aquarium-sheet-grab {
-    display: flex;
-    justify-content: center;
-    padding: 10px 0 4px;
-    cursor: grab;
-    touch-action: none;
-  }
-
-  .aquarium-grab-pill {
-    width: 40px;
-    height: 5px;
-    border-radius: var(--radius-full);
-    background: var(--border);
-  }
-
-  .aquarium-sheet-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 0 16px 12px;
-    border-bottom: 1px solid var(--border-light);
-    flex-shrink: 0;
-  }
-
-  .aquarium-simple-menu summary {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    cursor: pointer;
-    list-style: none;
-  }
-
-  .aquarium-simple-menu summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .aquarium-simple-links {
-    list-style: none;
-    margin: 8px 0 0;
-    padding: 0;
-  }
-
-  .aquarium-simple-links a {
-    display: block;
-    padding: 10px 0;
-    text-decoration: none;
-    color: var(--text);
-    font-size: 15px;
-    font-weight: 500;
-  }
-
-  .aquarium-simple-links a[aria-current="page"] {
-    color: var(--primary);
-    font-weight: 700;
-  }
-
-  .aquarium-sheet-utils {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  .aquarium-nav-auth {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .aquarium-wheel-wrap {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    background: linear-gradient(180deg, var(--teal-light) 0%, var(--surface) 55%);
-    position: relative;
-  }
-
-  .aquarium-wheel-wrap::before,
-  .aquarium-wheel-wrap::after {
-    content: "";
-    position: absolute;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: rgba(46, 196, 182, 0.25);
-    animation: aquariumBubble 4s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  .aquarium-wheel-wrap::before {
-    top: 18%;
-    left: 12%;
-  }
-
-  .aquarium-wheel-wrap::after {
-    top: 28%;
-    right: 14%;
-    animation-delay: 1.5s;
-  }
-
-  @keyframes aquariumBubble {
-    0%, 100% { transform: translateY(0); opacity: 0.4; }
-    50% { transform: translateY(-8px); opacity: 0.7; }
-  }
-
-  .aquarium-wheel {
-    height: 140px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    perspective: 720px;
-    touch-action: pan-y;
-    user-select: none;
-  }
-
-  .aquarium-wheel.is-dragging {
-    touch-action: none;
-  }
-
-  .aquarium-wheel-track {
-    position: relative;
-    width: 100%;
-    height: 120px;
-    transform-style: preserve-3d;
-  }
-
-  .aquarium-segment {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    min-width: 72px;
-    min-height: 72px;
-    transform-origin: center center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 8px;
-    border: 2px solid transparent;
-    border-radius: var(--radius-lg);
-    background: var(--surface);
-    box-shadow: var(--shadow-sm);
-    cursor: pointer;
-    font-family: var(--font-body);
-    transition: opacity 0.15s ease, box-shadow 0.15s ease;
-    transform-style: preserve-3d;
-    will-change: transform;
-  }
-
-  .aquarium-segment-icon {
-    font-size: 22px;
-    line-height: 1;
-  }
-
-  .aquarium-segment-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    white-space: nowrap;
-  }
-
-  .aquarium-segment.is-center {
-    border-color: var(--primary);
-    box-shadow: var(--shadow-md);
-    z-index: 2;
-  }
-
-  .aquarium-segment.is-center .aquarium-segment-label {
-    color: var(--primary);
-  }
-
-  .aquarium-pez-glass {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 8px 16px 16px;
-    gap: 4px;
-  }
-
-  .aquarium-pez-hint {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--primary);
-    min-height: 1.25em;
-    text-align: center;
-  }
-
-  .aquarium-pez-variants {
-    position: relative;
-    width: 56px;
-    height: 56px;
-  }
-
-  .aquarium-pez-variant {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.15s ease;
-  }
-
-  .aquarium-pez-variant.is-visible {
-    opacity: 1;
-  }
-
-  .aquarium-pez-variant .pez-wrapper {
-    align-items: center;
-  }
-
-  .aquarium-peek {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 211;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: var(--aquarium-peek-h);
-    padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
-    background: var(--surface);
-    border: none;
-    border-top: 1px solid var(--border);
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
-    cursor: pointer;
-    font-family: var(--font-body);
-    width: 100%;
-    text-align: left;
-  }
-
-  .aquarium-peek-handle {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    min-width: 44px;
-    min-height: 44px;
-    justify-content: center;
-  }
-
-  .aquarium-peek-icon {
-    font-size: 20px;
-    flex-shrink: 0;
-  }
-
-  .aquarium-peek-label {
-    flex: 1;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .aquarium-peek-pez {
-    flex-shrink: 0;
-    display: flex;
-    align-items: flex-end;
-  }
-
-  .aquarium-peek-pez .pez-animated {
-    animation: none;
-  }
-
-  /* Dock states */
-  .aquarium-dock.is-hidden .aquarium-sheet {
-    transform: translateY(100%);
-  }
-
-  .aquarium-dock.is-hidden .aquarium-peek {
-    min-height: 28px;
-    padding-top: 4px;
-    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .aquarium-dock.is-hidden .aquarium-peek-label,
-  .aquarium-dock.is-hidden .aquarium-peek-icon,
-  .aquarium-dock.is-hidden .aquarium-peek-pez {
-    display: none;
-  }
-
-  .aquarium-dock.is-hidden .aquarium-peek-handle {
-    width: 100%;
-  }
-
-  body.has-aquarium-dock.aquarium-dock-hidden {
-    padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .aquarium-dock.is-expanded .aquarium-peek {
-    box-shadow: none;
-    background: transparent;
-    border-top: none;
-    pointer-events: none;
-  }
-
-  .aquarium-dock.is-expanded .aquarium-peek > * {
-    visibility: hidden;
-  }
-
-  /* Reduced motion: flat scroll-snap wheel */
-  @media (prefers-reduced-motion: reduce) {
-    .aquarium-wheel-wrap::before,
-    .aquarium-wheel-wrap::after {
-      animation: none;
-    }
-
-    .aquarium-sheet,
-    .aquarium-scrim {
-      transition-duration: 0.01ms;
-    }
-
-    .aquarium-wheel {
-      perspective: none;
-      height: auto;
-      padding: 12px 0;
-    }
-
-    .aquarium-wheel-track {
-      display: flex;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      gap: 8px;
-      padding: 0 16px 8px;
-      height: auto;
-      position: static;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .aquarium-segment {
-      position: static;
-      margin: 0;
-      flex: 0 0 auto;
-      scroll-snap-align: center;
-      transform: none !important;
-      opacity: 1 !important;
-    }
-  }
 }
 
 @media (min-width: 901px) {
-  .aquarium-dock {
-    display: none !important;
+  body.has-aquarium-dock {
+    --aquarium-peek-h: 72px;
+    --aquarium-sheet-max-h: min(65vh, 560px);
+  }
+
+  .aquarium-sheet {
+    left: 50%;
+    right: auto;
+    width: min(720px, 100%);
+    transform: translate(-50%, 100%);
+    padding-bottom: var(--aquarium-peek-h);
+  }
+
+  .aquarium-dock.is-expanded .aquarium-sheet {
+    transform: translate(-50%, 0);
+  }
+
+  .aquarium-dock.is-hidden .aquarium-sheet {
+    transform: translate(-50%, 100%);
+  }
+
+  .aquarium-wheel {
+    height: 180px;
+  }
+
+  .aquarium-wheel-track {
+    height: 160px;
+  }
+
+  .aquarium-segment {
+    min-width: 80px;
+    min-height: 80px;
+  }
+
+  .aquarium-segment-label {
+    font-size: 12px;
+  }
+
+  .aquarium-pez-variants {
+    width: 64px;
+    height: 64px;
   }
 
   .nav-mobile-home {

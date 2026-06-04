@@ -1,4 +1,4 @@
-{# Mobile aquarium dock — study pages only #}
+{# Aquarium dock — study pages only #}
 {% from "partials/pez.html" import pez %}
 {% set aquarium_sections = [
   ('home', 'Inicio', '🏠', 'home'),
@@ -21,9 +21,9 @@
 
 <div
   id="aquarium-dock"
-  class="aquarium-dock{% if page in ['reader', 'vocab'] %} aquarium-dock--immersive{% endif %}"
+  class="aquarium-dock"
   role="navigation"
-  aria-label="Navegación móvil"
+  aria-label="Navegación principal"
   data-scroll-collapse="{% if page == 'travel' %}off{% else %}on{% endif %}"
 >
   <div class="aquarium-scrim" id="aquarium-scrim" aria-hidden="true" hidden></div>
@@ -117,8 +117,19 @@
     </span>
     <span class="aquarium-peek-icon" id="aquarium-peek-icon" aria-hidden="true">{{ peek_icon }}</span>
     <span class="aquarium-peek-label" id="aquarium-peek-label">{{ peek_label }}</span>
-    <span class="aquarium-peek-pez" aria-hidden="true">
-      {{ pez(size=28, expression='happy') }}
-    </span>
+    <img
+      src="{{ url_for('static', filename='img/pez-logo.png') }}"
+      alt=""
+      class="aquarium-peek-logo site-logo"
+      width="32"
+      height="32"
+      aria-hidden="true"
+    >
+    <button
+      type="button"
+      class="aquarium-peek-minimize"
+      id="aquarium-peek-minimize"
+      aria-label="Ocultar navegación"
+    >↓</button>
   </button>
 </div>
