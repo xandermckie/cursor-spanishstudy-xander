@@ -147,8 +147,19 @@
         this.hub.addEventListener('click', () => this.toggleState());
       }
       
+      // Click outside wheel to minimize
+      document.addEventListener('click', (e) => {
+        if (!this.isHomepage && this.state === 'expanded' && !this.isDragging) {
+          // Check if click is outside the wheel
+          if (!this.wheelNav.contains(e.target)) {
+            this.setState('minimized');
+          }
+        }
+      });
+      
       // Click on minimized wheel to reopen
       this.container.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent document click handler
         if (this.state === 'minimized' && !this.isHomepage && !this.isDragging) {
           if (!e.target.closest('.wheel-dot')) {
             this.setState('expanded');
@@ -259,6 +270,9 @@
         return;
       }
       
+      // Prevent document click handler from firing
+      e.stopPropagation();
+      
       if (this.state === 'expanded' || this.isHomepage) {
         this.startDrag(e.clientX, e.clientY);
       }
@@ -273,25 +287,11 @@
     handleMouseUp() {
       if (this.isDragging) {
         const duration = Date.now() - this.mouseStartTime;
-        const deltaY = Math.abs(this.mouseStartY - this.currentMouseY);
-        
-        // Check if this was a click (not a drag) - short duration and minimal movement
-        const wasClick = duration < 300 && deltaY < 15;
-        
-        // Handle click to minimize when expanded
-        if (wasClick && !this.isHomepage && this.state === 'expanded') {
-          this.setState('minimized');
-          this.isDragging = false;
-          this.isSpinning = false;
-          this.track.classList.remove('spinning');
-          this.container.style.cursor = '';
-          return;
-        }
+        const dragDeltaY = this.mouseStartY - this.currentMouseY;
         
         // Check for downward drag to minimize (only on non-homepage)
-        if (!this.isHomepage && this.state === 'expanded' && !wasClick) {
-          const dragDeltaY = this.mouseStartY - this.currentMouseY;
-          // Downward drag detected (negative dragDeltaY)
+        if (!this.isHomepage && this.state === 'expanded') {
+          // Downward drag detected (negative dragDeltaY means dragging down)
           if (dragDeltaY < -CONFIG.SWIPE_THRESHOLD && duration < 1000) {
             this.setState('minimized');
             this.isDragging = false;
