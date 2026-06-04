@@ -16,7 +16,7 @@ Agent panel, almost exclusively. This app is Flask + templates + JS in different
 
 **What would you set up differently in `.cursor/rules/` if you started over?**
 
-This repo has no project rules — everything lives in global Cursor rules (security, TypeScript, React stuff that doesn't apply here). I'd add a slim `.cursor/rules/` for Estudio only: Python/Flask stack, `data/` paths, `ENCRYPTION_KEY` + `SECRET_KEY` env notes, run tests with `python -m pytest tests/ -q`, scope changes to the file I @ mention, and don't rip out features without asking (voice lesson learned). Skip duplicating the long global rule set.
+This repo specifically has no project rules — everything lives in global Cursor rules (security, TypeScript, React stuff that doesn't apply here). I'd add a slim `.cursor/rules/` for Estudio only: Python/Flask stack, `data/` paths, `ENCRYPTION_KEY` + `SECRET_KEY` env notes, run tests with `python -m pytest tests/ -q`, scope changes to the file I @ mention, and don't rip out features without asking (voice lesson learned). Skip duplicating the long global rule set.
 
 ---
 
