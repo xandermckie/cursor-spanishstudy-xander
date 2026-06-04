@@ -29,6 +29,7 @@
     window.SpeechRecognition || window.webkitSpeechRecognition;
   var recognition = null;
   var isListening = false;
+  var sessionActive = false;
   var finalTranscript = '';
   var translateDebounce = null;
   var lastSavedText = '';
@@ -166,6 +167,40 @@
     }, 300);
   }
 
+  function startRecognition() {
+    if (!recognition || !sessionActive) return;
+    try {
+      recognition.start();
+    } catch (e) {
+      if (e && e.name === 'InvalidStateError') return;
+      sessionActive = false;
+      setListening(false);
+      setStatus('No se pudo iniciar el micrófono. Espera un momento.');
+    }
+  }
+
+  function beginListenSession() {
+    if (!recognition) return;
+    sessionActive = true;
+    finalTranscript = '';
+    setTranscript('');
+    recognition.lang = getRecognitionLang();
+    setStatus('Escuchando… Habla ahora. Pulsa Detener cuando termines.');
+    startRecognition();
+  }
+
+  function endListenSession() {
+    sessionActive = false;
+    setListening(false);
+    if (recognition) {
+      try {
+        recognition.stop();
+      } catch (e) {
+        /* ignore */
+      }
+    }
+  }
+
   function initRecognition() {
     if (!SpeechRecognition) {
       showUnsupported();
@@ -173,14 +208,12 @@
     }
 
     recognition = new SpeechRecognition();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
 
     recognition.onstart = function () {
       setListening(true);
-      setStatus('Escuchando…');
-      finalTranscript = '';
     };
 
     recognition.onresult = function (event) {
@@ -199,6 +232,12 @@
     };
 
     recognition.onerror = function (event) {
+      if (event.error === 'aborted') return;
+      if (sessionActive && event.error === 'no-speech') {
+        setStatus('No se detectó voz aún. Sigue hablando o pulsa Detener.');
+        return;
+      }
+      sessionActive = false;
       setListening(false);
       if (event.error === 'not-allowed') {
         setStatus('Permiso de micrófono denegado.');
@@ -210,6 +249,10 @@
     };
 
     recognition.onend = function () {
+      if (sessionActive) {
+        startRecognition();
+        return;
+      }
       setListening(false);
       if (transcriptEl) finalTranscript = transcriptEl.textContent.trim();
       scheduleAutoTranslate();
@@ -217,20 +260,12 @@
   }
 
   if (listenBtn) {
-    listenBtn.addEventListener('click', function () {
-      if (!recognition) return;
-      recognition.lang = getRecognitionLang();
-      try {
-        recognition.start();
-      } catch (e) {
-        setStatus('No se pudo iniciar el micrófono. Espera un momento.');
-      }
-    });
+    listenBtn.addEventListener('click', beginListenSession);
   }
 
   if (stopBtn) {
     stopBtn.addEventListener('click', function () {
-      if (recognition && isListening) recognition.stop();
+      if (sessionActive || isListening) endListenSession();
     });
   }
 
