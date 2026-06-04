@@ -1187,89 +1187,15 @@ body:not([data-page="home"]) .wheel-nav.minimized .wheel-container:hover {
 .wheel-aquarium-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, 
-    rgba(46, 196, 182, 0.15) 0%, 
-    rgba(33, 150, 243, 0.12) 50%, 
-    rgba(79, 70, 229, 0.10) 100%
-  );
+  background: rgba(21, 24, 33, 0.75);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-radius: 50%;
-  border: 2px solid rgba(46, 196, 182, 0.3);
+  border: 2px solid var(--primary);
   box-shadow: 
-    0 8px 32px rgba(46, 196, 182, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 1px 0 rgba(0, 0, 0, 0.1);
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   overflow: hidden;
-}
-
-/* Bubbles */
-.bubble {
-  position: absolute;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, rgba(46, 196, 182, 0.6), rgba(46, 196, 182, 0.2));
-  animation: bubbleFloat 4s ease-in-out infinite;
-  pointer-events: none;
-  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.3);
-}
-
-.bubble-1 {
-  width: 16px;
-  height: 16px;
-  top: 20%;
-  left: 15%;
-  animation-delay: 0s;
-  animation-duration: 3.5s;
-}
-
-.bubble-2 {
-  width: 10px;
-  height: 10px;
-  top: 45%;
-  right: 18%;
-  animation-delay: 1.2s;
-  animation-duration: 4s;
-}
-
-.bubble-3 {
-  width: 12px;
-  height: 12px;
-  top: 65%;
-  left: 22%;
-  animation-delay: 2s;
-  animation-duration: 3.8s;
-}
-
-.bubble-4 {
-  width: 18px;
-  height: 18px;
-  top: 32%;
-  right: 30%;
-  animation-delay: 3s;
-  animation-duration: 4.2s;
-}
-
-@keyframes bubbleFloat {
-  0%, 100% { 
-    transform: translateY(0) scale(1); 
-    opacity: 0.5; 
-  }
-  50% { 
-    transform: translateY(-20px) scale(1.15); 
-    opacity: 0.8; 
-  }
-}
-
-/* Wave Pattern */
-.wave-pattern {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 50px;
-  opacity: 0.2;
-  fill: var(--teal);
-  filter: blur(1px);
 }
 
 /* Center Hub */
@@ -1281,7 +1207,7 @@ body:not([data-page="home"]) .wheel-nav.minimized .wheel-container:hover {
   width: var(--wheel-hub-size);
   height: var(--wheel-hub-size);
   border-radius: 50%;
-  background: rgba(var(--surface-rgb, 21, 24, 33), 0.9);
+  background: rgba(21, 24, 33, 0.95);
   backdrop-filter: blur(10px);
   border: 3px solid var(--primary);
   display: flex;
@@ -1339,16 +1265,18 @@ body:not([data-page="home"]) .wheel-nav.minimized .wheel-container:hover {
 }
 
 .wheel-xp {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--primary);
   font-family: var(--font-heading);
   line-height: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .wheel-streak {
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .wheel-guest {
@@ -1439,8 +1367,8 @@ body:not([data-page="home"]) .wheel-nav.minimized .wheel-container:hover {
 .wheel-tooltip {
   position: absolute;
   left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  top: -70px;
+  transform: translateX(-50%);
   background: rgba(15, 17, 23, 0.95);
   backdrop-filter: blur(8px);
   color: var(--text);
@@ -1535,11 +1463,11 @@ body:not([data-page="home"]) .wheel-nav.minimized .wheel-swipe-hint.visible {
   }
 
   .wheel-xp {
-    font-size: 13px;
+    font-size: 16px;
   }
 
   .wheel-streak {
-    font-size: 12px;
+    font-size: 15px;
   }
 
   .wheel-guest {
@@ -1560,10 +1488,6 @@ body:not([data-page="home"]) .wheel-nav.minimized .wheel-swipe-hint.visible {
   .wheel-dot,
   .wheel-segments-track {
     transition: none !important;
-    animation: none !important;
-  }
-
-  .bubble {
     animation: none !important;
   }
 

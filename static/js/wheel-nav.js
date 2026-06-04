@@ -28,6 +28,9 @@
       
       this.touchStartY = 0;
       this.touchStartTime = 0;
+      this.mouseStartY = 0;
+      this.mouseStartTime = 0;
+      this.currentMouseY = 0;
       this.isDragging = false;
       
       this.rotation = 0;
@@ -144,6 +147,15 @@
         this.hub.addEventListener('click', () => this.toggleState());
       }
       
+      // Click on minimized wheel to reopen
+      this.container.addEventListener('click', (e) => {
+        if (this.state === 'minimized' && !this.isHomepage && !this.isDragging) {
+          if (!e.target.closest('.wheel-dot')) {
+            this.setState('expanded');
+          }
+        }
+      });
+      
       this.container.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
       this.container.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
       this.container.addEventListener('touchend', (e) => this.handleTouchEnd(e));
@@ -182,7 +194,8 @@
     }
     
     handleTouchStart(e) {
-      if (!this.isHomepage && this.state === 'minimized') {
+      // Always track touch start for swipe/tap detection
+      if (!this.isHomepage) {
         this.touchStartY = e.touches[0].clientY;
         this.touchStartTime = Date.now();
       }
@@ -193,7 +206,7 @@
     }
     
     handleTouchMove(e) {
-      if (!this.isHomepage && this.state === 'minimized') {
+      if (!this.isHomepage) {
         const deltaY = this.touchStartY - e.touches[0].clientY;
         if (Math.abs(deltaY) > 10) {
           e.preventDefault();
@@ -207,12 +220,32 @@
     }
     
     handleTouchEnd(e) {
-      if (!this.isHomepage && this.state === 'minimized') {
+      if (!this.isHomepage) {
         const deltaY = this.touchStartY - e.changedTouches[0].clientY;
         const duration = Date.now() - this.touchStartTime;
         
-        if (deltaY > CONFIG.SWIPE_THRESHOLD && duration < 500) {
+        // Swipe up to expand when minimized
+        if (this.state === 'minimized' && deltaY > CONFIG.SWIPE_THRESHOLD && duration < 500) {
           this.setState('expanded');
+          if (this.isDragging) {
+            this.endDrag();
+          }
+          return;
+        }
+        // Swipe down to minimize when expanded
+        else if (this.state === 'expanded' && deltaY < -CONFIG.SWIPE_THRESHOLD && duration < 500) {
+          this.setState('minimized');
+          if (this.isDragging) {
+            this.endDrag();
+          }
+          return;
+        }
+        // Tap to toggle (only if not spinning/dragging)
+        else if (!this.isDragging && duration < CONFIG.TAP_MAX_DURATION && Math.abs(deltaY) < 10) {
+          // Don't toggle if tapping on a dot
+          if (!e.target.closest('.wheel-dot')) {
+            this.toggleState();
+          }
         }
       }
       
@@ -239,6 +272,22 @@
     
     handleMouseUp() {
       if (this.isDragging) {
+        // Check for downward drag to minimize (only on non-homepage)
+        if (!this.isHomepage && this.state === 'expanded') {
+          const deltaY = this.mouseStartY - (this.currentMouseY || this.mouseStartY);
+          const duration = Date.now() - this.mouseStartTime;
+          
+          // Downward drag detected (negative deltaY)
+          if (deltaY < -CONFIG.SWIPE_THRESHOLD && duration < 1000) {
+            this.setState('minimized');
+            this.isDragging = false;
+            this.isSpinning = false;
+            this.track.classList.remove('spinning');
+            this.container.style.cursor = '';
+            return;
+          }
+        }
+        
         this.endDrag();
       }
     }
@@ -247,6 +296,10 @@
       this.isDragging = true;
       this.isSpinning = false;
       this.velocity = 0;
+      
+      // Store initial position and time for drag detection
+      this.mouseStartY = y;
+      this.mouseStartTime = Date.now();
       
       const rect = this.container.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
@@ -259,6 +312,9 @@
     
     updateDrag(x, y) {
       if (!this.isDragging) return;
+      
+      // Store current Y for drag direction detection
+      this.currentMouseY = y;
       
       const rect = this.container.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
