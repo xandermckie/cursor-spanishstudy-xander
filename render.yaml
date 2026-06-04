@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: estudio-abroad
+    name: cursor-spanishstudy-xander
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: bash build.sh
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION

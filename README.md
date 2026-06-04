@@ -26,6 +26,21 @@ https://cursor-spanishstudy-xander.onrender.com
 - APScheduler
 - Deployed on Render
 
+## Deploy on Render
+
+Connect the GitHub repo (`xandermckie/studyspanish` or `cursor-spanishstudy-xander`) and branch `main`.
+
+| Setting | Value |
+|---------|--------|
+| **Root Directory** | *(leave blank — repo root)* |
+| **Runtime** | Python 3 |
+| **Build Command** | `bash build.sh` |
+| **Start Command** | `gunicorn app:app --bind 0.0.0.0:$PORT` |
+
+`requirements.txt`, `app.py`, and `Procfile` must sit at the **repository root**, not in a subfolder. If Root Directory is set to something like `studyspanish`, the build fails with `No such file or directory: 'requirements.txt'`.
+
+Optional: use the [`render.yaml`](render.yaml) blueprint (service name `cursor-spanishstudy-xander`). Set `NEWS_API_KEY` in the Render dashboard for live news.
+
 ## Setup
 
 ### Prerequisites
