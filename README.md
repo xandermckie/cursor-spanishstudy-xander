@@ -13,7 +13,6 @@ https://cursor-spanishstudy-xander.onrender.com
 - **Lector** — Fog-reveal reader: a cursor lens uncovers English under Spanish passages; includes daily rotating Spain-related Wikipedia articles
 - **Tarjetas** — Flashcard deck; mark misses to build your weak-words list
 - **Libro de frases** — Type English → cached Spanish translation; add, edit, delete; export CSV
-- **Voz** — Speak English or Spanish; real-time translation via MyMemory (browser speech recognition)
 - **Viajes** — Filter Barcelona recommendations by time, location, distance, and mood; Leaflet map
 - **Noticias** — Spanish headlines about Spain (NewsAPI, cached 60 minutes)
 - **Historia** — Four Spain/Catalonia topics with click-to-reveal English summaries
