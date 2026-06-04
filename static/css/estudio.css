@@ -1369,9 +1369,9 @@ body:not([data-page="home"]) .wheel-nav.minimized .wheel-container:hover {
   left: 50%;
   top: -70px;
   transform: translateX(-50%);
-  background: rgba(15, 17, 23, 0.95);
+  background: rgba(0, 0, 0, 0.95);
   backdrop-filter: blur(8px);
-  color: var(--text);
+  color: #ffffff;
   font-size: 14px;
   font-weight: 600;
   padding: 8px 16px;
