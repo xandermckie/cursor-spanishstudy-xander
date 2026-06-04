@@ -1,46 +1,56 @@
-# Pez pixel-art spec
+# Pez pixel-art spec (reference layout)
 
-Grid: **28×16** logical cells, origin `(12, 18)`, **2×2** SVG units per cell, `viewBox="0 0 80 80"`.
+Grid: **7 rows × ~28 cols**, origin `(11, 26)`, **2×2** SVG units per cell, `viewBox="0 0 80 80"`.
+
+## Layout (facing left)
+
+| Segment | Cols (approx) | Color |
+|---------|---------------|-------|
+| Head | 7–11 | `#FFC400` yellow |
+| Body | 12–19 | `#C60B1E` red |
+| Tail | 20+ | `#FFC400` yellow (flared rows 1–3) |
+
+Side fin: yellow patch + navy diagonal on body row 4. Tail rays: navy pixels rows 1–3 at body–tail join.
 
 ## Palette
 
 | Code | Role | Hex |
 |------|------|-----|
+| Y | Head, tail, side fin | `#FFC400` |
 | R | Body | `#C60B1E` |
-| A | Belly / gills | `#A30B18` |
-| Y | Fins | `#FFC400` |
-| E | Fin depth | `#E8A800` |
-| W | Eye white | `#F8F1F2` |
-| N | Pupil / mouth | `#1A1A2E` |
-| B | Blush | `#FF6B8A` |
+| N | Eye, mouth, fin line, tail rays | `#1A1A2E` |
+| W | Eye highlight (one pixel) | `#F8F1F2` |
+| B | Blush (expressions) | `#FF6B8A` |
 
-## Happy base (body + fins, no face)
+## Happy base (body only — no face)
 
 ```
-..............YY..............
-............YYYY..............
-...........RRRR...............
-.........RRRRRRRR.............
-...........RRRRRRRRRRRR.......
-..........RRRRRRRRRRRRRR..YY..
-.........RRRRRRRRRRRRRR.YYYY.
-........RRRRRRRRRRRRRRRYYYYY.
-........RRRRRRRRRRRRRRR.YYYY.
-.........RRRRRAAARRRRRR.YYY..
-.........RRRRAAAAARRRRR.YY...
-..........RRRRRAAARRRRR.......
-...........RRRRRRRRRR.........
+.......YYYYYRRRRRRRRYYYYY.........
+......YYYYYYYRRRRRRRRNYYYYYYY......
+......YYYYYYYRRRRRRRRYNYYYYYYY.....
+......YYYYYYYRRRRRRRRYYNYYYYYY.....
+......YYYYYYRRRYNRRYYYYYYYYY......
+......YYYYYYYRRRRRRRRYYYYYYY......
+.......YYYYYRRRRRRRRYYYYY.........
 ```
 
-Profile faces **left** (eye col 2–6, tail col 20+). No cap.
+Face overlays use `col_offset=7` on head.
 
 ## Expression deltas
 
-| Expression | Eye | Mouth | Blush |
-|------------|-----|-------|-------|
-| **happy** | 6×6 white + 2×2 pupil + white highlight at `(20,34)` (grid `W`, not duplicate rect) | Stepped NN at rows 14–15 | Yes `(18,44)` |
-| **wink** | Navy bar rows 4–5 cols 4–7 | Same as happy | Yes |
-| **sleeping** | Single navy bar row 5 | One pixel row 15 | Yes |
-| **celebrating** | Taller/wider eye (extra W rows) | +1 mouth pixel | Yes |
-| **thinking** | Smaller 4×4 eye | Flat NNNN bar row 15 | No |
-| **excited** | Same as happy | Wider mouth (+1 step) | Yes |
+| Expression | Eye (head) | Mouth | Blush |
+|------------|------------|-------|-------|
+| **happy** | 3×3 `N` + `W` highlight top-left of pupil | 2-step `N` under eye | 2× `B` on cheek |
+| **wink** | Navy bar rows 2–3 cols 7–10 | Same as happy | Yes |
+| **sleeping** | Single `N` row | One `N` | Yes |
+| **celebrating** | 4×4 `N` + `W` highlight | +1 mouth pixel | Yes |
+| **thinking** | 2×2 `N` | Flat `NNN` bar | No |
+| **excited** | Same as happy | Wide mouth | Yes |
+
+## Regenerate
+
+```bash
+python scripts/gen_pez_rects.py body > templates/partials/pez_body_pixels.html
+python scripts/gen_pez_rects.py eye_happy > templates/partials/pez_eye_happy_pixels.html
+# ... other layers per scripts/gen_pez_rects.py main()
+```
