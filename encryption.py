@@ -5,6 +5,8 @@ Uses Fernet (symmetric encryption with AES-128 CBC + HMAC) to encrypt
 user JSON files and the email index.
 """
 
+import base64
+import hashlib
 import json
 import logging
 import os
@@ -17,31 +19,47 @@ logger = logging.getLogger(__name__)
 ENCRYPTION_VERSION = b"v1:"
 
 
+def _derive_key_from_secret(secret: str) -> bytes:
+    """Build a Fernet-compatible key from SECRET_KEY (stable across deploys)."""
+    digest = hashlib.sha256(secret.encode("utf-8")).digest()
+    return base64.urlsafe_b64encode(digest)
+
+
 def get_encryption_key() -> bytes:
     """
-    Load encryption key from environment variable.
-    
+    Load encryption key from ENCRYPTION_KEY, or derive from SECRET_KEY.
+
+    Render's generateValue for ENCRYPTION_KEY is not Fernet-shaped; deriving
+    from SECRET_KEY keeps production boots working when only SECRET_KEY is set.
+
     Returns:
         Fernet key as bytes
-        
+
     Raises:
-        ValueError: If ENCRYPTION_KEY is not set or invalid
+        ValueError: If no valid key source is available
     """
     key_str = os.environ.get("ENCRYPTION_KEY")
-    
-    if not key_str:
-        raise ValueError(
-            "ENCRYPTION_KEY environment variable not set. "
-            "Generate one with: python -c \"from cryptography.fernet import Fernet; "
-            "print(Fernet.generate_key().decode())\""
-        )
-    
-    try:
-        key = key_str.encode() if isinstance(key_str, str) else key_str
-        Fernet(key)
-        return key
-    except Exception as e:
-        raise ValueError(f"Invalid ENCRYPTION_KEY format: {e}")
+    if key_str:
+        try:
+            key = key_str.encode() if isinstance(key_str, str) else key_str
+            Fernet(key)
+            return key
+        except Exception as exc:
+            logger.warning(
+                "ENCRYPTION_KEY invalid (%s); deriving from SECRET_KEY.", exc
+            )
+
+    secret = os.environ.get("SECRET_KEY", "").strip()
+    if secret and secret != "dev-change-me":
+        derived = _derive_key_from_secret(secret)
+        Fernet(derived)
+        return derived
+
+    raise ValueError(
+        "Set ENCRYPTION_KEY (Fernet.generate_key()) or SECRET_KEY for encryption. "
+        "Generate: python -c \"from cryptography.fernet import Fernet; "
+        "print(Fernet.generate_key().decode())\""
+    )
 
 
 def encrypt_json(data: dict[str, Any]) -> bytes:

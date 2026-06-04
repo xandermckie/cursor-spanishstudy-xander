@@ -31,16 +31,28 @@ def test_get_encryption_key_from_env(set_test_key):
 
 
 def test_get_encryption_key_missing():
-    """Test error when ENCRYPTION_KEY not set."""
+    """Test error when neither ENCRYPTION_KEY nor SECRET_KEY is usable."""
     with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(ValueError, match="ENCRYPTION_KEY environment variable not set"):
+        with pytest.raises(ValueError, match="ENCRYPTION_KEY|SECRET_KEY"):
             encryption.get_encryption_key()
 
 
-def test_get_encryption_key_invalid():
-    """Test error with invalid encryption key format."""
-    with patch.dict(os.environ, {"ENCRYPTION_KEY": "invalid-key"}):
-        with pytest.raises(ValueError, match="Invalid ENCRYPTION_KEY format"):
+def test_get_encryption_key_derives_from_secret():
+    """Invalid ENCRYPTION_KEY falls back to a Fernet key derived from SECRET_KEY."""
+    with patch.dict(
+        os.environ,
+        {"ENCRYPTION_KEY": "not-fernet", "SECRET_KEY": "render-production-secret"},
+        clear=True,
+    ):
+        key = encryption.get_encryption_key()
+        Fernet(key)
+        assert key == encryption._derive_key_from_secret("render-production-secret")
+
+
+def test_get_encryption_key_invalid_without_secret():
+    """Test error when ENCRYPTION_KEY invalid and SECRET_KEY missing."""
+    with patch.dict(os.environ, {"ENCRYPTION_KEY": "invalid-key"}, clear=True):
+        with pytest.raises(ValueError, match="ENCRYPTION_KEY|SECRET_KEY"):
             encryption.get_encryption_key()
 
 

@@ -39,7 +39,9 @@ Connect the GitHub repo (`xandermckie/studyspanish` or `cursor-spanishstudy-xand
 
 `requirements.txt`, `app.py`, and `Procfile` must sit at the **repository root**, not in a subfolder. If Root Directory is set to something like `studyspanish`, the build fails with `No such file or directory: 'requirements.txt'`.
 
-Optional: use the [`render.yaml`](render.yaml) blueprint (service name `cursor-spanishstudy-xander`). Set `NEWS_API_KEY` in the Render dashboard for live news.
+Optional: use the [`render.yaml`](render.yaml) blueprint (service name `cursor-spanishstudy-xander`). `SECRET_KEY` is auto-generated; user-file encryption derives from it (or set a dedicated `ENCRYPTION_KEY` Fernet value). Set `NEWS_API_KEY` in the dashboard for live news.
+
+If the service exits on boot, check logs for `ENCRYPTION_KEY validation failed` — remove any auto-generated `ENCRYPTION_KEY` that is not a Fernet key.
 
 ## Setup
 

@@ -10,8 +10,6 @@ services:
         value: "3.11.9"
       - key: SECRET_KEY
         generateValue: true
-      - key: ENCRYPTION_KEY
-        generateValue: true
       - key: FLASK_DEBUG
         value: "0"
       - key: SCHEDULER_ENABLED
