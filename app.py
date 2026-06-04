@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from flask import (
     Flask,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -37,6 +38,60 @@ CACHE_FILE = DATA_DIR / "cache.json"
 DEFAULT_SECRET_KEY = "dev-change-me"
 PHRASE_MAX_LENGTH = 500
 MIN_PASSWORD_LEN = 8
+VOICE_LANGS = frozenset({"en", "es"})
+
+
+def _api_json_error(message: str, status: int) -> tuple[Response, int]:
+    return jsonify({"error": message}), status
+
+
+def _csrf_from_request() -> str | None:
+    header = request.headers.get("X-CSRF-Token")
+    if header:
+        return header.strip() or None
+    data = request.get_json(silent=True)
+    if isinstance(data, dict):
+        token = data.get("csrf_token")
+        if isinstance(token, str):
+            return token.strip() or None
+    return None
+
+
+def _parse_json_body() -> tuple[dict[str, Any] | None, tuple[Response, int] | None]:
+    if not validate_csrf(_csrf_from_request()):
+        return None, _api_json_error("Solicitud no válida.", 403)
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return None, _api_json_error("Datos no válidos.", 400)
+    return data, None
+
+
+def _validate_voice_text(text: str | None) -> tuple[str | None, tuple[Response, int] | None]:
+    if text is None:
+        return None, _api_json_error("Escribe un texto para traducir.", 400)
+    stripped = text.strip()
+    if not stripped:
+        return None, _api_json_error("Escribe un texto para traducir.", 400)
+    if len(stripped) > PHRASE_MAX_LENGTH:
+        return None, _api_json_error(
+            f"El texto es demasiado largo (máximo {PHRASE_MAX_LENGTH} caracteres).",
+            400,
+        )
+    return stripped, None
+
+
+def _validate_lang_pair(
+    source: str | None, target: str | None
+) -> tuple[tuple[str, str] | None, tuple[Response, int] | None]:
+    src = (source or "en").strip().lower()
+    tgt = (target or "es").strip().lower()
+    if src not in VOICE_LANGS or tgt not in VOICE_LANGS:
+        return None, _api_json_error("Idioma no válido.", 400)
+    if src == tgt:
+        return None, _api_json_error(
+            "El idioma de origen y destino deben ser distintos.", 400
+        )
+    return (src, tgt), None
 
 
 def _parse_refresh_interval_minutes() -> int:
@@ -569,6 +624,90 @@ def register_routes(app: Flask) -> None:
             topics=topics,
             section_failed=section_failed,
         )
+
+    @app.route("/voz")
+    def voice():
+        return render_template(
+            "voice.html",
+            page="voice",
+            title="Voz",
+        )
+
+    @app.route("/api/translate", methods=["POST"])
+    def api_translate():
+        data, err = _parse_json_body()
+        if err:
+            return err
+
+        text_raw = data.get("text") if data else None
+        if not isinstance(text_raw, str):
+            return _api_json_error("Escribe un texto para traducir.", 400)
+
+        text, err = _validate_voice_text(text_raw)
+        if err:
+            return err
+
+        source_raw = data.get("source")
+        target_raw = data.get("target")
+        langs, err = _validate_lang_pair(
+            source_raw if isinstance(source_raw, str) else None,
+            target_raw if isinstance(target_raw, str) else None,
+        )
+        if err:
+            return err
+        source, target = langs
+
+        try:
+            translated, from_cache = fetcher.fetch_translation(
+                text, source, target
+            )
+        except Exception as exc:
+            logger.exception("api_translate failed: %s", exc)
+            return _api_json_error(
+                "No se pudo traducir. Inténtalo de nuevo.", 503
+            )
+
+        if not translated:
+            return _api_json_error(
+                "No se pudo traducir. Inténtalo de nuevo.", 503
+            )
+
+        return jsonify(
+            {"translated": translated, "from_cache": bool(from_cache)}
+        )
+
+    @app.route("/api/phrasebook/save", methods=["POST"])
+    def api_phrasebook_save():
+        user_id = get_current_user_id()
+        if not user_id:
+            return _api_json_error("Inicia sesión para guardar frases.", 401)
+
+        data, err = _parse_json_body()
+        if err:
+            return err
+
+        text_raw = data.get("text") if data else None
+        if not isinstance(text_raw, str):
+            return _api_json_error("Escribe una frase en inglés.", 400)
+
+        text, err = _validate_voice_text(text_raw)
+        if err:
+            return err
+
+        try:
+            entry = fetcher.add_phrase(user_id, text)
+        except Exception as exc:
+            logger.exception("api_phrasebook_save failed: %s", exc)
+            return _api_json_error(
+                "No se pudo guardar la frase. Inténtalo de nuevo.", 503
+            )
+
+        if not entry:
+            return _api_json_error(
+                "No se pudo guardar la frase. Inténtalo de nuevo.", 503
+            )
+
+        return jsonify({"ok": True}), 201
 
     @app.route("/resources")
     def resources():
