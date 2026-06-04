@@ -10,7 +10,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from cryptography.fernet import InvalidToken
 from werkzeug.security import check_password_hash, generate_password_hash
+
+import encryption
 
 logger = logging.getLogger(__name__)
 
@@ -92,13 +95,30 @@ def _load_index() -> dict[str, str]:
     _ensure_dirs()
     if not INDEX_FILE.exists():
         return {}
+    
     try:
-        with INDEX_FILE.open(encoding="utf-8") as f:
-            data = json.load(f)
-        if isinstance(data, dict):
-            return {str(k): str(v) for k, v in data.items()}
-    except (json.JSONDecodeError, OSError) as exc:
+        file_bytes = INDEX_FILE.read_bytes()
+        
+        try:
+            data = encryption.decrypt_json(file_bytes)
+            if isinstance(data, dict):
+                return {str(k): str(v) for k, v in data.items()}
+        except (InvalidToken, ValueError):
+            try:
+                file_text = file_bytes.decode("utf-8")
+                data = json.loads(file_text)
+                if isinstance(data, dict):
+                    logger.info("Migrating plaintext index file to encrypted format")
+                    index_dict = {str(k): str(v) for k, v in data.items()}
+                    if _save_index(index_dict):
+                        logger.info("Successfully migrated index to encrypted format")
+                    return index_dict
+            except (json.JSONDecodeError, UnicodeDecodeError) as decode_exc:
+                logger.error("Failed to decrypt or parse index: %s", decode_exc)
+                return {}
+    except OSError as exc:
         logger.error("Failed to read user index: %s", exc)
+    
     return {}
 
 
@@ -106,11 +126,11 @@ def _save_index(index: dict[str, str]) -> bool:
     _ensure_dirs()
     tmp = INDEX_FILE.with_suffix(".json.tmp")
     try:
-        with tmp.open("w", encoding="utf-8") as f:
-            json.dump(index, f, ensure_ascii=False, indent=2)
+        encrypted_data = encryption.encrypt_json(index)
+        tmp.write_bytes(encrypted_data)
         tmp.replace(INDEX_FILE)
         return True
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         logger.error("Failed to write user index: %s", exc)
         if tmp.exists():
             try:
@@ -131,13 +151,29 @@ def load_user(user_id: str) -> dict[str, Any] | None:
     path = _user_file(user_id)
     if not path.exists():
         return None
+    
     try:
-        with path.open(encoding="utf-8") as f:
-            data = json.load(f)
-        if isinstance(data, dict):
-            return data
-    except (json.JSONDecodeError, OSError) as exc:
-        logger.error("Failed to load user %s: %s", user_id, exc)
+        file_bytes = path.read_bytes()
+        
+        try:
+            data = encryption.decrypt_json(file_bytes)
+            if isinstance(data, dict):
+                return data
+        except (InvalidToken, ValueError):
+            try:
+                file_text = file_bytes.decode("utf-8")
+                data = json.loads(file_text)
+                if isinstance(data, dict):
+                    logger.info("Migrating plaintext user file to encrypted: %s", user_id)
+                    if save_user(user_id, data):
+                        logger.info("Successfully migrated user %s to encrypted format", user_id)
+                    return data
+            except (json.JSONDecodeError, UnicodeDecodeError) as decode_exc:
+                logger.error("Failed to decrypt or parse user %s: %s", user_id, decode_exc)
+                return None
+    except OSError as exc:
+        logger.error("Failed to read user file %s: %s", user_id, exc)
+    
     return None
 
 
@@ -146,11 +182,11 @@ def save_user(user_id: str, data: dict[str, Any]) -> bool:
     path = _user_file(user_id)
     tmp = path.with_suffix(".json.tmp")
     try:
-        with tmp.open("w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        encrypted_data = encryption.encrypt_json(data)
+        tmp.write_bytes(encrypted_data)
         tmp.replace(path)
         return True
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         logger.error("Failed to save user %s: %s", user_id, exc)
         if tmp.exists():
             try:

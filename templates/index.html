@@ -105,11 +105,7 @@
       {% if homepage.word_of_day.phonetic %}
       <p class="text-muted mb-2" style="font-size: 13px; margin-top: 0;">{{ homepage.word_of_day.phonetic }}</p>
       {% endif %}
-      <div class="reveal-card wod-meaning-card">
-        <div class="reveal-es" style="font-size: 13px;">👁 Toca para ver el significado</div>
-        <div class="reveal-en">{{ homepage.word_of_day.definition or homepage.word_of_day.en }}</div>
-        <div class="reveal-hint">Tap to reveal English</div>
-      </div>
+      {{ reveal_card('👁 Toca para ver el significado', homepage.word_of_day.definition or homepage.word_of_day.en, extra_class='wod-meaning-card') }}
     </div>
   </div>
   {% if homepage.word_of_day.example_es %}
@@ -119,13 +115,6 @@
   </div>
   {% endif %}
 </div>
-{% endif %}
-
-{% if homepage.daily_sentence %}
-<div class="mb-3">
-  <span class="section-tag">📝 Frase del día</span>
-</div>
-{{ reveal_card(homepage.daily_sentence.es, homepage.daily_sentence.en) }}
 {% endif %}
 
 {% if homepage.daily_phrase %}

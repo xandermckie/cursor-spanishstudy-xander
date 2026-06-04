@@ -273,6 +273,24 @@ DAILY_PHRASES_ES = [
     '¡salud!',
 ]
 
+# Spain-related Wikipedia articles (Spanish) for daily reader rotation
+WIKIPEDIA_ARTICLES_ES = [
+    'Historia de España',
+    'Flamenco',
+    'Paella',
+    'Sagrada Família',
+    'Pablo Picasso',
+    'Miguel de Cervantes',
+    'Guerra Civil Española',
+    'Reconquista',
+    'Imperio español',
+    'Gaudí',
+    'Tapas',
+    'Semana Santa en España',
+    'La Tomatina',
+    'Real Madrid Club de Fútbol',
+]
+
 READER_PASSAGES_SEED = [
     {
         "id": 'metro-bus',

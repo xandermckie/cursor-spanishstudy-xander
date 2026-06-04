@@ -11,6 +11,7 @@ import io
 import json
 import logging
 import os
+import random
 import re
 import uuid
 from datetime import datetime, timezone
@@ -27,6 +28,7 @@ from fetcher_seeds import (
     DAILY_SENTENCES_ES,
     FLASHCARD_DECK_SEED,
     READER_PASSAGES_SEED,
+    WIKIPEDIA_ARTICLES_ES,
 )
 from fetcher_travel import (
     TRAVEL_RECOMMENDATIONS_SEED,
@@ -473,6 +475,13 @@ def get_last_refresh_display() -> str:
 
 def reset_vocab_session(user_id: str) -> None:
     cache = _load_user_cache(user_id)
+    global_cache = _load_cache()
+    deck = _ensure_flashcard_deck(global_cache)
+    
+    # Create shuffled indices
+    shuffled_order = list(range(len(deck)))
+    random.shuffle(shuffled_order)
+    
     cache["vocab_session"] = {
         "started_at": datetime.now(timezone.utc).isoformat(),
         "results": [],
@@ -481,13 +490,22 @@ def reset_vocab_session(user_id: str) -> None:
         "complete": False,
         "expected_index": 0,
         "visited_indices": [],
+        "shuffled_order": shuffled_order,
     }
     _save_user_cache(user_id, cache)
 
 
 def _ensure_vocab_session(cache: dict[str, Any]) -> dict[str, Any]:
     session = cache.get("vocab_session")
+    global_cache = _load_cache()
+    deck = _ensure_flashcard_deck(global_cache)
+    deck_size = len(deck)
+    
     if not session:
+        # Generate shuffled order for new session
+        shuffled_order = list(range(deck_size))
+        random.shuffle(shuffled_order)
+        
         session = {
             "started_at": datetime.now(timezone.utc).isoformat(),
             "results": [],
@@ -496,10 +514,18 @@ def _ensure_vocab_session(cache: dict[str, Any]) -> dict[str, Any]:
             "complete": False,
             "expected_index": 0,
             "visited_indices": [],
+            "shuffled_order": shuffled_order,
         }
         cache["vocab_session"] = session
     session.setdefault("expected_index", 0)
     session.setdefault("visited_indices", [])
+    
+    # Ensure shuffled_order exists for existing sessions or regenerate if deck size changed
+    if "shuffled_order" not in session or len(session.get("shuffled_order", [])) != deck_size:
+        shuffled_order = list(range(deck_size))
+        random.shuffle(shuffled_order)
+        session["shuffled_order"] = shuffled_order
+    
     return session
 
 
@@ -704,7 +730,12 @@ def get_vocab_session(user_id: str | None, index: int = 0) -> dict[str, Any]:
         idx = session.get("expected_index", 0)
         if total:
             idx = idx % total
-        card = deck[idx] if total else {"es": "", "en": ""}
+        
+        # Use shuffled order to get the actual card
+        shuffled_order = session.get("shuffled_order", list(range(total)))
+        actual_deck_index = shuffled_order[idx] if idx < len(shuffled_order) else idx
+        card = deck[actual_deck_index] if total else {"es": "", "en": ""}
+        
         at_last = total > 0 and idx >= total - 1
         return {
             "card": card,
@@ -904,6 +935,101 @@ def export_phrasebook_csv(user_id: str | None) -> str:
         return output.getvalue()
 
 
+def _fetch_wikipedia_article(title: str, lang: str = "es") -> dict[str, Any] | None:
+    """Fetch main section of a Wikipedia article in the specified language."""
+    try:
+        api_url = f"https://{lang}.wikipedia.org/w/api.php"
+        params = {
+            "action": "query",
+            "format": "json",
+            "titles": title,
+            "prop": "extracts",
+            "exintro": True,  # Only the introduction section
+            "explaintext": True,  # Plain text, no HTML
+            "redirects": 1,
+        }
+        headers = {
+            "User-Agent": "EstudioAbroadApp/1.0 (Spanish Learning App; educational use)"
+        }
+        response = requests.get(api_url, params=params, headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        pages = data.get("query", {}).get("pages", {})
+        if not pages:
+            return None
+        
+        # Get the first (and should be only) page
+        page = next(iter(pages.values()))
+        extract = page.get("extract", "").strip()
+        
+        if not extract or len(extract) < 100:
+            return None
+        
+        # Limit to reasonable length for reading practice (~800-1500 chars)
+        # Take first 3-4 paragraphs
+        paragraphs = [p.strip() for p in extract.split("\n\n") if p.strip()]
+        main_content = "\n\n".join(paragraphs[:3])
+        
+        # If still too long, trim to ~1200 chars at sentence boundary
+        if len(main_content) > 1500:
+            sentences = main_content.split(". ")
+            trimmed = ""
+            for sentence in sentences:
+                if len(trimmed + sentence) > 1200:
+                    break
+                trimmed += sentence + ". "
+            main_content = trimmed.strip()
+        
+        return {
+            "title": page.get("title", title),
+            "body": main_content,
+            "lang": lang,
+            "source": "wikipedia",
+        }
+    except Exception as exc:
+        logger.warning("Failed to fetch Wikipedia article %r: %s", title, exc)
+        return None
+
+
+def _ensure_wikipedia_passages(cache: dict[str, Any]) -> None:
+    """Fetch and cache Wikipedia articles for reader rotation."""
+    wiki_passages = cache.get("wikipedia_passages")
+    last_fetch = cache.get("wikipedia_last_fetch")
+    
+    # Refresh every 24 hours
+    now = datetime.now(timezone.utc)
+    should_refresh = (
+        not wiki_passages
+        or not last_fetch
+        or (now - datetime.fromisoformat(last_fetch)).total_seconds() > 86400
+    )
+    
+    if not should_refresh:
+        return
+    
+    logger.info("Fetching Wikipedia articles for reader...")
+    wiki_passages = []
+    
+    for title in WIKIPEDIA_ARTICLES_ES:
+        article = _fetch_wikipedia_article(title, "es")
+        if article:
+            # Generate unique ID
+            article["id"] = f"wiki-{hashlib.md5(title.encode()).hexdigest()[:8]}"
+            
+            # Translate to English
+            translated, _ = fetch_translation(article["body"], "es", "en")
+            article["en"] = translated if translated else article["body"]
+            
+            wiki_passages.append(article)
+    
+    if wiki_passages:
+        cache["wikipedia_passages"] = wiki_passages
+        cache["wikipedia_last_fetch"] = now.isoformat()
+        _save_cache(cache)
+        logger.info("Cached %d Wikipedia articles", len(wiki_passages))
+
+
 def _ensure_reader_passages(cache: dict[str, Any]) -> list[dict[str, Any]]:
     passages = cache.get("reader_passages")
     if not passages or len(passages) < len(READER_PASSAGES_SEED):
@@ -930,12 +1056,29 @@ def _ensure_reader_passages(cache: dict[str, Any]) -> list[dict[str, Any]]:
 def get_reader(user_id: str | None = None) -> dict[str, Any]:
     try:
         cache = _load_cache()
-        passages = _ensure_reader_passages(cache)
-        idx = _reader_passage_index(len(passages))
+        
+        # Get both seed passages and Wikipedia articles
+        seed_passages = _ensure_reader_passages(cache)
+        _ensure_wikipedia_passages(cache)
+        wiki_passages = cache.get("wikipedia_passages", [])
+        
+        # Combine all passages for daily rotation
+        all_passages = seed_passages + wiki_passages
+        
+        if not all_passages:
+            return {
+                "passages": [],
+                "weak_words_top": [],
+                "section_failed": True,
+            }
+        
+        # Use daily rotation (based on day of year)
+        idx = _utc_day_index(len(all_passages))
         weak_top = get_weak_words(user_id)[:5]
         award_reader_xp(user_id)
+        
         return {
-            "passages": [passages[idx]] if passages else [],
+            "passages": [all_passages[idx]],
             "weak_words_top": weak_top,
             "section_failed": False,
         }
@@ -952,6 +1095,7 @@ def run_refresh() -> None:
     refresh_homepage()
     cache = _load_cache()
     _ensure_reader_passages(cache)
+    _ensure_wikipedia_passages(cache)
     _ensure_flashcard_deck(cache)
     cache.setdefault("translations", {})
     _save_cache(cache)
@@ -1052,6 +1196,146 @@ HISTORY_TOPICS = [
             "Beyond the expiatory temple, he designed or shaped Casa Batlló, La Pedrera, Park Güell, and Casa Vicens; walking the Eixample or climbing the park shows how the city's urban plan became a stage for his imagination. "
             "Gaudí died after a tram accident when the Sagrada Família had only part of its structure raised; since then architects and craftspeople have continued the project from his plans and models. "
             "For a student in Barcelona, visiting these sites with architecture vocabulary—façade, nave, catenary, balcony—turns a weekend outing into Spanish practice tied to the university setting and the metro used every day."
+        ),
+    },
+    {
+        "key": "reconquista",
+        "title_es": "La Reconquista y los Reyes Católicos",
+        "intro_es": "Siglos de reconquista cristiana y la unificación de España bajo Isabel y Fernando.",
+        "wiki_url": "https://en.wikipedia.org/wiki/Reconquista",
+        "summary_es": (
+            "La Reconquista (siglos VIII–XV) fue el proceso gradual mediante el cual los reinos cristianos del norte de la península ibérica recuperaron territorios bajo control musulmán tras la invasión omeya del año 711. "
+            "En 1469, el matrimonio de Isabel de Castilla y Fernando de Aragón unió las dos coronas más poderosas y permitió la conquista final del reino nazarí de Granada en 1492, poniendo fin a casi ochocientos años de presencia musulmana en la península. "
+            "Ese mismo año, los Reyes Católicos financiaron el viaje de Cristóbal Colón al Nuevo Mundo y firmaron el Edicto de Granada, que expulsó a los judíos no conversos, marcando el inicio de la Inquisición española y de una monarquía católica centralizada. "
+            "Cataluña, bajo la Corona de Aragón, mantuvo instituciones propias (la Generalitat, el Consell de Cent en Barcelona) y proyección mediterránea hacia Nápoles y Sicilia. "
+            "Esta época sienta las bases de la España moderna: lenguas regionales, tensiones centro-periferia, identidad católica y expansión imperial son temas que siguen vivos en debates actuales sobre autonomía, símbolos religiosos y memoria histórica."
+        ),
+        "summary_en": (
+            "The Reconquista (8th–15th centuries) was the gradual process by which Christian kingdoms in the north of the Iberian Peninsula reclaimed territories under Muslim rule after the Umayyad invasion of 711. "
+            "In 1469, the marriage of Isabella of Castile and Ferdinand of Aragon united the two most powerful crowns and enabled the final conquest of the Nasrid kingdom of Granada in 1492, ending nearly eight hundred years of Muslim presence in the peninsula. "
+            "That same year, the Catholic Monarchs financed Christopher Columbus's voyage to the New World and signed the Edict of Granada, expelling unconverted Jews, marking the start of the Spanish Inquisition and a centralized Catholic monarchy. "
+            "Catalonia, under the Crown of Aragon, kept its own institutions (the Generalitat, the Consell de Cent in Barcelona) and Mediterranean reach toward Naples and Sicily. "
+            "This era lays the groundwork for modern Spain: regional languages, center-periphery tensions, Catholic identity, and imperial expansion remain alive in today's debates on autonomy, religious symbols, and historical memory."
+        ),
+    },
+    {
+        "key": "spanish_empire",
+        "title_es": "El Imperio Español y el Siglo de Oro",
+        "intro_es": "Expansión colonial y florecimiento cultural en los siglos XVI y XVII.",
+        "wiki_url": "https://en.wikipedia.org/wiki/Spanish_Empire",
+        "summary_es": (
+            "Durante los siglos XVI y XVII, España construyó un imperio que se extendía desde las Filipinas hasta América Latina, convirtiéndose en la primera potencia global tras las conquistas de Hernán Cortés en México y Francisco Pizarro en Perú. "
+            "La plata y el oro de las minas americanas financiaron guerras europeas, palacios reales y una corte en Madrid que atrajo a escritores, pintores y pensadores: Cervantes escribió el «Quijote», Velázquez pintó «Las Meninas», Lope de Vega y Calderón de la Barca renovaron el teatro. "
+            "Este período, conocido como el Siglo de Oro, dejó un legado literario y artístico que define la lengua española hasta hoy; frases del Quijote, vocabulario náutico de la exploración y términos del barroco siguen presentes en clase y en museos. "
+            "Barcelona, aunque parte de un reino con menos protagonismo colonial directo, se benefició del comercio mediterráneo y de las rutas que conectaban la península con Italia y el norte de África. "
+            "El declive del imperio tras derrotas militares y crisis económicas en el siglo XVII sentó las bases de tensiones regionales y debates sobre centralismo que perduran en la política española contemporánea."
+        ),
+        "summary_en": (
+            "During the 16th and 17th centuries, Spain built an empire stretching from the Philippines to Latin America, becoming the first global power after the conquests of Hernán Cortés in Mexico and Francisco Pizarro in Peru. "
+            "Silver and gold from American mines financed European wars, royal palaces, and a court in Madrid that drew writers, painters, and thinkers: Cervantes wrote «Don Quixote», Velázquez painted «Las Meninas», Lope de Vega and Calderón de la Barca renewed theater. "
+            "This period, known as the Golden Age, left a literary and artistic legacy that defines the Spanish language today; phrases from Quixote, nautical vocabulary from exploration, and Baroque terms remain present in class and museums. "
+            "Barcelona, though part of a kingdom with less direct colonial prominence, benefited from Mediterranean trade and routes connecting the peninsula with Italy and North Africa. "
+            "The empire's decline after military defeats and economic crises in the 17th century laid the groundwork for regional tensions and debates on centralism that persist in contemporary Spanish politics."
+        ),
+    },
+    {
+        "key": "catalan_modernism",
+        "title_es": "El Modernismo Catalán",
+        "intro_es": "Movimiento arquitectónico y artístico que transformó Barcelona a finales del siglo XIX.",
+        "wiki_url": "https://en.wikipedia.org/wiki/Modernisme",
+        "summary_es": (
+            "El modernismo catalán (modernisme) fue un movimiento artístico y arquitectónico que floreció en Cataluña entre 1890 y 1910, coincidiendo con el crecimiento industrial de Barcelona y la Renaixença, el resurgimiento cultural y lingüístico catalán. "
+            "Más allá de Gaudí, arquitectos como Lluís Domènech i Montaner (Palau de la Música Catalana, Hospital de Sant Pau) y Josep Puig i Cadafalch (Casa Amatller, Casa de les Punxes) diseñaron edificios que mezclan vidrieras, hierro forjado, cerámica de colores y referencias medievales con innovación estructural. "
+            "El movimiento no se limitó a arquitectura: pintores como Ramon Casas y Santiago Rusiñol, escultores, diseñadores de muebles y tipógrafos crearon un estilo distintivo que identificaba modernidad con identidad catalana. "
+            "La burguesía industrial de Barcelona financió muchos de estos proyectos, convirtiendo el Eixample en un museo al aire libre; hoy caminar por el Passeig de Gràcia permite ver fachadas modernistas en casi cada esquina. "
+            "Estudiar este período en español permite practicar vocabulario de arte (fachada, azulejo, mosaico, hierro forjado) y de historia cultural, conectando clase con salidas reales a edificios que forman parte del día a día urbano."
+        ),
+        "summary_en": (
+            "Catalan modernism (modernisme) was an artistic and architectural movement that flourished in Catalonia between 1890 and 1910, coinciding with Barcelona's industrial growth and the Renaixença, the Catalan cultural and linguistic revival. "
+            "Beyond Gaudí, architects such as Lluís Domènech i Montaner (Palau de la Música Catalana, Hospital de Sant Pau) and Josep Puig i Cadafalch (Casa Amatller, Casa de les Punxes) designed buildings mixing stained glass, wrought iron, colorful ceramics, and medieval references with structural innovation. "
+            "The movement was not limited to architecture: painters like Ramon Casas and Santiago Rusiñol, sculptors, furniture designers, and typographers created a distinctive style that identified modernity with Catalan identity. "
+            "Barcelona's industrial bourgeoisie financed many of these projects, turning the Eixample into an open-air museum; today walking along Passeig de Gràcia lets you see modernist façades on nearly every corner. "
+            "Studying this period in Spanish allows practicing art vocabulary (façade, tile, mosaic, wrought iron) and cultural history, connecting class with real visits to buildings that are part of daily urban life."
+        ),
+    },
+    {
+        "key": "transition",
+        "title_es": "La Transición Española",
+        "intro_es": "Paso de la dictadura franquista a la democracia (1975–1982).",
+        "wiki_url": "https://en.wikipedia.org/wiki/Spanish_transition_to_democracy",
+        "summary_es": (
+            "La Transición Española es el proceso político que llevó a España de la dictadura de Franco, muerta con él en 1975, a una monarquía parlamentaria democrática con la Constitución de 1978. "
+            "El rey Juan Carlos I, nombrado sucesor por Franco, jugó un papel clave al apoyar reformas democráticas; Adolfo Suárez, primer presidente del gobierno electo, negoció con partidos prohibidos (comunistas, socialistas, nacionalistas catalanes y vascos) para redactar una constitución que reconociera autonomías regionales y derechos civiles. "
+            "En Cataluña, el retorno del presidente Tarradellas del exilio en 1977 y el restablecimiento de la Generalitat marcaron el inicio de la recuperación de la lengua y las instituciones catalanas suprimidas bajo el franquismo. "
+            "La Transición no estuvo exenta de violencia: el intento de golpe de estado del 23-F en 1981, con el teniente coronel Tejero ocupando el Congreso a punta de pistola, casi descarrila el proceso democrático. "
+            "Entender esta época es clave para leer la España actual: debates sobre memoria histórica, el papel de la monarquía, y tensiones autonómicas en Cataluña y el País Vasco tienen raíces directas en cómo se pactó y qué quedó sin resolver en aquellos años."
+        ),
+        "summary_en": (
+            "The Spanish Transition is the political process that took Spain from Franco's dictatorship, which died with him in 1975, to a democratic parliamentary monarchy with the Constitution of 1978. "
+            "King Juan Carlos I, named successor by Franco, played a key role by supporting democratic reforms; Adolfo Suárez, the first elected prime minister, negotiated with banned parties (communists, socialists, Catalan and Basque nationalists) to draft a constitution recognizing regional autonomies and civil rights. "
+            "In Catalonia, the return of President Tarradellas from exile in 1977 and the reestablishment of the Generalitat marked the start of recovering the Catalan language and institutions suppressed under Francoism. "
+            "The Transition was not without violence: the attempted coup d'état on February 23, 1981, with Lieutenant Colonel Tejero occupying Congress at gunpoint, nearly derailed the democratic process. "
+            "Understanding this era is key to reading Spain today: debates on historical memory, the monarchy's role, and autonomy tensions in Catalonia and the Basque Country have direct roots in what was negotiated and what was left unresolved in those years."
+        ),
+    },
+    {
+        "key": "diada",
+        "title_es": "La Diada y la Identidad Catalana",
+        "intro_es": "Día nacional de Cataluña; símbolo de identidad y reivindicación autonómica.",
+        "wiki_url": "https://en.wikipedia.org/wiki/National_Day_of_Catalonia",
+        "summary_es": (
+            "La Diada Nacional de Catalunya, celebrada cada 11 de septiembre, conmemora la caída de Barcelona ante las tropas borbónicas en 1714, al final de la Guerra de Sucesión Española, cuando Cataluña perdió sus instituciones propias y el catalán quedó relegado de la administración. "
+            "Desde finales del siglo XIX, la Diada se convirtió en una fecha de reivindicación cultural y política: manifestaciones, actos institucionales, y desde 2012 grandes concentraciones independentistas que han reunido a cientos de miles de personas en el centro de Barcelona pidiendo un referéndum de autodeterminación. "
+            "La senyera (bandera catalana), la estelada (bandera independentista), el himbre «Els Segadors» y el lema «Catalunya, nou estat d'Europa» forman parte del vocabulario visual y simbólico de la ciudad en septiembre. "
+            "Para un estudiante en Barcelona, vivir la Diada es una inmersión en política y lengua: carteles, discursos, conversaciones en bares y metros mezclan catalán y español, y permiten entender tensiones entre identidad regional, nacionalismo español y proyecto europeo. "
+            "Comprender la Diada ayuda a contextualizar por qué edificios públicos cuelgan lazos amarillos, por qué ciertos barrios son más independentistas que otros, y cómo el debate territorial domina las elecciones catalanas y españolas cada año."
+        ),
+        "summary_en": (
+            "The National Day of Catalonia (Diada), celebrated every September 11, commemorates the fall of Barcelona to Bourbon troops in 1714, at the end of the War of the Spanish Succession, when Catalonia lost its own institutions and Catalan was sidelined from administration. "
+            "Since the late 19th century, the Diada became a date of cultural and political vindication: demonstrations, institutional acts, and since 2012 large pro-independence gatherings that have brought hundreds of thousands to Barcelona's center demanding a self-determination referendum. "
+            "The senyera (Catalan flag), the estelada (pro-independence flag), the anthem «Els Segadors», and the slogan «Catalunya, nou estat d'Europa» form part of the city's visual and symbolic vocabulary in September. "
+            "For a student in Barcelona, experiencing the Diada is an immersion in politics and language: posters, speeches, conversations in bars and metros mix Catalan and Spanish, and allow understanding tensions between regional identity, Spanish nationalism, and the European project. "
+            "Understanding the Diada helps contextualize why public buildings hang yellow ribbons, why certain neighborhoods are more pro-independence than others, and how the territorial debate dominates Catalan and Spanish elections every year."
+        ),
+    },
+    {
+        "key": "miro",
+        "title_es": "Joan Miró y el Arte Contemporáneo",
+        "intro_es": "Pintor y escultor catalán; figura clave del surrealismo europeo.",
+        "wiki_url": "https://en.wikipedia.org/wiki/Joan_Mir%C3%B3",
+        "summary_es": (
+            "Joan Miró i Ferrà (1893–1983) nació en Barcelona y se convirtió en uno de los artistas más influyentes del siglo XX, reconocido por sus obras surrealistas con formas orgánicas, colores primarios y símbolos que mezclan lo onírico con referencias a la tierra catalana. "
+            "A diferencia de Picasso, Miró mantuvo toda su vida un compromiso profundo con Barcelona y con Mallorca, donde pasó sus últimos años; la Fundació Joan Miró, inaugurada en Montjuïc en 1975, exhibe más de diez mil obras entre pinturas, esculturas, grabados y tapices. "
+            "Su estilo evolucionó desde el fauvismo inicial hacia un lenguaje abstracto que influyó en el expresionismo abstracto estadounidense; artistas como Jackson Pollock reconocieron su impacto. "
+            "El mosaico de Miró en el pavimento de las Ramblas, el mural «El vol de l'alosa» en el aeropuerto de Barcelona, y esculturas repartidas por la ciudad forman parte del día a día urbano, no solo de visitas de museo. "
+            "Para estudiantes de español, conocer a Miró abre vocabulario de arte contemporáneo (surrealismo, abstracción, grabado, tapiz) y permite conversaciones sobre identidad catalana, exilio durante la Guerra Civil, y cómo el arte puede ser político sin ser literal."
+        ),
+        "summary_en": (
+            "Joan Miró i Ferrà (1893–1983) was born in Barcelona and became one of the most influential artists of the 20th century, recognized for his surrealist works with organic forms, primary colors, and symbols mixing the dreamlike with references to the Catalan land. "
+            "Unlike Picasso, Miró kept a deep commitment to Barcelona and Mallorca throughout his life, where he spent his final years; the Fundació Joan Miró, opened on Montjuïc in 1975, displays over ten thousand works including paintings, sculptures, prints, and tapestries. "
+            "His style evolved from early Fauvism toward an abstract language that influenced American Abstract Expressionism; artists like Jackson Pollock acknowledged his impact. "
+            "Miró's mosaic on the pavement of Las Ramblas, the mural «El vol de l'alosa» at Barcelona airport, and sculptures scattered around the city are part of daily urban life, not only museum visits. "
+            "For Spanish students, knowing Miró opens contemporary art vocabulary (surrealism, abstraction, print, tapestry) and allows conversations about Catalan identity, exile during the Civil War, and how art can be political without being literal."
+        ),
+    },
+    {
+        "key": "medieval_barcelona",
+        "title_es": "Las Ramblas y la Barcelona Medieval",
+        "intro_es": "Casco antiguo, Barrio Gótico y el corazón histórico de la ciudad.",
+        "wiki_url": "https://en.wikipedia.org/wiki/Gothic_Quarter,_Barcelona",
+        "summary_es": (
+            "El Barrio Gótico (Barri Gòtic) conserva el trazado medieval de Barcelona, con callejones estrechos, plazas ocultas y restos romanos (murallas, columnas del templo de Augusto) que muestran la continuidad histórica desde Barcino, la colonia romana fundada en el siglo I a.C. "
+            "Las Ramblas, el paseo más famoso de la ciudad, eran originalmente un torrente (rambla en árabe significa «lecho de río seco») que marcaba el límite de la ciudad amurallada; a lo largo de los siglos se convirtió en eje comercial, social y turístico, flanqueado por el mercado de la Boquería, el Gran Teatre del Liceu y edificios modernistas. "
+            "La catedral gótica de Barcelona, la basílica de Santa Maria del Mar (escenario de la novela «La catedral del mar» de Ildefonso Falcones), y el Palau de la Generalitat son ejemplos de arquitectura gótica catalana que combinan función religiosa, comercial y política. "
+            "Caminar por el Born, el Call (antiguo barrio judío) o la plaza del Rei es recorrer siglos de historia en pocos metros; las placas bilingües en catalán y español, los nombres de calles (carrer, plaça) y el contraste con el Eixample modernista enseñan urbanismo y lengua al mismo tiempo. "
+            "Para estudiantes, este barrio es aula al aire libre: practicar direcciones, describir edificios, pedir en terrazas y leer carteles históricos conecta vocabulario de clase con la experiencia diaria de vivir en Barcelona."
+        ),
+        "summary_en": (
+            "The Gothic Quarter (Barri Gòtic) preserves Barcelona's medieval layout, with narrow alleys, hidden plazas, and Roman remains (walls, columns of the Temple of Augustus) showing historical continuity from Barcino, the Roman colony founded in the 1st century BC. "
+            "Las Ramblas, the city's most famous promenade, was originally a stream (rambla in Arabic means «dry riverbed») marking the boundary of the walled city; over centuries it became a commercial, social, and tourist axis, flanked by the Boquería market, the Gran Teatre del Liceu, and modernist buildings. "
+            "Barcelona's Gothic cathedral, the basilica of Santa Maria del Mar (setting of the novel «Cathedral of the Sea» by Ildefonso Falcones), and the Palau de la Generalitat are examples of Catalan Gothic architecture combining religious, commercial, and political functions. "
+            "Walking through El Born, the Call (old Jewish quarter), or Plaça del Rei means crossing centuries of history in a few meters; bilingual plaques in Catalan and Spanish, street names (carrer, plaça), and the contrast with the modernist Eixample teach urbanism and language simultaneously. "
+            "For students, this neighborhood is an open-air classroom: practicing directions, describing buildings, ordering at terraces, and reading historical signs connects class vocabulary with the daily experience of living in Barcelona."
         ),
     },
 ]

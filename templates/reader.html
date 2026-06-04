@@ -109,6 +109,9 @@
   <div class="card-label">
     <span class="badge badge-primary">{{ passage.lang | upper }}</span>
     {{ passage.title }}
+    {% if passage.source == 'wikipedia' %}
+    <span style="margin-left: auto; font-size: 10px; color: var(--text-muted);">Wikipedia</span>
+    {% endif %}
   </div>
   <div class="passage-wrap fog-wrap--reader" data-passage-id="{{ passage.id }}">
     <div class="passage-layer target-lang">{{ passage.body }}</div>

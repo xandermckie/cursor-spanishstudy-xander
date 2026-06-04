@@ -25,6 +25,7 @@ from flask import (
 )
 from werkzeug.wrappers.response import Response
 
+import encryption
 import fetcher
 import user_store
 from scheduler import init_scheduler
@@ -199,6 +200,19 @@ def create_app() -> Flask:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+
+    try:
+        encryption.get_encryption_key()
+        logger.info("Encryption key validated successfully")
+    except ValueError as exc:
+        if not debug:
+            raise RuntimeError(
+                f"ENCRYPTION_KEY validation failed in production: {exc}"
+            )
+        logger.warning(
+            "ENCRYPTION_KEY not set or invalid in development mode. "
+            "User data encryption will fail. Set ENCRYPTION_KEY environment variable."
+        )
 
     ensure_cache_file()
 
@@ -565,9 +579,59 @@ def register_routes(app: Flask) -> None:
         recommendations: list = []
         map_center = {"lat": fetcher.UB_LAT, "lng": fetcher.UB_LNG}
         try:
-            recommendations = (
-                fetcher.filter_travel_recommendations(**filters) if searched else []
-            )
+            if searched:
+                seed_recommendations = fetcher.filter_travel_recommendations(**filters)
+                
+                google_recommendations = []
+                if filters["mood"]:
+                    google_recommendations = fetcher.fetch_google_places(
+                        mood=filters["mood"],
+                        location=filters["location"],
+                        max_results=3,
+                    )
+                
+                if google_recommendations:
+                    combined = seed_recommendations + google_recommendations
+                    
+                    seen_ids = set()
+                    unique_combined = []
+                    for rec in combined:
+                        if rec["id"] not in seen_ids:
+                            seen_ids.add(rec["id"])
+                            unique_combined.append(rec)
+                    
+                    scored = []
+                    for rec in unique_combined:
+                        score = 0
+                        if filters["time"] and filters["time"] in rec.get("time", []):
+                            score += 2
+                        elif not filters["time"]:
+                            score += 1
+                        if filters["location"] and filters["location"] in rec.get("location", []):
+                            score += 2
+                        elif not filters["location"]:
+                            score += 1
+                        if filters["distance"] and filters["distance"] in rec.get("distance", []):
+                            score += 2
+                        elif not filters["distance"]:
+                            score += 1
+                        if filters["mood"] and filters["mood"] in rec.get("mood", []):
+                            score += 2
+                        elif not filters["mood"]:
+                            score += 1
+                        
+                        if rec.get("_source") == "google_api":
+                            score += 1
+                        
+                        scored.append((score, rec))
+                    
+                    scored.sort(key=lambda x: x[0], reverse=True)
+                    recommendations = [r for _, r in scored[:5]]
+                else:
+                    recommendations = seed_recommendations
+            else:
+                recommendations = []
+            
             map_center = fetcher.get_travel_map_center()
         except Exception as exc:
             logger.exception("travel route failed: %s", exc)

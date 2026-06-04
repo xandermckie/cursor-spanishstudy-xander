@@ -104,7 +104,7 @@
 
   <div>
     <div id="travel-map" class="mb-2" role="region" aria-label="Mapa de Barcelona"></div>
-    <p class="text-muted mb-3" style="font-size: 12px;">Mapa de orientación — las direcciones están en cada recomendación.</p>
+    <p class="text-muted mb-3" style="font-size: 12px;">{% if searched and recommendations %}Los marcadores muestran las recomendaciones.{% else %}Mapa de orientación — las direcciones están en cada recomendación.{% endif %}</p>
     {% if searched %}
       {% if recommendations %}
       <h2 style="font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 12px;">Recomendaciones ({{ recommendations|length }})</h2>
@@ -117,7 +117,11 @@
       </article>
       {% endfor %}
       {% else %}
-      <p class="text-muted">No hay resultados con esos filtros.</p>
+      <div class="text-center py-4">
+        {{ pez(size=56, expression='confused', speech='Hmm...') }}
+        <p class="text-muted mt-3"><strong>No encontramos recomendaciones con esos filtros.</strong></p>
+        <p class="text-muted">Prueba cambiar tu selección o quitar algunos filtros.</p>
+      </div>
       {% endif %}
     {% else %}
     <div class="text-center py-4">
@@ -136,16 +140,37 @@
 <script>
 (function () {
   var center = {{ map_center | tojson }};
+  var recommendations = {{ recommendations | tojson }};
+  
   function initTravelMap() {
     var el = document.getElementById('travel-map');
     if (!el || el._leaflet_id) return;
+    
     var map = L.map(el, { scrollWheelZoom: true }).setView([center.lat, center.lng], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap'
     }).addTo(map);
+    
+    if (recommendations && recommendations.length > 0) {
+      var markers = [];
+      recommendations.forEach(function(rec) {
+        if (rec.lat && rec.lng) {
+          var marker = L.marker([rec.lat, rec.lng]).addTo(map);
+          marker.bindPopup('<strong>' + rec.name_es + '</strong><br>' + rec.address);
+          markers.push(marker);
+        }
+      });
+      
+      if (markers.length > 0) {
+        var group = new L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.1), { maxZoom: 14 });
+      }
+    }
+    
     setTimeout(function () { map.invalidateSize({ animate: false }); }, 100);
   }
+  
   if (document.readyState === 'complete') initTravelMap();
   else window.addEventListener('load', initTravelMap);
 })();

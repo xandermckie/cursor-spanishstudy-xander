@@ -10,7 +10,7 @@ https://cursor-spanishstudy-xander.onrender.com
 
 - **Inicio** — Daily Spanish word and sentence, weak-words ranking from flashcards, XP/streak stats
 - **Cuenta** — Register/login with email and password; upload a profile picture; per-user progress and phrasebook
-- **Lector** — Fog-reveal reader: a cursor lens uncovers English under Spanish/Catalan passages
+- **Lector** — Fog-reveal reader: a cursor lens uncovers English under Spanish passages; includes daily rotating Spain-related Wikipedia articles
 - **Tarjetas** — Flashcard deck; mark misses to build your weak-words list
 - **Libro de frases** — Type English → cached Spanish translation; add, edit, delete; export CSV
 - **Voz** — Speak English or Spanish; real-time translation via MyMemory (browser speech recognition)
@@ -118,7 +118,7 @@ Estudio Abroad is a Flask app with no database. Shared content (daily word, tran
 
 When you load the homepage or flip a flashcard while signed in, Flask reads your user file through `user_store.py` and `fetcher.py`, then renders Jinja2 templates. Anonymous visitors see shared content only; progress and phrases require login.
 
-On startup, `scheduler.py` registers an APScheduler background job that runs every 15 minutes (configurable via `REFRESH_INTERVAL_MINUTES`). Each run calls `fetcher.run_refresh()`, which refreshes the daily word and sentence, reader passages, flashcard deck, and (when `NEWS_API_KEY` is set) Spanish news headlines. Translation requests go through the MyMemory API, but every lookup is keyed by a SHA hash and stored under `cache["translations"]` so repeat phrases never hit the network. DictionaryAPI.dev enriches the daily word with phonetics and an English definition. News articles are filtered for Spain-related keywords and cached for an hour.
+On startup, `scheduler.py` registers an APScheduler background job that runs every 15 minutes (configurable via `REFRESH_INTERVAL_MINUTES`). Each run calls `fetcher.run_refresh()`, which refreshes the daily word and sentence, reader passages, flashcard deck, Wikipedia articles for the reader, and (when `NEWS_API_KEY` is set) Spanish news headlines. Wikipedia articles about Spain (history, culture, cuisine, landmarks) are fetched from the Spanish Wikipedia API, cached for 24 hours, and rotated daily in the reader. Translation requests go through the MyMemory API, but every lookup is keyed by a SHA hash and stored under `cache["translations"]` so repeat phrases never hit the network. DictionaryAPI.dev enriches the daily word with phonetics and an English definition. News articles are filtered for Spain-related keywords and cached for an hour.
 
 The UI is Spanish-first: English appears only on hover (site-wide click-to-reveal) or through the reader's fog lens, which follows your cursor over a passage. Signed-in users track flashcard misses in their personal `weak_words` map, surfaced on the homepage. Phrasebook entries are translated once via MyMemory and cached per user.
 
