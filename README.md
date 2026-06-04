@@ -28,20 +28,19 @@ https://cursor-spanishstudy-xander.onrender.com
 
 ## Deploy on Render
 
-Connect the GitHub repo (`xandermckie/studyspanish` or `cursor-spanishstudy-xander`) and branch `main`.
+Repo: `xandermckie/cursor-spanishstudy-xander`, branch `main`.
 
 | Setting | Value |
 |---------|--------|
-| **Root Directory** | *(leave blank — repo root)* |
-| **Runtime** | Python 3 |
-| **Build Command** | `bash build.sh` |
-| **Start Command** | `gunicorn app:app --bind 0.0.0.0:$PORT` |
+| **Root Directory** | *(leave blank)* |
+| **Build Command** | `pip install -r requirements.txt` |
+| **Start Command** | *(leave blank — uses `Procfile`)* **or** `gunicorn -c gunicorn.conf.py app:app` |
 
-`requirements.txt`, `app.py`, and `Procfile` must sit at the **repository root**, not in a subfolder. If Root Directory is set to something like `studyspanish`, the build fails with `No such file or directory: 'requirements.txt'`.
+Do **not** use `gunicorn app:app` alone — it ignores Render’s `PORT`. The repo’s [`Procfile`](Procfile) and [`gunicorn.conf.py`](gunicorn.conf.py) bind to `0.0.0.0:$PORT` for you.
 
-Optional: use the [`render.yaml`](render.yaml) blueprint (service name `cursor-spanishstudy-xander`). `SECRET_KEY` is auto-generated; user-file encryption derives from it (or set a dedicated `ENCRYPTION_KEY` Fernet value). Set `NEWS_API_KEY` in the dashboard for live news.
+**Environment (optional):** `NEWS_API_KEY` for live news. `SECRET_KEY` and `ENCRYPTION_KEY` are optional — the app boots without them (encryption derives from `SECRET_KEY` when set).
 
-If the service exits on boot, check logs for `ENCRYPTION_KEY validation failed` — remove any auto-generated `ENCRYPTION_KEY` that is not a Fernet key.
+**Remove** any dashboard `ENCRYPTION_KEY` that Render auto-generated; it is not a valid Fernet key.
 
 ## Setup
 

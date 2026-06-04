@@ -132,9 +132,11 @@ def create_app() -> Flask:
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     secret_key = os.environ.get("SECRET_KEY", DEFAULT_SECRET_KEY)
     if not debug and secret_key in ("", DEFAULT_SECRET_KEY):
-        raise RuntimeError(
-            "SECRET_KEY must be set to a unique value in production "
-            "(FLASK_DEBUG=0)."
+        secret_key = secrets.token_hex(32)
+        os.environ["SECRET_KEY"] = secret_key
+        logger.warning(
+            "SECRET_KEY not set on Render; using ephemeral key "
+            "(sessions reset each deploy)."
         )
     app.config["SECRET_KEY"] = secret_key
     app.config["MAX_CONTENT_LENGTH"] = 3 * 1024 * 1024
@@ -150,13 +152,9 @@ def create_app() -> Flask:
         encryption.get_encryption_key()
         logger.info("Encryption key validated successfully")
     except ValueError as exc:
-        if not debug:
-            raise RuntimeError(
-                f"ENCRYPTION_KEY validation failed in production: {exc}"
-            )
         logger.warning(
-            "ENCRYPTION_KEY not set or invalid in development mode. "
-            "User data encryption will fail. Set ENCRYPTION_KEY environment variable."
+            "Encryption key unavailable (%s). User cache encryption disabled.",
+            exc,
         )
 
     ensure_cache_file()
