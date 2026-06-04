@@ -124,8 +124,8 @@
         </div>
         <div class="wheel-stats">
           {% if current_user.is_authenticated %}
-            <span class="wheel-xp">{{ user_stats.xp }} XP</span>
-            <span class="wheel-streak">🔥 {{ user_stats.streak }}</span>
+            <span class="wheel-xp">{{ user_stats.xp_total }} XP</span>
+            <span class="wheel-streak">🔥 {{ user_stats.streak_days }}</span>
           {% else %}
             <span class="wheel-guest">¡Hola!</span>
           {% endif %}

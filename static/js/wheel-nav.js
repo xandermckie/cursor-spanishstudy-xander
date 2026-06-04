@@ -272,11 +272,14 @@
     
     handleMouseUp() {
       if (this.isDragging) {
+        const duration = Date.now() - this.mouseStartTime;
+        const deltaY = this.mouseStartY - (this.currentMouseY || this.mouseStartY);
+        
+        // Check if this was a click (not a drag)
+        const wasClick = duration < 300 && Math.abs(deltaY) < 10 && Math.abs(this.velocity) < 0.1;
+        
         // Check for downward drag to minimize (only on non-homepage)
-        if (!this.isHomepage && this.state === 'expanded') {
-          const deltaY = this.mouseStartY - (this.currentMouseY || this.mouseStartY);
-          const duration = Date.now() - this.mouseStartTime;
-          
+        if (!this.isHomepage && this.state === 'expanded' && !wasClick) {
           // Downward drag detected (negative deltaY)
           if (deltaY < -CONFIG.SWIPE_THRESHOLD && duration < 1000) {
             this.setState('minimized');
@@ -286,6 +289,16 @@
             this.container.style.cursor = '';
             return;
           }
+        }
+        
+        // Handle click to minimize when expanded
+        if (wasClick && !this.isHomepage && this.state === 'expanded') {
+          this.setState('minimized');
+          this.isDragging = false;
+          this.isSpinning = false;
+          this.track.classList.remove('spinning');
+          this.container.style.cursor = '';
+          return;
         }
         
         this.endDrag();
