@@ -4,7 +4,7 @@
 
 **What did Cursor do better than you expected?**
 
-Multi-file changes in one shot — wheel nav replacing the old aquarium nav, profile encryption with tests, Wikipedia reader rotation, travel map + Google Places, vocab shuffle, homepage fixes. The self-review / full-review passes actually landed real fixes (CSRF, session clear on login, vocab anti-cheat, atomic cache writes). Faster than typing all of that by hand.
+Multi-file changes in one shot: wheel nav replacing the old aquarium nav, profile encryption with tests, Wikipedia reader rotation, travel map + Google Places, vocab shuffle, homepage fixes. The self-review / full-review passes actually landed real fixes (CSRF, session clear on login, vocab anti-cheat, atomic cache writes). Faster than typing all of that by hand.
 
 **What did it get wrong or mislead you on?**
 
@@ -28,7 +28,7 @@ Voice page not working — click Escuchar, modal closes, no time to speak. Used 
 
 **New project tomorrow — tool workflow**
 
-Brief spec in Chat if I need wording help, then **Cursor Agent** for all implementation, tests, and README. Review diffs before commit. Keep skills minimal per project so I don't eat the whole quota on one homework week. Cowork only if I had a non-code task; for apps, Cursor wins because I can interact with every change.
+Brief spec in Chat if I need wording help, then **Cursor Agent** for all implementation, tests, and README. Review diffs before commit. Keep skills minimal per project so I don't eat the whole quota on one week. Cowork only if I had a non-code task; for apps, Cursor wins because I can interact with every change.
 
 I prefer Cursor over Chat and Cowork because I like stepping through implementations line by line. Porting Claude skills into Cursor improved prompt quality but definitely hurt my usage limits.
 
