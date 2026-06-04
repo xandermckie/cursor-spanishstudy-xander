@@ -39,13 +39,44 @@
       <div class="nav-actions">
         <div class="nav-auth">
           {% if current_user.is_authenticated %}
-          <a href="{{ url_for('profile') }}" class="nav-profile" title="Perfil">
-            {% if current_user.avatar_url %}
-            <img src="{{ current_user.avatar_url }}" alt="" class="avatar-circle">
-            {% else %}
-            <span class="avatar-circle avatar-circle-placeholder">{{ current_user.email[0]|upper }}</span>
-            {% endif %}
-          </a>
+          <div class="nav-profile-dropdown">
+            <button class="nav-profile-toggle" id="nav-profile-toggle" aria-expanded="false" aria-controls="nav-dropdown-menu" type="button">
+              {% if current_user.avatar_url %}
+              <img src="{{ current_user.avatar_url }}" alt="" class="avatar-circle">
+              {% else %}
+              <span class="avatar-circle avatar-circle-placeholder">{{ current_user.email[0]|upper }}</span>
+              {% endif %}
+              <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="nav-dropdown-menu" id="nav-dropdown-menu" hidden>
+              {% set dropdown_pages = [
+                ('home', 'Inicio', '🏠'),
+                ('reader', 'Lector', '📖'),
+                ('vocab', 'Tarjetas', '🃏'),
+                ('phrasebook', 'Frases', '💬'),
+                ('voice', 'Voz', '🎤'),
+                ('travel', 'Viajes', '✈️'),
+                ('news', 'Noticias', '📰'),
+                ('history', 'Historia', '🏛️'),
+                ('resources', 'Recursos', '📚'),
+                ('profile', 'Cuenta', '👤')
+              ] %}
+              {% for route_name, label, icon in dropdown_pages %}
+              <a href="{{ url_for(route_name) }}" class="dropdown-item{% if page == route_name %} active{% endif %}">
+                <span class="dropdown-icon">{{ icon }}</span>
+                <span>{{ label }}</span>
+              </a>
+              {% endfor %}
+              <hr class="dropdown-divider">
+              <form method="POST" action="{{ url_for('logout') }}" style="margin: 0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="dropdown-item logout-item">
+                  <span class="dropdown-icon">🚪</span>
+                  <span>Cerrar sesión</span>
+                </button>
+              </form>
+            </div>
+          </div>
           {% else %}
           <a href="{{ url_for('login') }}" class="nav-auth-link">Iniciar sesión</a>
           <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm nav-register-btn">Registrarse</a>
@@ -73,9 +104,6 @@
   </main>
 
   <div id="wheel-nav" class="wheel-nav" data-initial-state="expanded" role="navigation" aria-label="Navegación principal">
-    <!-- Scrim overlay for expanded state -->
-    <div class="wheel-scrim" id="wheel-scrim" aria-hidden="true"></div>
-    
     <!-- Main wheel container -->
     <div class="wheel-container" id="wheel-container">
       <!-- Aquarium background effects -->
@@ -114,8 +142,8 @@
         </div>
       </div>
       
-      <!-- 12 wheel segments -->
-      <div class="wheel-segments" id="wheel-segments">
+      <!-- Wheel segments track (rotatable) -->
+      <div class="wheel-segments-track" id="wheel-segments-track">
         {% set wheel_pages = [
           ('home', 'Inicio', '🏠'),
           ('reader', 'Lector', '📖'),
@@ -132,21 +160,22 @@
         ] %}
         
         {% for route_name, label, icon in wheel_pages %}
-        <a
-          href="{{ url_for(route_name) }}"
-          class="wheel-segment{% if page == route_name %} is-active{% endif %}"
-          data-page="{{ route_name }}"
-          data-angle="{{ loop.index0 * 30 }}"
-          aria-label="{{ label }}"
-          tabindex="0"
-        >
-          <span class="segment-icon">{{ icon }}</span>
-          <span class="segment-label">{{ label }}</span>
-        </a>
+        <div class="wheel-dot-wrapper" data-index="{{ loop.index0 }}">
+          <a href="{{ url_for(route_name) }}"
+             class="wheel-dot{% if page == route_name %} is-active{% endif %}"
+             data-page="{{ route_name }}"
+             data-tooltip="{{ label }} {{ icon }}"
+             aria-label="{{ label }}"
+             tabindex="0">
+          </a>
+        </div>
         {% endfor %}
       </div>
       
-      <!-- Swipe hint (shown when minimized) -->
+      <!-- Tooltip -->
+      <div class="wheel-tooltip" id="wheel-tooltip" role="tooltip"></div>
+      
+      <!-- Swipe hint (shown when minimized on non-homepage) -->
       <div class="wheel-swipe-hint" id="wheel-swipe-hint" aria-live="polite">
         <span class="swipe-arrow">↑</span>
         <span class="swipe-text">Desliza para navegar</span>
@@ -172,6 +201,7 @@
   </footer>
 
   <script src="{{ url_for('static', filename='js/reveal.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/profile-dropdown.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/wheel-nav.js') }}" defer></script>
   {% if page == 'reader' %}
   <script>
