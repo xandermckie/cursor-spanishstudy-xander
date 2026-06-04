@@ -356,7 +356,11 @@ main.container-narrow {
   box-shadow: var(--shadow-sm);
 }
 
-.pez-svg { display: block; flex-shrink: 0; }
+.pez-svg {
+  display: block;
+  flex-shrink: 0;
+  shape-rendering: crispEdges;
+}
 
 @keyframes pezBob {
   0%, 100% { transform: translateY(0); }

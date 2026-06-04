@@ -391,6 +391,11 @@ def update_xp(user_id: str, amount: int, cache: dict[str, Any] | None = None) ->
         _save_user_cache(user_id, cache)
 
 
+def _stats_global_cache_fallback() -> dict[str, Any]:
+    """Deck-only global cache for stats when disk load must be avoided."""
+    return {"flashcard_deck": FLASHCARD_DECK_SEED}
+
+
 def _compute_user_stats(
     cache: dict[str, Any], global_cache: dict[str, Any] | None = None
 ) -> dict[str, Any]:
@@ -419,18 +424,36 @@ def _compute_user_stats(
 
 
 def get_user_stats(user_id: str | None = None) -> dict[str, Any]:
-    if not user_id:
-        return _default_user_stats()
+    """Return display-ready stats including xp_in_level, xp_level_max, xp_to_next_level."""
     try:
+        if not user_id:
+            cache: dict[str, Any] = {"user_stats": _default_user_stats()}
+            return _compute_user_stats(cache)
         cache = _load_user_cache(user_id)
-        stats, mutated = _ensure_user_stats(cache)
+        _, mutated = _ensure_user_stats(cache)
         if mutated:
             _save_user_cache(user_id, cache)
         global_cache = _load_cache()
         return _compute_user_stats(cache, global_cache)
     except Exception as exc:
         logger.exception("get_user_stats failed: %s", exc)
-        return _default_user_stats()
+        fallback_cache: dict[str, Any] = {"user_stats": _default_user_stats()}
+        try:
+            return _compute_user_stats(
+                fallback_cache, global_cache=_stats_global_cache_fallback()
+            )
+        except Exception:
+            logger.exception("get_user_stats fallback compute failed")
+            result = _default_user_stats()
+            result.update(
+                {
+                    "xp_in_level": 0,
+                    "xp_level_max": 100,
+                    "xp_to_next_level": 100,
+                    "level": 1,
+                }
+            )
+            return result
 
 
 def get_user_nav_info(user_id: str) -> dict[str, Any]:
