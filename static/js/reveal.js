@@ -32,7 +32,7 @@
 
     var hamburger = document.getElementById('nav-hamburger');
     var navWrap = document.getElementById('nav-links-wrap');
-    if (hamburger && navWrap) {
+    if (hamburger && navWrap && !document.body.classList.contains('has-aquarium-dock')) {
       hamburger.addEventListener('click', function () {
         navWrap.classList.toggle('is-open');
         hamburger.setAttribute('aria-expanded', navWrap.classList.contains('is-open'));
