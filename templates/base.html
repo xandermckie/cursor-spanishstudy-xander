@@ -1,6 +1,4 @@
 {% from "partials/pez.html" import pez %}
-{% set nav_pages = ['home', 'reader', 'vocab', 'phrasebook', 'travel', 'news', 'history', 'resources'] %}
-{% set has_aquarium_dock = page in nav_pages %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -19,9 +17,8 @@
   {% block extra_head %}{% endblock %}
 </head>
 <body
-  class="{% block body_class %}{% endblock %}{% if page == 'reader' %} fog-reveal-page{% endif %}{% if has_aquarium_dock %} has-aquarium-dock{% endif %}"
-  {% if has_aquarium_dock %}data-page="{{ page }}"{% endif %}
-  {% if page in ['reader', 'vocab'] %}data-aquarium-immersive="true"{% endif %}
+  class="{% block body_class %}{% endblock %}{% if page == 'reader' %} fog-reveal-page{% endif %}"
+  data-page="{{ page }}"
 >
   {% if page == 'reader' %}
   <div id="fog-cursor" aria-hidden="true"></div>
@@ -39,27 +36,8 @@
         >
         <span>Estudio Abroad</span>
       </a>
-      {% if not has_aquarium_dock %}
-      <a href="{{ url_for('home') }}" class="nav-mobile-home">Inicio</a>
-      {% endif %}
       <div class="nav-actions">
-        <button type="button" class="nav-hamburger" id="nav-hamburger" aria-expanded="false" aria-controls="nav-links-wrap" aria-label="Menú">
-          <span></span><span></span><span></span>
-        </button>
-        <div class="nav-links-wrap" id="nav-links-wrap">
-          <ul class="nav-links">
-            <li><a href="{{ url_for('home') }}" class="{% if page == 'home' %}active{% endif %}">Inicio</a></li>
-            <li><a href="{{ url_for('reader') }}" class="{% if page == 'reader' %}active{% endif %}">Lector</a></li>
-            <li><a href="{{ url_for('vocab') }}" class="{% if page == 'vocab' %}active{% endif %}">Tarjetas</a></li>
-            <li><a href="{{ url_for('phrasebook') }}" class="{% if page == 'phrasebook' %}active{% endif %}">Frases</a></li>
-            <li><a href="{{ url_for('voice') }}" class="{% if page == 'voice' %}active{% endif %}">Voz</a></li>
-            <li><a href="{{ url_for('travel') }}" class="{% if page == 'travel' %}active{% endif %}">Viajes</a></li>
-            <li><a href="{{ url_for('news') }}" class="{% if page == 'news' %}active{% endif %}">Noticias</a></li>
-            <li><a href="{{ url_for('history') }}" class="{% if page == 'history' %}active{% endif %}">Historia</a></li>
-            <li><a href="{{ url_for('resources') }}" class="{% if page == 'resources' %}active{% endif %}">Recursos</a></li>
-          </ul>
-        </div>
-        <div class="nav-auth nav-auth--top">
+        <div class="nav-auth">
           {% if current_user.is_authenticated %}
           <a href="{{ url_for('profile') }}" class="nav-profile" title="Perfil">
             {% if current_user.avatar_url %}
@@ -73,7 +51,7 @@
           <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm nav-register-btn">Registrarse</a>
           {% endif %}
         </div>
-        <button type="button" class="theme-toggle theme-toggle--top" id="theme-toggle" aria-label="Modo oscuro">🌙</button>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Modo oscuro">🌙</button>
       </div>
     </div>
   </nav>
@@ -94,6 +72,88 @@
     {% block content %}{% endblock %}
   </main>
 
+  <div id="wheel-nav" class="wheel-nav" data-initial-state="expanded" role="navigation" aria-label="Navegación principal">
+    <!-- Scrim overlay for expanded state -->
+    <div class="wheel-scrim" id="wheel-scrim" aria-hidden="true"></div>
+    
+    <!-- Main wheel container -->
+    <div class="wheel-container" id="wheel-container">
+      <!-- Aquarium background effects -->
+      <div class="wheel-aquarium-bg">
+        <div class="bubble bubble-1"></div>
+        <div class="bubble bubble-2"></div>
+        <div class="bubble bubble-3"></div>
+        <div class="bubble bubble-4"></div>
+        <svg class="wave-pattern" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+          <path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" opacity=".25"></path>
+          <path d="M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z" opacity=".5"></path>
+          <path d="M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z"></path>
+        </svg>
+      </div>
+      
+      <!-- Center hub with user info -->
+      <div class="wheel-hub" id="wheel-hub">
+        <div class="wheel-avatar">
+          {% if current_user.is_authenticated %}
+            {% if current_user.avatar_url %}
+              <img src="{{ current_user.avatar_url }}" alt="">
+            {% else %}
+              <span class="avatar-placeholder">{{ current_user.email[0]|upper }}</span>
+            {% endif %}
+          {% else %}
+            <span class="wheel-logo-placeholder">🐠</span>
+          {% endif %}
+        </div>
+        <div class="wheel-stats">
+          {% if current_user.is_authenticated %}
+            <span class="wheel-xp">{{ user_stats.xp }} XP</span>
+            <span class="wheel-streak">🔥 {{ user_stats.streak }}</span>
+          {% else %}
+            <span class="wheel-guest">¡Hola!</span>
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- 12 wheel segments -->
+      <div class="wheel-segments" id="wheel-segments">
+        {% set wheel_pages = [
+          ('home', 'Inicio', '🏠'),
+          ('reader', 'Lector', '📖'),
+          ('vocab', 'Tarjetas', '🃏'),
+          ('phrasebook', 'Frases', '💬'),
+          ('voice', 'Voz', '🎤'),
+          ('travel', 'Viajes', '✈️'),
+          ('news', 'Noticias', '📰'),
+          ('history', 'Historia', '🏛️'),
+          ('resources', 'Recursos', '📚'),
+          ('profile', 'Cuenta', '👤'),
+          ('login', 'Iniciar sesión', '🔑'),
+          ('register', 'Registrarse', '✍️')
+        ] %}
+        
+        {% for route_name, label, icon in wheel_pages %}
+        <a
+          href="{{ url_for(route_name) }}"
+          class="wheel-segment{% if page == route_name %} is-active{% endif %}"
+          data-page="{{ route_name }}"
+          data-angle="{{ loop.index0 * 30 }}"
+          aria-label="{{ label }}"
+          tabindex="0"
+        >
+          <span class="segment-icon">{{ icon }}</span>
+          <span class="segment-label">{{ label }}</span>
+        </a>
+        {% endfor %}
+      </div>
+      
+      <!-- Swipe hint (shown when minimized) -->
+      <div class="wheel-swipe-hint" id="wheel-swipe-hint" aria-live="polite">
+        <span class="swipe-arrow">↑</span>
+        <span class="swipe-text">Desliza para navegar</span>
+      </div>
+    </div>
+  </div>
+
   <footer class="site-footer">
     <div class="footer-inner">
       <div class="footer-brand">
@@ -111,12 +171,8 @@
     </div>
   </footer>
 
-  {% if has_aquarium_dock %}
-  {% include "partials/aquarium_nav.html" %}
-  <script src="{{ url_for('static', filename='js/aquarium-nav.js') }}" defer></script>
-  {% endif %}
-
   <script src="{{ url_for('static', filename='js/reveal.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/wheel-nav.js') }}" defer></script>
   {% if page == 'reader' %}
   <script>
   (function () {
