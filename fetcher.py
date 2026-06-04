@@ -34,6 +34,7 @@ from fetcher_travel import (
     TRAVEL_RECOMMENDATIONS_SEED,
     UB_LAT,
     UB_LNG,
+    fetch_google_places,
     filter_travel_recommendations,
 )
 
