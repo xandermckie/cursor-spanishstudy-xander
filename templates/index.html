@@ -23,8 +23,9 @@
 </div>
 
 {% if homepage and homepage.error and not homepage.daily_sentence %}
-<p class="section-error">No se pudo cargar esta sección. Inténtalo más tarde.</p>
-{% elif homepage %}
+<p class="section-error">No se pudo cargar el contenido del día. Las estadísticas y enlaces siguen abajo.</p>
+{% endif %}
+{% if homepage %}
 
 {% if not current_user.is_authenticated %}
 <div class="alert alert-info mb-4" role="status">

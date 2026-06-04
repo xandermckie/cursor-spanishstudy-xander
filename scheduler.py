@@ -6,6 +6,7 @@ import atexit
 import logging
 import os
 import threading
+from datetime import datetime, timezone
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -52,6 +53,7 @@ def init_scheduler(app, interval_minutes: int = 15, enabled: bool = True) -> Non
                 minutes=interval_minutes,
                 id="refresh_job",
                 replace_existing=True,
+                next_run_time=datetime.now(timezone.utc),
             )
             scheduler.start()
             atexit.register(lambda: scheduler.shutdown(wait=False))

@@ -42,6 +42,8 @@ Do **not** use `gunicorn app:app` alone — it ignores Render’s `PORT`. The re
 
 **Remove** any dashboard `ENCRYPTION_KEY` that Render auto-generated; it is not a valid Fernet key.
 
+On first boot the app **seeds the homepage from built-in data** (no API wait) and runs a **full cache refresh immediately** when the scheduler starts, so Inicio is not empty on a cold Render deploy.
+
 ## Setup
 
 ### Prerequisites

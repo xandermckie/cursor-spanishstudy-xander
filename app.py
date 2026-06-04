@@ -125,6 +125,11 @@ def ensure_cache_file() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     if not CACHE_FILE.exists():
         CACHE_FILE.write_text("{}", encoding="utf-8")
+    cache = fetcher._load_cache_from_disk()
+    daily = cache.get("daily_sentence")
+    daily_phrase = cache.get("daily_phrase")
+    if not daily or not daily.get("en") or not daily_phrase or not daily_phrase.get("en"):
+        fetcher._bootstrap_homepage_cache()
 
 
 def create_app() -> Flask:

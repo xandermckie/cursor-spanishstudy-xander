@@ -103,6 +103,16 @@ def _load_cache_from_disk() -> dict[str, Any]:
         return {}
 
 
+def _invalidate_global_cache() -> None:
+    try:
+        from flask import g, has_request_context
+
+        if has_request_context() and hasattr(g, "_estudio_global_cache"):
+            delattr(g, "_estudio_global_cache")
+    except ImportError:
+        pass
+
+
 def _load_cache() -> dict[str, Any]:
     try:
         from flask import g, has_request_context
@@ -545,45 +555,55 @@ def award_reader_xp(user_id: str | None) -> None:
     _save_user_cache(user_id, cache)
 
 
-def refresh_homepage() -> dict[str, Any]:
-    """Fetch daily sentence, phrase, and word-of-day; write cache."""
-    logger.info("Refreshing homepage data from APIs…")
+def _populate_homepage_cache(
+    cache: dict[str, Any], *, use_apis: bool = True
+) -> bool:
+    """Write daily_sentence, daily_phrase, and word_of_day into cache."""
+    if not DAILY_SENTENCES_ES or not DAILY_PHRASES_ES:
+        return False
 
     now_iso = datetime.now(timezone.utc).isoformat()
     day_idx = _utc_day_index(len(DAILY_SENTENCES_ES))
-    phrase_idx = (day_idx + 11) % len(DAILY_PHRASES_ES) if DAILY_PHRASES_ES else 0
+    phrase_idx = (day_idx + 11) % len(DAILY_PHRASES_ES)
 
     sentence_es = DAILY_SENTENCES_ES[day_idx]
     phrase_es = DAILY_PHRASES_ES[phrase_idx]
 
-    en_text, _ = fetch_translation(sentence_es, "es", "en")
+    if use_apis:
+        en_text, _ = fetch_translation(sentence_es, "es", "en")
+        phrase_en, _ = fetch_translation(phrase_es, "es", "en")
+    else:
+        en_text, phrase_en = None, None
+
     if not en_text:
         en_text = sentence_es
-
-    phrase_en, _ = fetch_translation(phrase_es, "es", "en")
     if not phrase_en:
         phrase_en = phrase_es
 
-    daily = {
+    cache["daily_sentence"] = {
         "es": sentence_es,
         "en": en_text,
         "fetched_at": now_iso,
     }
-    daily_phrase = {
+    cache["daily_phrase"] = {
         "es": phrase_es,
         "en": phrase_en,
         "fetched_at": now_iso,
     }
 
     es_word = _pick_spanish_headword(sentence_es)
-    en_gloss, _ = fetch_translation(es_word, "es", "en")
+    if use_apis:
+        en_gloss, _ = fetch_translation(es_word, "es", "en")
+        en_lookup = (en_gloss or es_word).split()[0].strip(".,?!").lower()
+        dict_data = fetch_definition(en_lookup) if en_lookup else None
+    else:
+        en_gloss = es_word
+        dict_data = None
+
     if not en_gloss:
         en_gloss = es_word
 
-    en_lookup = en_gloss.split()[0].strip(".,?!").lower()
-    dict_data = fetch_definition(en_lookup) if en_lookup else None
-
-    word_of_day = {
+    cache["word_of_day"] = {
         "es": es_word,
         "en": en_gloss,
         "definition": dict_data.get("definition", "") if dict_data else "",
@@ -591,16 +611,37 @@ def refresh_homepage() -> dict[str, Any]:
         "example_es": sentence_es,
         "example_en": en_text,
     }
+    cache["last_refresh"] = now_iso
+    return True
+
+
+def _bootstrap_homepage_cache() -> bool:
+    """Seed homepage cache from built-in data (no network). Used on cold Render deploy."""
+    cache = _load_cache_from_disk()
+    if not _populate_homepage_cache(cache, use_apis=False):
+        return False
+    _ensure_flashcard_deck(cache)
+    _ensure_reader_passages(cache)
+    if not _save_cache(cache):
+        logger.error("bootstrap_homepage_cache: failed to write cache")
+        return False
+    _invalidate_global_cache()
+    logger.info("Homepage cache bootstrapped from seeds")
+    return True
+
+
+def refresh_homepage() -> dict[str, Any]:
+    """Fetch daily sentence, phrase, and word-of-day; write cache."""
+    logger.info("Refreshing homepage data from APIs…")
 
     cache = _load_cache()
-    cache["daily_sentence"] = daily
-    cache["daily_phrase"] = daily_phrase
-    cache["word_of_day"] = word_of_day
-    cache["last_refresh"] = now_iso
+    if not _populate_homepage_cache(cache, use_apis=True):
+        return _homepage_fallback()
     if not _save_cache(cache):
         logger.error("refresh_homepage: failed to write cache")
         return _homepage_fallback()
 
+    _invalidate_global_cache()
     return get_homepage(_refreshing=True)
 
 
@@ -648,8 +689,21 @@ def get_homepage(
             if _refreshing:
                 logger.error("get_homepage: cache still empty after refresh attempt")
                 return _homepage_fallback(user_id)
-            logger.info("get_homepage: cache miss; returning fallback (scheduler will refresh)")
-            return _homepage_from_cache(cache, user_id) or _homepage_fallback(user_id)
+            logger.info("get_homepage: cache miss; bootstrapping homepage")
+            if _bootstrap_homepage_cache():
+                cache = _load_cache()
+                daily = cache.get("daily_sentence")
+                daily_phrase = cache.get("daily_phrase")
+            if not daily or not daily.get("en") or not daily_phrase or not daily_phrase.get("en"):
+                try:
+                    refresh_homepage()
+                    cache = _load_cache()
+                    daily = cache.get("daily_sentence")
+                    daily_phrase = cache.get("daily_phrase")
+                except Exception as refresh_exc:
+                    logger.warning("get_homepage: API refresh failed: %s", refresh_exc)
+            if not daily or not daily.get("en") or not daily_phrase or not daily_phrase.get("en"):
+                return _homepage_from_cache(cache, user_id) or _homepage_fallback(user_id)
 
         wod = cache.get("word_of_day")
         if wod and not wod.get("es"):
@@ -791,7 +845,11 @@ def record_flashcard_result(
         if index in visited:
             logger.warning("record_flashcard_result: index %s already visited", index)
             return False
-        card = deck[index]
+        shuffled_order = session.get("shuffled_order", list(range(total)))
+        deck_index = (
+            shuffled_order[index] if index < len(shuffled_order) else index
+        )
+        card = deck[deck_index]
         if card.get("es", "").strip() != es.strip() or card.get("en", "").strip() != en.strip():
             logger.warning("record_flashcard_result: card mismatch at index %s", index)
             return False

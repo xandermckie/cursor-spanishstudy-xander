@@ -62,8 +62,8 @@ def test_should_not_complete_deck_when_index_skipped(
     assert session.get("complete") is not True
     assert session.get("index") == 0
 
-    first = FLASHCARD_DECK_SEED[0]
     client.get("/vocab")
+    first = fetcher.get_vocab_session(user_id)["card"]
     with client.session_transaction() as sess:
         token = sess["csrf_token"]
     client.post(
@@ -80,3 +80,30 @@ def test_should_not_complete_deck_when_index_skipped(
     session = fetcher.get_vocab_session(user_id)
     assert session.get("index") == 1
     assert session.get("complete") is not True
+
+
+def test_should_record_shuffled_card_at_session_index(
+    registered_user, login, client
+) -> None:
+    """Session index 0 maps to deck[shuffled_order[0]], not deck[0]."""
+    login(registered_user["email"], registered_user["password"])
+    with client.session_transaction() as sess:
+        user_id = sess.get("user_id")
+    assert user_id
+
+    deck = fetcher._ensure_flashcard_deck(fetcher._load_cache())
+    total = len(deck)
+    cache = fetcher._load_user_cache(user_id)
+    session = fetcher._ensure_vocab_session(cache)
+    session["shuffled_order"] = [total - 1] + [
+        i for i in range(total) if i != total - 1
+    ]
+    fetcher._save_user_cache(user_id, cache)
+
+    card = deck[total - 1]
+    assert fetcher.record_flashcard_result(
+        user_id, card["es"], card["en"], False, 0
+    )
+
+    session = fetcher.get_vocab_session(user_id)
+    assert session.get("index") == 1
