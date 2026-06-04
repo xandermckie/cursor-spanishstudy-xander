@@ -258,6 +258,41 @@ DAILY_SENTENCES_ES = [
     "¿Qué barrio recomiendas para vivir si estudio en la Universidad de Barcelona?",
 ]
 
+DAILY_SENTENCES_EN = [
+    "Where is the nearest metro station to Plaça de Catalunya?",
+    "I need to buy a transport pass to study in Barcelona for a semester.",
+    "What time does the university library open on Saturdays?",
+    "I want to book a table at a restaurant near the beach for Friday.",
+    "How much does the set menu cost with a drink included?",
+    "I'm lost in the Gothic Quarter; can you tell me how to get to the metro?",
+    "I have an appointment at the health center tomorrow morning to renew my health card.",
+    "Can I pay the apartment rent by bank transfer?",
+    "I'm looking for a shared flat near campus with internet included.",
+    "What documents do I need for registration at city hall?",
+    "The Rodalies train is twenty minutes late due to an incident.",
+    "Is there a pharmacy open now near the Sagrada Familia?",
+    "I want to sign up for Catalan classes to understand metro signs.",
+    "What is the best metro line to take from the airport to the center?",
+    "It's very hot today; I prefer to study in the afternoon at the library.",
+    "Where can I validate my ticket before getting on the bus?",
+    "I need to reschedule my appointment at the immigration office because of a scheduling conflict.",
+    "Does this municipal market open on Sunday mornings?",
+    "I'm going to submit my university assignment before the five o'clock deadline.",
+    "Can I take a large suitcase in the metro elevator?",
+    "I want to open a bank account in Spain as a foreign student.",
+    "What time does the La Mercè concert start in the park?",
+    "The landlord asked me for the deposit and the first month's rent in advance.",
+    "Is there free WiFi in the campus study room?",
+    "I need a copy of the rental contract to process my residence permit.",
+    "Where is the Aerobús stop at terminal T1?",
+    "I prefer to buy fresh fruit at the market rather than the supermarket.",
+    "How long does the student visa take to be ready?",
+    "My throat hurts and I want to make an appointment with my GP.",
+    "Can you pay by card at the Sant Jordi book fair?",
+    "I'm going to take the commuter train to Sants and then change to the metro.",
+    "Which neighborhood do you recommend to live in if I study at the University of Barcelona?",
+]
+
 DAILY_PHRASES_ES = [
     "buenos días",
     "muchas gracias",
@@ -291,6 +326,199 @@ DAILY_PHRASES_ES = [
     "buen viaje",
     "buen provecho",
     "¡salud!",
+]
+
+DAILY_PHRASES_EN = [
+    "good morning",
+    "thank you very much",
+    "excuse me, can you help me?",
+    "a coffee with milk, please",
+    "the bill, please",
+    "How much does it cost?",
+    "I don't understand",
+    "Can you repeat?",
+    "more slowly, please",
+    "Where is the exit?",
+    "a metro ticket",
+    "I need help",
+    "I'm lost",
+    "I have a reservation",
+    "gluten-free, please",
+    "to go",
+    "Do you accept card?",
+    "Is there WiFi?",
+    "I'm an exchange student",
+    "I speak a little Catalan",
+    "see you tomorrow",
+    "see you in class",
+    "that's great",
+    "what a shame",
+    "seriously",
+    "agreed",
+    "no worries",
+    "watch out!",
+    "congratulations!",
+    "have a good trip",
+    "enjoy your meal",
+    "cheers!",
+]
+
+WOD_GLOSSES_ES = {
+    "alguna": "Forma femenina de «algún»: una de varias posibilidades.",
+    "busco": "Primera persona del verbo buscar: estoy intentando encontrar algo.",
+    "cuál": "Pregunta para elegir entre opciones (¿cuál es la mejor?).",
+    "cuánto": "Pregunta sobre cantidad, precio o tiempo (¿cuánto cuesta/tarda?).",
+    "duele": "Del verbo doler: algo te causa dolor o molestia.",
+    "entregar": "Dar o presentar algo (por ejemplo un trabajo en la universidad).",
+    "este": "Demostrativo: se refiere a algo cercano (este mercado).",
+    "hace": "Del verbo hacer; con calor/frío describe el tiempo atmosférico.",
+    "hora": "Unidad de tiempo; también «a qué hora» para horarios.",
+    "necesito": "Primera persona de necesitar: hace falta que tenga algo.",
+    "prefiero": "Primera persona de preferir: elijo una opción sobre otra.",
+    "puede": "Forma de poder: alguien o algo es capaz o está permitido.",
+    "puedo": "Primera persona de poder: yo soy capaz o tengo permiso.",
+    "quiero": "Primera persona de querer: deseo o tengo la intención de.",
+    "tengo": "Primera persona de tener: poseo o sostengo algo.",
+    "tomar": "Coger un transporte o consumir algo (tomar el metro).",
+    "wifi": "Conexión inalámbrica a internet.",
+    "estación": "Lugar donde subes o bajas del metro o tren.",
+    "abono": "Pase o título de transporte válido por varios viajes o días.",
+    "biblioteca": "Edificio o sala donde puedes estudiar y pedir libros prestados.",
+    "restaurante": "Local donde pides comida y pagas la cuenta.",
+    "menú": "Comida del día a precio fijo, a menudo con bebida incluida.",
+    "perdido": "No sabes dónde estás ni cómo llegar a tu destino.",
+    "cita": "Hora acordada con un médico, oficina u otra persona.",
+    "alquiler": "Dinero que pagas cada mes por vivir en un piso.",
+    "piso": "Vivienda o apartamento donde vives.",
+    "documentos": "Papeles oficiales que piden en trámites.",
+    "tren": "Transporte por raíles; en Barcelona también Rodalies.",
+    "farmacia": "Tienda donde compras medicamentos con receta o sin ella.",
+    "catalán": "Lengua cooficial en Cataluña, distinta del castellano.",
+    "línea": "Ruta concreta del metro o del autobús.",
+    "calor": "Temperatura alta; en verano Barcelona puede ser muy calurosa.",
+    "billete": "Título de transporte para un viaje o varios.",
+    "mercado": "Puesto al aire libre o cubierto donde compras comida fresca.",
+    "trabajo": "Tarea o entrega que debes entregar en la universidad.",
+    "maleta": "Bolsa grande con ruedas para viajar o mudarte.",
+    "cuenta": "Contrato con un banco para guardar y mover dinero.",
+    "concierto": "Actuación musical en vivo, por ejemplo en fiestas locales.",
+    "casero": "Persona que alquila el piso y cobra el alquiler.",
+    "contrato": "Documento legal del alquiler o de otros trámites.",
+    "parada": "Lugar donde esperas el autobús o el Aerobús.",
+    "fruta": "Producto fresco que suele comprarse en el mercado.",
+    "visado": "Permiso en el pasaporte para estudiar o vivir en España.",
+    "garganta": "Parte del cuello; si duele, pides cita médica.",
+    "tarjeta": "Plástico para pagar o para el transporte sanitario.",
+    "cercanías": "Tren de cercanías que conecta Sants y otras estaciones.",
+    "barrio": "Zona de la ciudad donde vives y compras a diario.",
+    "palabra": "Unidad de vocabulario que aprendes cada día.",
+}
+
+WOD_GLOSSES_EN = {
+    "alguna": "some; any (feminine)",
+    "busco": "I'm looking for (from buscar)",
+    "cuál": "which (question word)",
+    "cuánto": "how much; how long",
+    "duele": "hurts (from doler)",
+    "entregar": "to hand in; to deliver",
+    "este": "this (demonstrative)",
+    "hace": "makes; used with weather (it's hot)",
+    "hora": "hour; time (what time)",
+    "necesito": "I need",
+    "prefiero": "I prefer",
+    "puede": "he/she/it can; may",
+    "puedo": "I can",
+    "quiero": "I want",
+    "tengo": "I have",
+    "tomar": "to take (e.g. a train)",
+    "wifi": "Wi‑Fi",
+    "estación": "station (metro or train)",
+    "abono": "transport pass or subscription",
+    "biblioteca": "library",
+    "restaurante": "restaurant",
+    "menú": "set menu (fixed-price meal)",
+    "perdido": "lost; unable to find your way",
+    "cita": "appointment",
+    "alquiler": "rent",
+    "piso": "apartment or flat",
+    "documentos": "documents (official papers)",
+    "tren": "train",
+    "farmacia": "pharmacy",
+    "catalán": "Catalan (language)",
+    "línea": "line (metro or bus route)",
+    "calor": "heat; hot weather",
+    "billete": "ticket",
+    "mercado": "market",
+    "trabajo": "assignment or work (university task)",
+    "maleta": "suitcase",
+    "cuenta": "bank account",
+    "concierto": "concert",
+    "casero": "landlord",
+    "contrato": "contract",
+    "parada": "stop (bus or Aerobús)",
+    "fruta": "fruit",
+    "visado": "visa",
+    "garganta": "throat",
+    "tarjeta": "card (payment or health card)",
+    "cercanías": "commuter rail",
+    "barrio": "neighborhood",
+    "palabra": "word (vocabulary unit)",
+}
+
+WIKIPEDIA_ARTICLES_ES = [
+    "Historia de España",
+    "Flamenco",
+    "Paella",
+    "Sagrada Família",
+    "Pablo Picasso",
+    "Miguel de Cervantes",
+    "Guerra Civil Española",
+    "Reconquista",
+    "Imperio español",
+    "Gaudí",
+    "Tapas",
+    "Semana Santa en España",
+    "La Tomatina",
+    "Real Madrid Club de Fútbol",
+]
+
+SPAIN_GALLERY = [
+    {
+        "filename": "barcelona-skyline.png",
+        "caption_es": "El skyline de Barcelona al atardecer",
+        "caption_en": "Barcelona skyline at sunset",
+        "alt": "Panoramic view of Barcelona",
+    },
+    {
+        "filename": "sagrada-familia.png",
+        "caption_es": "La Sagrada Familia, símbolo de la ciudad",
+        "caption_en": "Sagrada Familia, icon of the city",
+        "alt": "Sagrada Familia basilica",
+    },
+    {
+        "filename": "mercat-boqueria.png",
+        "caption_es": "Colores y sabores en La Boqueria",
+        "caption_en": "Colors and flavors at La Boqueria",
+        "alt": "La Boqueria market stalls",
+    },
+    {
+        "filename": "park-guell.png",
+        "caption_es": "Mosaicos y vistas en Park Güell",
+        "caption_en": "Mosaics and views at Park Güell",
+        "alt": "Park Güell terrace",
+    },
+    {
+        "filename": "barcelona-beach.png",
+        "caption_es": "La playa a pocos minutos del centro",
+        "caption_en": "The beach minutes from the center",
+        "alt": "Barcelona beach",
+    },
+    {
+        "filename": "placa-catalunya.png",
+        "caption_es": "Plaça de Catalunya, corazón del tránsito",
+        "caption_en": "Plaça de Catalunya, transit hub",
+        "alt": "Plaça de Catalunya square",
+    },
 ]
 
 READER_PASSAGES = [
@@ -632,9 +860,45 @@ for s in DAILY_SENTENCES_ES:
     lines.append(f"    {s!r},")
 lines.append("]")
 lines.append("")
+lines.append("DAILY_SENTENCES_EN = [")
+for s in DAILY_SENTENCES_EN:
+    lines.append(f"    {s!r},")
+lines.append("]")
+lines.append("")
 lines.append("DAILY_PHRASES_ES = [")
 for s in DAILY_PHRASES_ES:
     lines.append(f"    {s!r},")
+lines.append("]")
+lines.append("")
+lines.append("DAILY_PHRASES_EN = [")
+for s in DAILY_PHRASES_EN:
+    lines.append(f"    {s!r},")
+lines.append("]")
+lines.append("")
+lines.append("WOD_GLOSSES_ES = {")
+for key, val in sorted(WOD_GLOSSES_ES.items()):
+    lines.append(f"    {key!r}: {val!r},")
+lines.append("}")
+lines.append("")
+lines.append("WOD_GLOSSES_EN = {")
+for key, val in sorted(WOD_GLOSSES_EN.items()):
+    lines.append(f"    {key!r}: {val!r},")
+lines.append("}")
+lines.append("")
+lines.append("SPAIN_GALLERY = [")
+for item in SPAIN_GALLERY:
+    lines.append("    {")
+    lines.append(f'        "filename": {item["filename"]!r},')
+    lines.append(f'        "caption_es": {item["caption_es"]!r},')
+    lines.append(f'        "caption_en": {item["caption_en"]!r},')
+    lines.append(f'        "alt": {item["alt"]!r},')
+    lines.append("    },")
+lines.append("]")
+lines.append("")
+lines.append("# Spain-related Wikipedia articles (Spanish) for daily reader rotation")
+lines.append("WIKIPEDIA_ARTICLES_ES = [")
+for title in WIKIPEDIA_ARTICLES_ES:
+    lines.append(f"    {title!r},")
 lines.append("]")
 lines.append("")
 lines.append("READER_PASSAGES_SEED = [")

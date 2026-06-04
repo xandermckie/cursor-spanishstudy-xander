@@ -312,6 +312,7 @@ def register_routes(app: Flask) -> None:
             page="home",
             title="Inicio",
             homepage=homepage,
+            gallery_items=fetcher.get_home_gallery(),
         )
 
     @app.route("/reader")
@@ -332,6 +333,7 @@ def register_routes(app: Flask) -> None:
             title="Lector",
             reader=reader_data,
             section_failed=reader_data.get("section_failed", False),
+            spain_accent=fetcher.get_spain_accent(0),
         )
 
     @app.route("/vocab")
@@ -593,6 +595,7 @@ def register_routes(app: Flask) -> None:
             searched=searched,
             map_center=map_center,
             section_failed=section_failed,
+            spain_accent=fetcher.get_spain_accent(1),
         )
 
     @app.route("/news")
@@ -635,6 +638,7 @@ def register_routes(app: Flask) -> None:
             title="Historia",
             topics=topics,
             section_failed=section_failed,
+            spain_accent=fetcher.get_spain_accent(2),
         )
 
     @app.route("/resources")
@@ -650,6 +654,7 @@ def register_routes(app: Flask) -> None:
             title="Recursos",
             resources=resources_list,
             section_failed=not resources_list,
+            spain_accent=fetcher.get_spain_accent(3),
         )
 
 

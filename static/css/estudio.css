@@ -985,6 +985,98 @@ main.container-narrow {
   height: 112px;
 }
 
+/* ── Home layout & Spain gallery ── */
+.home-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+@media (min-width: 992px) {
+  .home-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  }
+}
+
+.home-hero--aquarium {
+  position: relative;
+  padding: 20px 22px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(46, 196, 182, 0.12), rgba(255, 107, 53, 0.08));
+  border: 1px solid rgba(46, 196, 182, 0.25);
+  overflow: hidden;
+}
+
+.home-bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(46, 196, 182, 0.2);
+  border: 1px solid rgba(46, 196, 182, 0.35);
+  pointer-events: none;
+}
+
+.home-bubble-1 { width: 28px; height: 28px; top: 12px; right: 18%; }
+.home-bubble-2 { width: 14px; height: 14px; top: 42px; right: 8%; }
+.home-bubble-3 { width: 20px; height: 20px; bottom: 16px; right: 28%; }
+
+.home-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.spain-photo {
+  margin: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.spain-photo-img {
+  display: block;
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+}
+
+.spain-photo-caption {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 12px 0;
+  margin: 0;
+  font-family: var(--font-heading);
+}
+
+.spain-photo-caption-en {
+  font-size: 11px;
+  padding: 4px 12px 10px;
+  margin: 0;
+}
+
+.page-accent-banner {
+  margin-bottom: 1.5rem;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.page-accent-banner .spain-photo-img {
+  height: 160px;
+}
+
+.page-accent-banner .spain-photo-caption,
+.page-accent-banner .spain-photo-caption-en {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+body.resources-page .resource-grid {
+  position: relative;
+}
+
 /* ──  Profile Dropdown ── */
 .nav-profile-dropdown {
   position: relative;
