@@ -39,8 +39,11 @@ from fetcher_travel import (
     TRAVEL_RECOMMENDATIONS_SEED,
     UB_LAT,
     UB_LNG,
+    build_directions_urls,
     fetch_google_places,
     filter_travel_recommendations,
+    get_origin_coordinates,
+    get_origin_label,
 )
 
 logger = logging.getLogger(__name__)
@@ -1598,8 +1601,8 @@ def format_news_date(iso_timestamp: str | None) -> str:
         return iso_timestamp
 
 
-def get_travel_map_center() -> dict[str, float]:
-    return {"lat": UB_LAT, "lng": UB_LNG}
+def get_travel_map_center(location: str | None = None) -> dict[str, float]:
+    return get_origin_coordinates(location)
 
 
 def _news_api_request_params() -> dict[str, str | int]:

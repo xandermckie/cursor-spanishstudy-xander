@@ -23,65 +23,139 @@
 
 {% if not section_failed %}
 <div class="travel-layout">
-  <aside class="filter-panel">
-    <h2 class="filter-heading">Filtros</h2>
-    <form method="post" action="{{ url_for('travel') }}">
-      <div class="mb-3">
-        <label class="form-label" for="time">Tiempo disponible</label>
-        <select class="form-select" name="time" id="time">
-          <option value="">— Cualquiera —</option>
-          <option value="1-2h"{% if filters.time == '1-2h' %} selected{% endif %}>1–2 horas</option>
-          <option value="half"{% if filters.time == 'half' %} selected{% endif %}>Medio día</option>
-          <option value="full"{% if filters.time == 'full' %} selected{% endif %}>Día completo</option>
-        </select>
+  <div class="travel-sidebar-col">
+    <div class="travel-mobile-controls">
+      <button
+        type="button"
+        class="btn btn-ghost travel-filters-toggle"
+        aria-expanded="false"
+        aria-controls="travel-filters"
+        id="travel-filters-toggle"
+      >
+        Filtros <span class="travel-filters-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="travel-filter-chips" aria-label="Filtros activos">
+        {% if filters.time %}<span class="travel-chip">Tiempo</span>{% endif %}
+        {% if filters.location %}<span class="travel-chip">Ubicación</span>{% endif %}
+        {% if filters.distance %}<span class="travel-chip">Distancia</span>{% endif %}
+        {% if filters.mood %}<span class="travel-chip">Ánimo</span>{% endif %}
       </div>
-      <div class="mb-3">
-        <label class="form-label" for="location">Ubicación actual</label>
-        <select class="form-select" name="location" id="location">
-          <option value="">— Cualquiera —</option>
-          <option value="ub"{% if filters.location == 'ub' %} selected{% endif %}>En la Universitat de Barcelona</option>
-          <option value="barcelona"{% if filters.location == 'barcelona' %} selected{% endif %}>En otra zona de Barcelona</option>
-          <option value="spain"{% if filters.location == 'spain' %} selected{% endif %}>Otra ciudad de España</option>
-          <option value="beach"{% if filters.location == 'beach' %} selected{% endif %}>En la playa</option>
-        </select>
-      </div>
-      <div class="mb-3">
-        <label class="form-label" for="distance">Distancia</label>
-        <select class="form-select" name="distance" id="distance">
-          <option value="">— Cualquiera —</option>
-          <option value="walk"{% if filters.distance == 'walk' %} selected{% endif %}>A pie (&lt; 1 km)</option>
-          <option value="transit"{% if filters.distance == 'transit' %} selected{% endif %}>Transporte corto</option>
-          <option value="anywhere"{% if filters.distance == 'anywhere' %} selected{% endif %}>En cualquier parte</option>
-        </select>
-      </div>
-      <div class="mb-3">
-        <label class="form-label" for="mood">Estado de ánimo</label>
-        <select class="form-select" name="mood" id="mood">
-          <option value="">— Cualquiera —</option>
-          <option value="hungry"{% if filters.mood == 'hungry' %} selected{% endif %}>Hambre</option>
-          <option value="adventure"{% if filters.mood == 'adventure' %} selected{% endif %}>Aventura</option>
-          <option value="chill"{% if filters.mood == 'chill' %} selected{% endif %}>Relax</option>
-          <option value="cultural"{% if filters.mood == 'cultural' %} selected{% endif %}>Cultural</option>
-        </select>
-      </div>
-      <button type="submit" class="btn btn-primary w-full">Buscar recomendaciones</button>
-    </form>
-  </aside>
+    </div>
 
-  <div>
-    <div id="travel-map" class="mb-2" role="region" aria-label="Mapa de Barcelona"></div>
-    <p class="text-muted mb-3 map-hint">{% if searched and recommendations %}Los marcadores muestran las recomendaciones.{% else %}Mapa de orientación — las direcciones están en cada recomendación.{% endif %}</p>
+    <aside class="filter-panel" id="travel-filters">
+      <h2 class="filter-heading">Filtros</h2>
+      <form method="post" action="{{ url_for('travel') }}">
+        <div class="mb-3">
+          <label class="form-label" for="time">Tiempo disponible</label>
+          <select class="form-select" name="time" id="time">
+            <option value="">— Cualquiera —</option>
+            <option value="1-2h"{% if filters.time == '1-2h' %} selected{% endif %}>1–2 horas</option>
+            <option value="half"{% if filters.time == 'half' %} selected{% endif %}>Medio día</option>
+            <option value="full"{% if filters.time == 'full' %} selected{% endif %}>Día completo</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="location">Ubicación actual</label>
+          <select class="form-select" name="location" id="location">
+            <option value="">— Cualquiera —</option>
+            <option value="ub"{% if filters.location == 'ub' %} selected{% endif %}>En la Universitat de Barcelona</option>
+            <option value="barcelona"{% if filters.location == 'barcelona' %} selected{% endif %}>En otra zona de Barcelona</option>
+            <option value="spain"{% if filters.location == 'spain' %} selected{% endif %}>Otra ciudad de España</option>
+            <option value="beach"{% if filters.location == 'beach' %} selected{% endif %}>En la playa</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="distance">Distancia</label>
+          <select class="form-select" name="distance" id="distance">
+            <option value="">— Cualquiera —</option>
+            <option value="walk"{% if filters.distance == 'walk' %} selected{% endif %}>A pie (&lt; 1 km)</option>
+            <option value="transit"{% if filters.distance == 'transit' %} selected{% endif %}>Transporte corto</option>
+            <option value="anywhere"{% if filters.distance == 'anywhere' %} selected{% endif %}>En cualquier parte</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="mood">Estado de ánimo</label>
+          <select class="form-select" name="mood" id="mood">
+            <option value="">— Cualquiera —</option>
+            <option value="hungry"{% if filters.mood == 'hungry' %} selected{% endif %}>Hambre</option>
+            <option value="adventure"{% if filters.mood == 'adventure' %} selected{% endif %}>Aventura</option>
+            <option value="chill"{% if filters.mood == 'chill' %} selected{% endif %}>Relax</option>
+            <option value="cultural"{% if filters.mood == 'cultural' %} selected{% endif %}>Cultural</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary w-full">Buscar recomendaciones</button>
+      </form>
+    </aside>
+  </div>
+
+  <div class="travel-main">
+    <div class="travel-map-zone">
+      <div id="travel-map" role="region" aria-label="Mapa de Barcelona"></div>
+      <button
+        type="button"
+        class="travel-geo-btn"
+        id="travel-geo-btn"
+        aria-label="Usar mi ubicación como punto de partida"
+        title="Mi ubicación"
+      >📍</button>
+    </div>
+    <p class="text-muted mb-3 map-hint" id="travel-map-hint">
+      {% if searched and recommendations %}
+        Toca un marcador o una tarjeta para ver la ruta. Pulsa «Cómo llegar» para abrir indicaciones.
+      {% else %}
+        Mapa de orientación — busca recomendaciones con los filtros.
+      {% endif %}
+    </p>
+
     {% if searched %}
       {% if recommendations %}
-      <h2 class="filter-heading">Recomendaciones ({{ recommendations|length }})</h2>
-      {% for rec in recommendations %}
-      <article class="rec-card">
-        <h3>{{ rec.name_es }}</h3>
-        <p class="text-muted mb-2 rec-address">{{ rec.address }} · {{ rec.travel_time_ub }}</p>
-        {{ reveal_card(rec.description_es, rec.description_en) }}
-        <a href="{{ rec.google_maps_url }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm mt-2">Abrir en Google Maps</a>
-      </article>
-      {% endfor %}
+      <div class="travel-results-header">
+        <h2 class="filter-heading mb-0">Recomendaciones ({{ recommendations|length }})</h2>
+        {% if recommendations|length >= 2 %}
+        <button type="button" class="btn btn-ghost btn-sm travel-multistop-btn" id="travel-multistop-btn">
+          Ruta con paradas
+        </button>
+        {% endif %}
+      </div>
+      <div class="travel-cards-rail" id="travel-cards-rail">
+        {% for rec in recommendations %}
+        <article
+          class="rec-card"
+          tabindex="0"
+          role="button"
+          data-rec-id="{{ rec.id }}"
+          data-lat="{{ rec.lat }}"
+          data-lng="{{ rec.lng }}"
+          data-index="{{ loop.index }}"
+          aria-label="Recomendación {{ loop.index }}: {{ rec.name_es }}"
+        >
+          <span class="rec-card__number" aria-hidden="true">{{ loop.index }}</span>
+          <h3>{{ rec.name_es }}</h3>
+          <p class="text-muted mb-2 rec-address">{{ rec.address }} · {{ rec.travel_time_ub }}</p>
+          <p class="rec-card__route text-muted" aria-live="polite"></p>
+          {{ reveal_card(rec.description_es, rec.description_en) }}
+          <div class="rec-card__actions">
+            <button
+              type="button"
+              class="btn btn-primary btn-sm btn-como-llegar"
+              data-action="directions"
+              aria-label="Cómo llegar a {{ rec.name_es }}"
+            >Cómo llegar</button>
+            <a href="{{ rec.google_maps_url }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Ver en Google Maps</a>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+
+      <div class="travel-nav-bar" id="travel-nav-bar" hidden>
+        <div class="travel-nav-bar__info">
+          <span class="travel-nav-bar__name" id="travel-nav-bar-name"></span>
+          <span class="travel-nav-bar__hint" id="travel-nav-bar-hint">Se abrirá Google Maps para las indicaciones</span>
+        </div>
+        <button type="button" class="btn btn-primary travel-nav-bar__cta" id="travel-nav-bar-cta" aria-label="Cómo llegar">
+          Cómo llegar
+        </button>
+      </div>
       {% else %}
       <div class="text-center py-4">
         {{ pez(size=56, expression='confused', speech='Hmm...') }}
@@ -105,40 +179,456 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 (function () {
-  var center = {{ map_center | tojson }};
-  var recommendations = {{ recommendations | tojson }};
-  
-  function initTravelMap() {
-    var el = document.getElementById('travel-map');
-    if (!el || el._leaflet_id) return;
-    
-    var map = L.map(el, { scrollWheelZoom: true }).setView([center.lat, center.lng], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(map);
-    
-    if (recommendations && recommendations.length > 0) {
+  'use strict';
+
+  var travelConfig = {
+    center: {{ map_center | tojson }},
+    origin: {{ origin | tojson }},
+    originLabel: {{ origin_label | tojson }},
+    locationFilter: {{ (filters.location or '') | tojson }},
+    recommendations: {{ recommendations | tojson }},
+    searched: {{ searched | tojson }}
+  };
+
+  var state = {
+    map: null,
+    markersById: {},
+    selectedId: null,
+    userOrigin: null,
+    userMarker: null,
+    routePolyline: null,
+    routeDebounce: null,
+    multistopActive: false
+  };
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  }
+
+  function formatDurationEs(seconds) {
+    var mins = Math.round(seconds / 60);
+    if (mins < 1) return '< 1 min';
+    return '~' + mins + ' min';
+  }
+
+  function formatDistanceEs(meters) {
+    if (meters < 1000) return Math.round(meters) + ' m';
+    return (meters / 1000).toFixed(1).replace('.', ',') + ' km';
+  }
+
+  function fetchWithTimeout(url, ms) {
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, ms);
+    return fetch(url, { signal: ctrl.signal }).finally(function () {
+      clearTimeout(timer);
+    });
+  }
+
+  function getOrigin() {
+    if (state.userOrigin) return state.userOrigin;
+    return travelConfig.origin;
+  }
+
+  function buildDirectionsUrl(dest, preferApple) {
+    var origin = getOrigin();
+    var o = origin.lat + ',' + origin.lng;
+    var d = dest.lat + ',' + dest.lng;
+    if (preferApple) {
+      return 'http://maps.apple.com/?saddr=' + o + '&daddr=' + d + '&dirflg=w';
+    }
+    return 'https://www.google.com/maps/dir/?api=1&origin=' + o + '&destination=' + d + '&travelmode=walking';
+  }
+
+  function openDirections(rec) {
+    if (!rec || !rec.lat || !rec.lng) return;
+
+    function navigate(origin) {
+      if (origin) state.userOrigin = origin;
+      var url = buildDirectionsUrl({ lat: rec.lat, lng: rec.lng }, isIOS());
+      if (isIOS()) {
+        window.location.href = url;
+      } else {
+        window.open(url, '_blank', 'noopener');
+      }
+      updateNavBarHint();
+    }
+
+    if (state.userOrigin) {
+      navigate(null);
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      navigate(null);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        navigate({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      function () {
+        navigate(null);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  }
+
+  function updateNavBarHint() {
+    var hint = document.getElementById('travel-nav-bar-hint');
+    if (!hint) return;
+    var mapsName = isIOS() ? 'Apple Maps' : 'Google Maps';
+    var originText = state.userOrigin ? 'tu ubicación' : travelConfig.originLabel;
+    hint.textContent = 'Se abrirá ' + mapsName + ' desde ' + originText;
+  }
+
+  function createNumberedIcon(num) {
+    return L.divIcon({
+      className: 'rec-marker-wrap',
+      html: '<span class="rec-marker-icon">' + num + '</span>',
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      popupAnchor: [0, -14]
+    });
+  }
+
+  function invalidateMapSize() {
+    if (state.map) {
+      setTimeout(function () {
+        state.map.invalidateSize({ animate: false });
+      }, 150);
+    }
+  }
+
+  var TravelMap = {
+    init: function () {
+      var el = document.getElementById('travel-map');
+      if (!el || el._leaflet_id) return;
+
+      state.map = L.map(el, { scrollWheelZoom: true }).setView(
+        [travelConfig.center.lat, travelConfig.center.lng],
+        13
+      );
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(state.map);
+
+      var recs = travelConfig.recommendations || [];
       var markers = [];
-      recommendations.forEach(function(rec) {
-        if (rec.lat && rec.lng) {
-          var marker = L.marker([rec.lat, rec.lng]).addTo(map);
-          marker.bindPopup('<strong>' + rec.name_es + '</strong><br>' + rec.address);
-          markers.push(marker);
-        }
+      recs.forEach(function (rec, idx) {
+        if (!rec.lat || !rec.lng) return;
+        var num = idx + 1;
+        var marker = L.marker([rec.lat, rec.lng], { icon: createNumberedIcon(num) }).addTo(state.map);
+        marker.bindPopup(
+          '<strong>' + escapeHtml(rec.name_es) + '</strong><br>' + escapeHtml(rec.address)
+        );
+        marker._recId = rec.id;
+        marker.on('click', function () {
+          TravelCards.selectRec(rec.id, true);
+        });
+        state.markersById[rec.id] = marker;
+        markers.push(marker);
       });
-      
+
       if (markers.length > 0) {
         var group = new L.featureGroup(markers);
-        map.fitBounds(group.getBounds().pad(0.1), { maxZoom: 14 });
+        state.map.fitBounds(group.getBounds().pad(0.1), { maxZoom: 14 });
+      }
+
+      if (recs.length > 0) {
+        TravelCards.selectRec(recs[0].id, false);
+      }
+
+      invalidateMapSize();
+    },
+
+    selectRec: function (id, panTo) {
+      Object.keys(state.markersById).forEach(function (mid) {
+        var m = state.markersById[mid];
+        var el = m.getElement();
+        if (el) el.classList.toggle('rec-marker--active', mid === id);
+      });
+
+      if (panTo && state.markersById[id]) {
+        var marker = state.markersById[id];
+        state.map.setView(marker.getLatLng(), Math.max(state.map.getZoom(), 15), { animate: true });
+        marker.openPopup();
       }
     }
-    
-    setTimeout(function () { map.invalidateSize({ animate: false }); }, 100);
+  };
+
+  var TravelRoute = {
+    clear: function () {
+      if (state.routePolyline) {
+        state.map.removeLayer(state.routePolyline);
+        state.routePolyline = null;
+      }
+      document.querySelectorAll('.rec-card__route').forEach(function (el) {
+        el.textContent = '';
+      });
+    },
+
+    fetchWalking: function (rec) {
+      var self = this;
+      if (!rec || !rec.lat || !rec.lng || !state.map) return;
+
+      clearTimeout(state.routeDebounce);
+      state.routeDebounce = setTimeout(function () {
+        self._doFetch(rec);
+      }, 300);
+    },
+
+    _doFetch: function (rec) {
+      var origin = getOrigin();
+      var url = 'https://router.project-osrm.org/route/v1/walking/'
+        + origin.lng + ',' + origin.lat + ';' + rec.lng + ',' + rec.lat
+        + '?overview=full&geometries=geojson';
+
+      var card = document.querySelector('.rec-card[data-rec-id="' + rec.id + '"]');
+      var routeEl = card ? card.querySelector('.rec-card__route') : null;
+
+      fetchWithTimeout(url, 5000)
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data.routes || !data.routes[0]) throw new Error('no route');
+          var route = data.routes[0];
+          var coords = route.geometry.coordinates.map(function (c) {
+            return [c[1], c[0]];
+          });
+
+          TravelRoute.clear();
+          state.routePolyline = L.polyline(coords, {
+            color: '#C45C3E',
+            weight: 4,
+            opacity: 0.85
+          }).addTo(state.map);
+
+          if (routeEl) {
+            routeEl.textContent = formatDurationEs(route.duration) + ' a pie · ' + formatDistanceEs(route.distance);
+          }
+        })
+        .catch(function () {
+          if (routeEl) routeEl.textContent = '';
+        });
+    },
+
+    fetchMultiStop: function () {
+      var recs = travelConfig.recommendations || [];
+      if (recs.length < 2 || !state.map) return;
+
+      var origin = getOrigin();
+      var coords = [origin.lng + ',' + origin.lat];
+      recs.forEach(function (rec) {
+        if (rec.lat && rec.lng) coords.push(rec.lng + ',' + rec.lat);
+      });
+
+      var url = 'https://router.project-osrm.org/route/v1/walking/'
+        + coords.join(';') + '?overview=full&geometries=geojson';
+
+      fetchWithTimeout(url, 8000)
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data.routes || !data.routes[0]) throw new Error('no route');
+          var route = data.routes[0];
+          var lineCoords = route.geometry.coordinates.map(function (c) {
+            return [c[1], c[0]];
+          });
+
+          TravelRoute.clear();
+          state.routePolyline = L.polyline(lineCoords, {
+            color: '#2D6A4F',
+            weight: 4,
+            opacity: 0.85,
+            dashArray: '8, 6'
+          }).addTo(state.map);
+          state.map.fitBounds(state.routePolyline.getBounds().pad(0.1));
+
+          var hint = document.getElementById('travel-map-hint');
+          if (hint) {
+            hint.textContent = 'Ruta con paradas: ' + formatDurationEs(route.duration) + ' a pie · ' + formatDistanceEs(route.distance);
+          }
+        })
+        .catch(function () {
+          var hint = document.getElementById('travel-map-hint');
+          if (hint) hint.textContent = 'Ruta no disponible. Usa «Cómo llegar» en cada lugar.';
+        });
+    }
+  };
+
+  var TravelCards = {
+    init: function () {
+      var rail = document.getElementById('travel-cards-rail');
+      if (!rail) return;
+
+      rail.querySelectorAll('.rec-card').forEach(function (card) {
+        card.addEventListener('click', function (e) {
+          if (e.target.closest('a, button, .reveal-card')) return;
+          TravelCards.selectRec(card.dataset.recId, true);
+        });
+        card.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            TravelCards.selectRec(card.dataset.recId, true);
+          }
+        });
+      });
+
+      document.querySelectorAll('.btn-como-llegar').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var card = btn.closest('.rec-card');
+          if (!card) return;
+          var rec = TravelCards.getRecById(card.dataset.recId);
+          if (rec) openDirections(rec);
+        });
+      });
+
+      var stickyCta = document.getElementById('travel-nav-bar-cta');
+      if (stickyCta) {
+        stickyCta.addEventListener('click', function () {
+          if (!state.selectedId) return;
+          var rec = TravelCards.getRecById(state.selectedId);
+          if (rec) openDirections(rec);
+        });
+      }
+    },
+
+    getRecById: function (id) {
+      var recs = travelConfig.recommendations || [];
+      for (var i = 0; i < recs.length; i++) {
+        if (recs[i].id === id) return recs[i];
+      }
+      return null;
+    },
+
+    selectRec: function (id, panTo) {
+      state.selectedId = id;
+      state.multistopActive = false;
+
+      document.querySelectorAll('.rec-card').forEach(function (card) {
+        card.classList.toggle('rec-card--active', card.dataset.recId === id);
+      });
+
+      if (panTo) {
+        var card = document.querySelector('.rec-card[data-rec-id="' + id + '"]');
+        if (card) card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+
+      TravelMap.selectRec(id, panTo);
+
+      var rec = TravelCards.getRecById(id);
+      TravelCards.updateStickyBar(rec);
+      if (rec) TravelRoute.fetchWalking(rec);
+    },
+
+    updateStickyBar: function (rec) {
+      var bar = document.getElementById('travel-nav-bar');
+      var nameEl = document.getElementById('travel-nav-bar-name');
+      if (!bar || !nameEl) return;
+
+      if (!rec) {
+        bar.hidden = true;
+        return;
+      }
+
+      bar.hidden = false;
+      nameEl.textContent = rec.name_es;
+      updateNavBarHint();
+    }
+  };
+
+  var TravelFilters = {
+    init: function () {
+      var toggle = document.getElementById('travel-filters-toggle');
+      var panel = document.getElementById('travel-filters');
+      if (!toggle || !panel) return;
+
+      toggle.addEventListener('click', function () {
+        var open = panel.classList.toggle('filter-panel--open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        invalidateMapSize();
+      });
+
+      window.addEventListener('resize', invalidateMapSize);
+    }
+  };
+
+  var TravelGeo = {
+    init: function () {
+      var btn = document.getElementById('travel-geo-btn');
+      if (!btn || !navigator.geolocation) {
+        if (btn) btn.style.display = 'none';
+        return;
+      }
+
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        btn.title = 'La ubicación requiere HTTPS';
+      }
+
+      btn.addEventListener('click', function () {
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            state.userOrigin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            TravelGeo.showMarker(state.userOrigin);
+            updateNavBarHint();
+            var hint = document.getElementById('travel-map-hint');
+            if (hint) hint.textContent = 'Origen: tu ubicación actual';
+            if (state.selectedId) {
+              var rec = TravelCards.getRecById(state.selectedId);
+              if (rec) TravelRoute.fetchWalking(rec);
+            }
+          },
+          function () {
+            var hint = document.getElementById('travel-map-hint');
+            if (hint) hint.textContent = 'No se pudo obtener tu ubicación. Usando ' + travelConfig.originLabel + '.';
+          },
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        );
+      });
+    },
+
+    showMarker: function (coords) {
+      if (!state.map) return;
+      if (state.userMarker) state.map.removeLayer(state.userMarker);
+      state.userMarker = L.circleMarker([coords.lat, coords.lng], {
+        radius: 8,
+        fillColor: '#3B82F6',
+        color: '#fff',
+        weight: 2,
+        fillOpacity: 0.9
+      }).addTo(state.map).bindPopup('Tu ubicación');
+    }
+  };
+
+  function initMultistop() {
+    var btn = document.getElementById('travel-multistop-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      state.multistopActive = true;
+      TravelRoute.clear();
+      TravelRoute.fetchMultiStop();
+    });
   }
-  
-  if (document.readyState === 'complete') initTravelMap();
-  else window.addEventListener('load', initTravelMap);
+
+  function init() {
+    TravelFilters.init();
+    TravelMap.init();
+    TravelCards.init();
+    TravelGeo.init();
+    initMultistop();
+    updateNavBarHint();
+  }
+
+  if (document.readyState === 'complete') init();
+  else window.addEventListener('load', init);
 })();
 </script>
 {% endif %}

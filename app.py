@@ -527,7 +527,9 @@ def register_routes(app: Flask) -> None:
         searched = request.method == "POST" or any(filters.values())
         section_failed = False
         recommendations: list = []
-        map_center = {"lat": fetcher.UB_LAT, "lng": fetcher.UB_LNG}
+        origin = fetcher.get_origin_coordinates(filters["location"])
+        origin_label = fetcher.get_origin_label(filters["location"])
+        map_center = origin
         try:
             if searched:
                 seed_recommendations = fetcher.filter_travel_recommendations(**filters)
@@ -582,7 +584,7 @@ def register_routes(app: Flask) -> None:
             else:
                 recommendations = []
             
-            map_center = fetcher.get_travel_map_center()
+            map_center = fetcher.get_travel_map_center(filters["location"])
         except Exception as exc:
             logger.exception("travel route failed: %s", exc)
             section_failed = True
@@ -594,6 +596,8 @@ def register_routes(app: Flask) -> None:
             filters=filters,
             searched=searched,
             map_center=map_center,
+            origin=origin,
+            origin_label=origin_label,
             section_failed=section_failed,
             spain_accent=fetcher.get_spain_accent(1),
         )

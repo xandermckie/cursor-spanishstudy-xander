@@ -20,7 +20,7 @@
       </div>
     </section>
 
-{% if homepage and homepage.error and not homepage.daily_sentence %}
+{% if homepage and homepage.error and not homepage.word_of_day %}
 <p class="section-error">No se pudo cargar el contenido del día. Las estadísticas y enlaces siguen abajo.</p>
 {% endif %}
 {% if homepage %}
@@ -101,32 +101,15 @@
     <div class="wod-icon">{{ homepage.word_of_day.es[0] | upper }}</div>
     <div class="flex-grow">
       <h3 class="wod-title">{{ homepage.word_of_day.es }}</h3>
-      {% if homepage.word_of_day.phonetic %}
-      <p class="text-muted mb-2 wod-phonetic">{{ homepage.word_of_day.phonetic }}</p>
+      {% if homepage.word_of_day.en %}
+      <p class="wod-en">{{ homepage.word_of_day.en }}</p>
       {% endif %}
-      {% if homepage.word_of_day.definition_es %}
-      <p class="wod-gloss-es text-muted mb-2 wod-gloss">{{ homepage.word_of_day.definition_es }}</p>
-      {% endif %}
-      {% set wod_en = homepage.word_of_day.definition or homepage.word_of_day.en %}
-      {% if wod_en %}
-      {{ reveal_card('¿Qué significa en inglés?', wod_en, hint='Toca para ver en inglés', extra_class='wod-meaning-card') }}
+      {% if homepage.word_of_day.definition %}
+      <p class="wod-definition text-muted">{{ homepage.word_of_day.definition }}</p>
       {% endif %}
     </div>
   </div>
-  {% if homepage.word_of_day.example_es %}
-  <div class="wod-example">
-    <p class="text-muted mb-1 wod-example-label">Ejemplo</p>
-    {{ reveal_card(homepage.word_of_day.example_es, homepage.word_of_day.example_en, hint='Toca para ver en inglés') }}
-  </div>
-  {% endif %}
 </div>
-{% endif %}
-
-{% if homepage.daily_sentence %}
-<div class="mb-3 mt-4">
-  <span class="section-tag">📰 Frase del día</span>
-</div>
-{{ reveal_card(homepage.daily_sentence.es, homepage.daily_sentence.en, hint='Toca para ver en inglés') }}
 {% endif %}
 
 {% if homepage.daily_phrase %}
