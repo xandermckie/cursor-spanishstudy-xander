@@ -43,15 +43,36 @@ def test_voice_page_renders_mobile_lite(client) -> None:
     assert b"voice-mic-btn" not in response.data
     assert b"voice-keyboard-card" in response.data
     assert "micrófono del teclado".encode() in response.data
+    assert b"voice-results--inline" in response.data
 
 
-def test_voice_translate_returns_504_when_fast_translation_fails(
+def test_voice_mobile_lite_translate(client) -> None:
+    ua = (
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
+        "Mobile/15E148 Safari/604.1"
+    )
+    client.get("/voice", headers={"User-Agent": ua})
+    token = _csrf_from_session(client)
+    response = client.post(
+        "/voice/translate",
+        json={"text": "Where is the beach?", "source_lang": "en"},
+        headers={"X-CSRF-Token": token, "User-Agent": ua},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["spoken"] == "Where is the beach?"
+    assert data["translated"]
+
+
+def test_voice_translate_returns_504_when_both_translation_paths_fail(
     client, monkeypatch
 ) -> None:
-    def fail_fast(*_args, **_kwargs):
+    def fail_translate(*_args, **_kwargs):
         return None, False
 
-    monkeypatch.setattr("fetcher.fetch_translation_fast", fail_fast)
+    monkeypatch.setattr("fetcher.fetch_translation_fast", fail_translate)
+    monkeypatch.setattr("fetcher.fetch_translation", fail_translate)
     client.get("/voice")
     token = _csrf_from_session(client)
     response = client.post(
@@ -60,7 +81,7 @@ def test_voice_translate_returns_504_when_fast_translation_fails(
         headers={"X-CSRF-Token": token},
     )
     assert response.status_code == 504
-    assert "tardó demasiado" in response.get_json()["error"]
+    assert "No se pudo traducir" in response.get_json()["error"]
 
 
 def test_voice_translate_en_to_es(client) -> None:

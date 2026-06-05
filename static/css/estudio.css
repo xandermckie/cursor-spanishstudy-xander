@@ -2730,6 +2730,18 @@ body.dark .streak-badge { color: var(--accent-yellow); }
   display: none;
 }
 
+.voice-results--inline {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+  border-radius: 0.75rem;
+  background: var(--surface-muted, rgba(0, 0, 0, 0.03));
+}
+
+body.dark .voice-results--inline {
+  background: rgba(255, 255, 255, 0.04);
+}
+
 .voice-unsupported {
   border-left: 4px solid var(--accent-yellow);
   background: rgba(232, 185, 35, 0.08);

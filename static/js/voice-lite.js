@@ -2,7 +2,7 @@
  * Lightweight mobile Voz UI — no speech recognition JS.
  * Users dictate via the keyboard's built-in mic into the textarea.
  */
-const TRANSLATE_TIMEOUT_MS = 20000;
+const TRANSLATE_TIMEOUT_MS = 25000;
 
 class VoiceLiteApp {
   constructor(root) {
@@ -30,6 +30,10 @@ class VoiceLiteApp {
     this.saveStatus = document.getElementById('voice-save-status');
     this.phrasebookLink = document.getElementById('voice-phrasebook-link');
 
+    if (!this.csrf) {
+      console.error('Voice lite: missing CSRF token');
+    }
+
     root.dataset.speechBackend = 'keyboard';
     this.bindEvents();
   }
@@ -41,10 +45,30 @@ class VoiceLiteApp {
         this.setDirection(btn.dataset.sourceLang);
       });
     });
-    this.translateBtn?.addEventListener('click', () => this.translateTranscript());
-    this.cancelTranslateBtn?.addEventListener('click', () => this.cancelTranslate());
-    this.clearBtn?.addEventListener('click', () => this.clearTranscript());
-    this.saveBtn?.addEventListener('click', () => this.savePhrase());
+
+    const onTranslate = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.translateTranscript();
+    };
+
+    this.translateBtn?.addEventListener('click', onTranslate);
+
+    this.cancelTranslateBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.cancelTranslate();
+    });
+
+    this.clearBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.clearTranscript();
+    });
+
+    this.saveBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.savePhrase();
+    });
+
     this.transcriptInput?.addEventListener('input', () => this.setError(''));
   }
 
@@ -67,6 +91,7 @@ class VoiceLiteApp {
     }
     this.errorEl.textContent = message;
     this.errorEl.classList.remove('hidden');
+    this.errorEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   clearTranscript() {
@@ -78,10 +103,6 @@ class VoiceLiteApp {
   }
 
   async parseJsonResponse(response) {
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      return { error: 'Respuesta no válida del servidor.' };
-    }
     try {
       return await response.json();
     } catch {
@@ -100,6 +121,13 @@ class VoiceLiteApp {
       return;
     }
 
+    if (!this.csrf) {
+      this.setError('Recarga la página e inténtalo de nuevo.');
+      return;
+    }
+
+    this.transcriptInput?.blur();
+
     this.isBusy = true;
     const translateLabel = this.translateBtn?.textContent || 'Traducir';
     if (this.translateBtn) {
@@ -117,20 +145,28 @@ class VoiceLiteApp {
     try {
       const response = await fetch('/voice/translate', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-Token': this.csrf,
+          Accept: 'application/json',
         },
         body: JSON.stringify({ text, source_lang: this.sourceLang }),
         signal: this.translateAbort.signal,
       });
       const data = await this.parseJsonResponse(response);
       if (!response.ok) {
-        if (response.status === 504) {
+        if (response.status === 403) {
+          this.setError('Sesión caducada. Recarga la página e inténtalo de nuevo.');
+        } else if (response.status === 504) {
           this.setError('La traducción tardó demasiado. Inténtalo de nuevo.');
         } else {
           this.setError(data.error || 'No se pudo traducir.');
         }
+        return;
+      }
+      if (!data.translated) {
+        this.setError('No se recibió traducción. Inténtalo de nuevo.');
         return;
       }
       this.showResult(data);
@@ -138,6 +174,7 @@ class VoiceLiteApp {
       if (err.name === 'AbortError') {
         this.setError('La traducción tardó demasiado. Inténtalo de nuevo.');
       } else {
+        console.error('Voice lite translate failed:', err);
         this.setError('No se pudo traducir. Comprueba tu conexión.');
       }
     } finally {
@@ -154,7 +191,10 @@ class VoiceLiteApp {
 
   showResult(data) {
     this.lastResult = data;
-    if (this.resultsCard) this.resultsCard.classList.remove('hidden');
+    if (this.resultsCard) {
+      this.resultsCard.classList.remove('hidden');
+      this.resultsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
     const spokenLabel = data.source_lang === 'en' ? 'Inglés' : 'Español';
     const translatedLabel = data.target_lang === 'en' ? 'Inglés' : 'Español';
@@ -185,9 +225,11 @@ class VoiceLiteApp {
     try {
       const response = await fetch('/voice/save', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-Token': this.csrf,
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           spoken: this.lastResult.spoken,
@@ -205,7 +247,8 @@ class VoiceLiteApp {
         this.saveStatus.classList.remove('hidden');
       }
       if (this.phrasebookLink) this.phrasebookLink.hidden = false;
-    } catch {
+    } catch (err) {
+      console.error('Voice lite save failed:', err);
       this.setError('No se pudo guardar la frase.');
     } finally {
       this.isBusy = false;
