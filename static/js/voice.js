@@ -1,5 +1,5 @@
 const MAX_RECORD_SECONDS = 15;
-const TRANSLATE_TIMEOUT_MS = 20000;
+const TRANSLATE_TIMEOUT_MS = 35000;
 const IDLE_HINT = 'Mantén pulsado el micrófono para hablar';
 const IDLE_HINT_DESKTOP = 'Pulsa el micrófono para hablar';
 

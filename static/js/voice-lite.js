@@ -2,7 +2,7 @@
  * Lightweight mobile Voz UI — no speech recognition JS.
  * Users dictate via the keyboard's built-in mic into the textarea.
  */
-const TRANSLATE_TIMEOUT_MS = 25000;
+const TRANSLATE_TIMEOUT_MS = 35000;
 
 class VoiceLiteApp {
   constructor(root) {

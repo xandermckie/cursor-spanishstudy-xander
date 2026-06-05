@@ -12,3 +12,8 @@ services:
         value: "0"
       - key: SCHEDULER_ENABLED
         value: "true"
+      # Set in Render dashboard — raises MyMemory quota for the shared server IP.
+      - key: MYMEMORY_EMAIL
+        sync: false
+      - key: LINGVA_URLS
+        value: "https://lingva.ml/api/v1,https://translate.igna.wtf/api/v1"

@@ -570,10 +570,6 @@ def register_routes(app: Flask) -> None:
             translated, _ = fetcher.fetch_translation_fast(
                 text, source_lang, target_lang
             )
-            if not translated:
-                translated, _ = fetcher.fetch_translation(
-                    text, source_lang, target_lang
-                )
         except Exception as exc:
             logger.exception("voice_translate failed: %s", exc)
             return jsonify({"error": "No se pudo traducir. Inténtalo de nuevo."}), 500
