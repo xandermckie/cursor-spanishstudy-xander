@@ -2,6 +2,8 @@
  * Lightweight mobile Voz UI — no speech recognition JS.
  * Users dictate via the keyboard's built-in mic into the textarea.
  */
+import { translateDirect } from './translation-client.js';
+
 const TRANSLATE_TIMEOUT_MS = 35000;
 
 class VoiceLiteApp {
@@ -156,6 +158,17 @@ class VoiceLiteApp {
       });
       const data = await this.parseJsonResponse(response);
       if (!response.ok) {
+        const targetLang = this.sourceLang === 'en' ? 'es' : 'en';
+        const direct = await translateDirect(text, this.sourceLang, targetLang);
+        if (direct) {
+          this.showResult({
+            spoken: text,
+            translated: direct,
+            source_lang: this.sourceLang,
+            target_lang: targetLang,
+          });
+          return;
+        }
         if (response.status === 403) {
           this.setError('Sesión caducada. Recarga la página e inténtalo de nuevo.');
         } else if (response.status === 504) {
@@ -166,11 +179,33 @@ class VoiceLiteApp {
         return;
       }
       if (!data.translated) {
+        const targetLang = this.sourceLang === 'en' ? 'es' : 'en';
+        const direct = await translateDirect(text, this.sourceLang, targetLang);
+        if (direct) {
+          this.showResult({
+            spoken: text,
+            translated: direct,
+            source_lang: this.sourceLang,
+            target_lang: targetLang,
+          });
+          return;
+        }
         this.setError('No se recibió traducción. Inténtalo de nuevo.');
         return;
       }
       this.showResult(data);
     } catch (err) {
+      const targetLang = this.sourceLang === 'en' ? 'es' : 'en';
+      const direct = await translateDirect(text, this.sourceLang, targetLang);
+      if (direct) {
+        this.showResult({
+          spoken: text,
+          translated: direct,
+          source_lang: this.sourceLang,
+          target_lang: targetLang,
+        });
+        return;
+      }
       if (err.name === 'AbortError') {
         this.setError('La traducción tardó demasiado. Inténtalo de nuevo.');
       } else {

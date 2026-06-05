@@ -1,3 +1,5 @@
+import { translateDirect } from './translation-client.js';
+
 const LANG_LABELS = {
   en: 'Inglés',
   es: 'Español',
@@ -152,6 +154,7 @@ class TranslateApp {
     try {
       const response = await fetch('/translate/api', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-Token': this.csrf,
@@ -164,12 +167,34 @@ class TranslateApp {
       });
       const data = await response.json();
       if (!response.ok) {
+        const direct = await translateDirect(text, this.sourceLang, this.targetLang);
+        if (direct) {
+          this.showResult({
+            source: text,
+            translated: direct,
+            source_lang: this.sourceLang,
+            target_lang: this.targetLang,
+            from_cache: false,
+          });
+          return;
+        }
         this.setError(data.error || 'No se pudo traducir.');
         return;
       }
       this.showResult(data);
     } catch (err) {
       console.error('Translate failed:', err);
+      const direct = await translateDirect(text, this.sourceLang, this.targetLang);
+      if (direct) {
+        this.showResult({
+          source: text,
+          translated: direct,
+          source_lang: this.sourceLang,
+          target_lang: this.targetLang,
+          from_cache: false,
+        });
+        return;
+      }
       this.setError('No se pudo traducir. Comprueba tu conexión.');
     } finally {
       this.isBusy = false;

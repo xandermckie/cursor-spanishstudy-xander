@@ -16,4 +16,6 @@ services:
       - key: MYMEMORY_EMAIL
         sync: false
       - key: LINGVA_URLS
-        value: "https://lingva.ml/api/v1,https://translate.igna.wtf/api/v1"
+        value: "https://lingva.ml/api/v1"
+      - key: SECRET_KEY
+        sync: false

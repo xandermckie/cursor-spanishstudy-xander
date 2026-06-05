@@ -1,3 +1,5 @@
+import { translateDirect } from './translation-client.js';
+
 const MAX_RECORD_SECONDS = 15;
 const TRANSLATE_TIMEOUT_MS = 35000;
 const IDLE_HINT = 'Mantén pulsado el micrófono para hablar';
@@ -553,6 +555,7 @@ class VoiceApp {
     try {
       const response = await fetch('/voice/translate', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-Token': this.csrf,
@@ -562,6 +565,17 @@ class VoiceApp {
       });
       const data = await this.parseJsonResponse(response);
       if (!response.ok) {
+        const targetLang = this.sourceLang === 'en' ? 'es' : 'en';
+        const direct = await translateDirect(text, this.sourceLang, targetLang);
+        if (direct) {
+          this.showResult({
+            spoken: text,
+            translated: direct,
+            source_lang: this.sourceLang,
+            target_lang: targetLang,
+          });
+          return;
+        }
         if (response.status === 504) {
           this.setError('La traducción tardó demasiado. Inténtalo de nuevo.');
         } else {
@@ -569,8 +583,32 @@ class VoiceApp {
         }
         return;
       }
+      if (!data.translated) {
+        const targetLang = this.sourceLang === 'en' ? 'es' : 'en';
+        const direct = await translateDirect(text, this.sourceLang, targetLang);
+        if (direct) {
+          this.showResult({
+            spoken: text,
+            translated: direct,
+            source_lang: this.sourceLang,
+            target_lang: targetLang,
+          });
+          return;
+        }
+      }
       this.showResult(data);
     } catch (err) {
+      const targetLang = this.sourceLang === 'en' ? 'es' : 'en';
+      const direct = await translateDirect(text, this.sourceLang, targetLang);
+      if (direct) {
+        this.showResult({
+          spoken: text,
+          translated: direct,
+          source_lang: this.sourceLang,
+          target_lang: targetLang,
+        });
+        return;
+      }
       if (err.name === 'AbortError') {
         this.setError('La traducción tardó demasiado. Inténtalo de nuevo.');
       } else {

@@ -56,10 +56,7 @@ MYMEMORY_URL = os.environ.get(
     "MYMEMORY_URL", "https://api.mymemory.translated.net/get"
 )
 MYMEMORY_EMAIL = os.environ.get("MYMEMORY_EMAIL", "")
-_DEFAULT_LINGVA_URLS = (
-    "https://lingva.ml/api/v1",
-    "https://translate.igna.wtf/api/v1",
-)
+_DEFAULT_LINGVA_URLS = ("https://lingva.ml/api/v1",)
 LINGVA_URLS: tuple[str, ...] = tuple(
     url.rstrip("/")
     for url in (
@@ -69,9 +66,7 @@ LINGVA_URLS: tuple[str, ...] = tuple(
     ).split(",")
     if url.strip()
 )
-LIBRETRANSLATE_URL = os.environ.get(
-    "LIBRETRANSLATE_URL", "https://libretranslate.com/translate"
-).rstrip("/")
+LIBRETRANSLATE_URL = os.environ.get("LIBRETRANSLATE_URL", "").rstrip("/")
 DICTIONARY_API_BASE = os.environ.get(
     "DICTIONARY_API_BASE", "https://api.dictionaryapi.dev/api/v2/entries/en"
 ).rstrip("/")
@@ -277,9 +272,8 @@ def _fetch_libretranslate(
 def _translation_provider_calls(
     text: str, source: str, target: str, *, timeout: int
 ) -> list[tuple[str, Any]]:
-    calls: list[tuple[str, Any]] = [
-        ("mymemory", lambda: _fetch_mymemory(text, source, target, timeout=timeout)),
-    ]
+    # Lingva first — MyMemory free quota is per server IP and exhausts on Render.
+    calls: list[tuple[str, Any]] = []
     for base_url in LINGVA_URLS:
         calls.append(
             (
@@ -290,11 +284,15 @@ def _translation_provider_calls(
             )
         )
     calls.append(
-        (
-            "libretranslate",
-            lambda: _fetch_libretranslate(text, source, target, timeout=timeout),
-        )
+        ("mymemory", lambda: _fetch_mymemory(text, source, target, timeout=timeout)),
     )
+    if LIBRETRANSLATE_URL:
+        calls.append(
+            (
+                "libretranslate",
+                lambda: _fetch_libretranslate(text, source, target, timeout=timeout),
+            )
+        )
     return calls
 
 
