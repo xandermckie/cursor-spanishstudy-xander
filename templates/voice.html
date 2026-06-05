@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% if not prefer_webspeech %}
-{% from "partials/pez.html" import pez %}
+{% from "partials/pez_logo.html" import pez_logo %}
 {% endif %}
 {% block title %}Voz{% endblock %}
 {% block body_class %}voice-page{% if prefer_webspeech %} voice-page--mobile{% endif %}{% endblock %}
@@ -156,7 +156,7 @@
   </div>
 
   <div class="text-center py-4 voice-empty-state" id="voice-empty-state">
-    {{ pez(size=64, expression='happy', speech='¡Pulsa el micrófono y habla!') }}
+    {{ pez_logo(size=64, speech='¡Pulsa el micrófono y habla!') }}
     <p class="text-muted mt-3 mb-0" id="voice-empty-note">
       La primera grabación descarga ~40&nbsp;MB del modelo Whisper; luego queda en caché.
     </p>

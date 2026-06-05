@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/pez.html" import pez %}
+{% from "partials/pez_logo.html" import pez_logo %}
 {% block title %}Lector{% endblock %}
 {% block body_class %}reader-page{% endblock %}
 {% block main_class %}container-narrow{% endblock %}
@@ -8,7 +8,7 @@
 <section class="page-hero page-hero--compact" aria-label="Lector">
   <div class="page-hero-overlay"></div>
   <div class="page-hero-content page-hero-content--center">
-    <div class="flex justify-center mb-3">{{ pez(size=56, expression='thinking') }}</div>
+    <div class="flex justify-center mb-3">{{ pez_logo(size=56) }}</div>
     <p class="reader-label">Estudio Abroad Reader</p>
     <h1 class="display-title">Lee en español.<br><em style="color: var(--accent-red); font-style: normal;">Pasa el cursor para recordar.</em></h1>
     <p class="lead">

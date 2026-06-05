@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/pez.html" import pez %}
+{% from "partials/pez_logo.html" import pez_logo %}
 {% block title %}Traductor{% endblock %}
 {% block body_class %}translate-page{% endblock %}
 
@@ -115,7 +115,7 @@
   </div>
 
   <div class="text-center py-4 translate-empty-state" id="translate-empty-state">
-    {{ pez(size=64, expression='happy', speech='¡Prueba una frase!') }}
+    {{ pez_logo(size=64, speech='¡Prueba una frase!') }}
     <p class="text-muted mt-3 mb-0">Las traducciones se guardan en caché para responder más rápido.</p>
   </div>
 </div>

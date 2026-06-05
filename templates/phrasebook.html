@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/pez.html" import pez %}
+{% from "partials/pez_logo.html" import pez_logo %}
 {% from "partials/reveal_card.html" import reveal_card %}
 {% block title %}Libro de frases{% endblock %}
 {% block body_class %}phrasebook-page{% endblock %}
@@ -73,7 +73,7 @@
   {% endfor %}
   {% else %}
   <div class="text-center py-4">
-    {{ pez(size=64, expression='thinking', speech='¡Añade tu primera frase!') }}
+    {{ pez_logo(size=64, speech='¡Añade tu primera frase!') }}
     <p class="text-muted mt-3 mb-0">No hay frases guardadas. Añade la primera arriba.</p>
   </div>
   {% endif %}

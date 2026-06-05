@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/pez.html" import pez %}
+{% from "partials/pez_logo.html" import pez_logo %}
 {% from "partials/reveal_card.html" import reveal_card %}
 {% block title %}Inicio{% endblock %}
 {% block body_class %}home-page{% endblock %}
@@ -12,7 +12,7 @@
     <section class="page-hero home-hero mb-4" aria-label="Bienvenida">
       <div class="page-hero-overlay"></div>
       <div class="page-hero-content">
-        {{ pez(size=80, expression='happy', speech=greeting.speech) }}
+        {{ pez_logo(size=80, class='home-hero-logo', speech=greeting.speech) }}
         <div>
           <h1 class="display-title mb-0">{{ greeting.title }}</h1>
           <p class="lead mb-0">Tu estudio en Barcelona — sigue con el ritmo.</p>
@@ -135,7 +135,7 @@
   {% endfor %}
   {% else %}
   <div class="text-center py-4">
-    {{ pez(size=64, expression='thinking') }}
+    {{ pez_logo(size=64, class='home-hero-logo') }}
     <p class="text-muted mt-3 mb-0">
       {% if not current_user.is_authenticated %}
       <a href="{{ url_for('login', next=url_for('vocab')) }}">Inicia sesión</a> y practica en

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/pez.html" import pez %}
+{% from "partials/pez_logo.html" import pez_logo %}
 {% block title %}Tarjetas{% endblock %}
 {% block body_class %}vocab-page{% endblock %}
 
@@ -20,8 +20,7 @@
   </div>
 </section>
 <div class="session-complete">
-  {{ pez(size=96, expression='celebrating' if session.correct_count >= session.missed_count else 'thinking',
-         speech='¡Muy bien!' if session.correct_count >= session.missed_count else '¡Sigue practicando!', animated=true) }}
+  {{ pez_logo(size=96, speech='¡Muy bien!' if session.correct_count >= session.missed_count else '¡Sigue practicando!', animated=true) }}
   <p class="page-subtitle">Has repasado {{ session.total }} tarjetas en esta sesión.</p>
   <div class="stats-grid stats-grid--narrow">
     <div class="stat-card">
@@ -105,7 +104,7 @@
   </form>
   {% endif %}
 
-  <div class="text-center mt-4">{{ pez(size=48, expression='happy') }}</div>
+  <div class="text-center mt-4">{{ pez_logo(size=48) }}</div>
 </div>
 {% endif %}
 {% endblock %}

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/pez.html" import pez %}
+{% from "partials/pez_logo.html" import pez_logo %}
 {% block title %}Iniciar sesión{% endblock %}
 {% block body_class %}auth-page{% endblock %}
 
@@ -7,7 +7,7 @@
 <section class="page-hero page-hero--auth" aria-label="Iniciar sesión">
   <div class="page-hero-overlay"></div>
   <div class="page-hero-content page-hero-content--center">
-    {{ pez(size=64, expression='happy', speech='¡Bienvenido de nuevo!') }}
+    {{ pez_logo(size=64, speech='¡Bienvenido de nuevo!') }}
     <h1 class="display-title mt-3">Iniciar sesión</h1>
     <p class="lead">Accede para guardar tu progreso y tu libro de frases.</p>
   </div>

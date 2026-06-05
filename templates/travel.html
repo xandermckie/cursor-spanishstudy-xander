@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/pez.html" import pez %}
+{% from "partials/pez_logo.html" import pez_logo %}
 {% from "partials/reveal_card.html" import reveal_card %}
 {% block title %}Viajes{% endblock %}
 {% block body_class %}travel-page{% endblock %}
@@ -159,14 +159,14 @@
       </div>
       {% else %}
       <div class="text-center py-4">
-        {{ pez(size=56, expression='confused', speech='Hmm...') }}
+        {{ pez_logo(size=56, speech='Hmm...') }}
         <p class="text-muted mt-3"><strong>No encontramos recomendaciones con esos filtros.</strong></p>
         <p class="text-muted">Prueba cambiar tu selección o quitar algunos filtros.</p>
       </div>
       {% endif %}
     {% else %}
     <div class="text-center py-4">
-      {{ pez(size=56, expression='happy', speech='¡Elige filtros y busca!') }}
+      {{ pez_logo(size=56, speech='¡Elige filtros y busca!') }}
       <p class="text-muted mt-3">Elige filtros y pulsa «Buscar recomendaciones».</p>
     </div>
     {% endif %}

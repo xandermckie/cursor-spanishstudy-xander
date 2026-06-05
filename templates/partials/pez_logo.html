@@ -1,0 +1,15 @@
+{# Site mascot — static pixel art logo #}
+{% macro pez_logo(size=36, speech=None, class='site-logo', animated=false) %}
+<div class="pez-wrapper{% if animated %} pez-animated{% endif %}"{% if animated %} style="display:inline-flex"{% endif %}>
+  {% if speech %}
+  <div class="pez-speech">{{ speech }}</div>
+  {% endif %}
+  <img
+    src="{{ url_for('static', filename='img/pez-logo.png') }}"
+    alt=""
+    class="{{ class }}"
+    width="{{ size }}"
+    height="{{ size }}"
+  >
+</div>
+{% endmacro %}
