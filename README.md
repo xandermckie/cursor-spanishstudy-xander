@@ -1,6 +1,6 @@
 # Estudio Abroad
 
-Estudio Abroad is a Spanish-first study app built for students preparing for a term in Barcelona. It teaches practical, everyday language — transit phrases, market vocabulary, travel tips — through reading in context rather than textbook drills. English stays hidden until you hover or click to reveal it, so you practice inferring meaning before checking the translation. Register with your email to save a personal phrasebook, track XP and weak words, and upload a profile photo — all stored in per-user JSON files alongside a shared API cache.
+Estudio Abroad is a Spanish-first study app built for students preparing for a term in Barcelona. It teaches practical, everyday language — transit phrases, market vocabulary, travel tips — through reading in context rather than textbook drills. English stays hidden until you hover or click to reveal it, so you practice inferring meaning before checking the translation. Register with your email to save a personal phrasebook, track XP and weak words, and upload a profile photo — all stored in encrypted per-user JSON files alongside a shared API cache.
 
 ## Demo
 
@@ -11,8 +11,9 @@ https://cursor-spanishstudy-xander.onrender.com
 - **Inicio** — Daily Spanish word and sentence, weak-words ranking from flashcards, XP/streak stats
 - **Cuenta** — Register/login with email and password; upload a profile picture; per-user progress and phrasebook
 - **Lector** — Fog-reveal reader: a cursor lens uncovers English under Spanish passages; includes daily rotating Spain-related Wikipedia articles
-- **Tarjetas** — Flashcard deck; mark misses to build your weak-words list
-- **Libro de frases** — Type English → cached Spanish translation; add, edit, delete; export CSV
+- **Tarjetas** — Flashcard deck; mark misses to build your weak-words list (sequential sessions, server-validated)
+- **Libro de frases** — Personal phrase list with click-to-reveal English; add, edit, delete; export CSV
+- **Traductor** — Translate between English, Spanish, and Catalan; save EN/ES pairs to your phrasebook when signed in
 - **Voz** — Voice translation (English ↔ Spanish): keyboard dictation on mobile, Whisper on desktop; save to phrasebook when signed in
 - **Viajes** — Filter Barcelona recommendations by time, location, distance, and mood; Google Maps with walking routes
 - **Noticias** — Spanish headlines about Spain (NewsAPI, cached 60 minutes)
@@ -22,14 +23,17 @@ https://cursor-spanishstudy-xander.onrender.com
 ## Tech Stack
 
 - Python 3 / Flask
-- Bootstrap 5 (Bootstrap-style components via custom CSS)
-- NewsAPI (headlines); MyMemory (translations); DictionaryAPI.dev (definitions)
-- APScheduler
-- Deployed on Render
+- Bootstrap-style UI via custom CSS (`static/css/estudio.css`)
+- Translation: Lingva, MyMemory, and optional LibreTranslate (parallel race; results cached in JSON)
+- DictionaryAPI.dev (definitions); Spanish Wikipedia API (reader articles)
+- NewsAPI (headlines); Google Maps / Places (travel)
+- Fernet encryption for user data at rest (`cryptography`)
+- APScheduler (background cache refresh)
+- Deployed on Render via Gunicorn
 
 ## Deploy on Render
 
-Repo: `xandermckie/cursor-spanishstudy-xander`, branch `main`.
+Repo: [`xandermckie/cursor-spanishstudy-xander`](https://github.com/xandermckie/cursor-spanishstudy-xander), branch `main`.
 
 | Setting | Value |
 |---------|--------|
@@ -39,24 +43,37 @@ Repo: `xandermckie/cursor-spanishstudy-xander`, branch `main`.
 
 Do **not** use `gunicorn app:app` alone — it ignores Render’s `PORT`. The repo’s [`Procfile`](Procfile) and [`gunicorn.conf.py`](gunicorn.conf.py) bind to `0.0.0.0:$PORT` for you.
 
-**Environment (optional):** `NEWS_API_KEY` for live news; `GOOGLE_MAPS_API_KEY` for the travel map (Maps JavaScript API + Directions API). `SECRET_KEY` and `ENCRYPTION_KEY` are optional — the app boots without them (encryption derives from `SECRET_KEY` when set).
+**Environment (recommended on Render):**
+
+| Variable | Purpose |
+|----------|---------|
+| `SECRET_KEY` | Session signing and encryption key derivation |
+| `MYMEMORY_EMAIL` | Raises shared-server MyMemory quota (5k → 50k chars/day) |
+| `LINGVA_URLS` | Comma-separated Lingva instances (default: `https://lingva.ml/api/v1`) |
+| `NEWS_API_KEY` | Live Spanish news headlines |
+| `GOOGLE_MAPS_API_KEY` | Travel map (Maps JavaScript API + Directions API) |
+| `GOOGLE_PLACES_API_KEY` | Optional server-side place recommendations on `/travel` |
+
+Optional: `LIBRETRANSLATE_URL` for an extra translation fallback; `ENCRYPTION_KEY` for a dedicated Fernet key (otherwise derived from `SECRET_KEY`).
 
 **Remove** any dashboard `ENCRYPTION_KEY` that Render auto-generated; it is not a valid Fernet key.
 
 On first boot the app **seeds the homepage from built-in data** (no API wait) and runs a **full cache refresh immediately** when the scheduler starts, so Inicio is not empty on a cold Render deploy.
+
+[`render.yaml`](render.yaml) is an optional Blueprint with the same defaults.
 
 ## Setup
 
 ### Prerequisites
 
 - Python 3.11+
-- A NewsAPI key (get one at [newsapi.org/register](https://newsapi.org/register))
+- A NewsAPI key for live headlines ([newsapi.org/register](https://newsapi.org/register)) — optional for local dev
 
 ### Installation
 
 ```bash
-git clone https://github.com/xandermckie/studyspanish
-cd studyspanish
+git clone https://github.com/xandermckie/cursor-spanishstudy-xander.git
+cd cursor-spanishstudy-xander
 python -m venv .venv
 pip install -r requirements.txt
 ```
@@ -82,8 +99,11 @@ Optional variables (defaults shown in `.env.example`):
 
 | Variable | Purpose |
 |----------|---------|
+| `ENCRYPTION_KEY` | Fernet key for user data at rest; generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. If unset, derived from `SECRET_KEY`. |
 | `MYMEMORY_EMAIL` | Optional email for higher MyMemory rate limits |
 | `MYMEMORY_URL` | MyMemory API endpoint (default provided) |
+| `LINGVA_URLS` | Comma-separated Lingva instances tried in parallel (default: `https://lingva.ml/api/v1`) |
+| `LIBRETRANSLATE_URL` | Optional LibreTranslate endpoint for an extra fallback |
 | `DICTIONARY_API_BASE` | DictionaryAPI.dev endpoint (no key required) |
 | `NEWS_API_URL` | NewsAPI endpoint (default provided) |
 | `GOOGLE_MAPS_API_KEY` | Embedded travel map and walking routes — enable **Maps JavaScript API** and **Directions API** in Google Cloud Console |
@@ -111,13 +131,15 @@ Open http://localhost:5000
 
 On first run, the app creates `data/cache.json` automatically.
 
+**VS Code / Cursor:** Use the **Flask: Estudio Abroad (reload)** launch configuration in [`.vscode/launch.json`](.vscode/launch.json) — it loads `.env` and opens the browser automatically.
+
 ### Account
 
 1. Open http://localhost:5000/register and create an account with your email and password (minimum 8 characters).
-2. Sign in at `/login`. Your phrasebook, flashcard progress, weak words, and XP are saved under `data/users/{user_id}.json`.
+2. Sign in at `/login`. Your phrasebook, flashcard progress, weak words, and XP are saved under `data/users/{user_id}.json` (encrypted).
 3. Upload a profile photo at `/profile` (JPG, PNG, or WebP, max 2 MB).
 
-You can browse the reader, news, and travel pages without signing in. Phrasebook saves and flashcard scoring require an account.
+You can browse the reader, news, travel, and translator pages without signing in. Phrasebook saves and flashcard scoring require an account.
 
 **Note:** On Render's free tier, disk storage is ephemeral — user files may not survive redeploys. Use local development for persistent testing.
 
@@ -144,15 +166,19 @@ Attribution: images are sourced from Wikimedia Commons when download succeeds; o
 
 ## How It Works
 
-Estudio Abroad is a Flask app with no database. Shared content (daily word, translations, news, reader passages) lives in `data/cache.json`. Each registered user gets their own JSON file at `data/users/{user_id}.json` for phrasebook entries, weak words, vocab session progress, and XP stats. Profile photos are stored under `data/uploads/{user_id}/`.
+Estudio Abroad is a Flask app with no database. Shared content (daily word, translations, news, reader passages) lives in `data/cache.json`. Each registered user gets their own encrypted JSON file at `data/users/{user_id}.json` for phrasebook entries, weak words, vocab session progress, and XP stats. Profile photos are stored under `data/uploads/{user_id}/`.
 
 When you load the homepage or flip a flashcard while signed in, Flask reads your user file through `user_store.py` and `fetcher.py`, then renders Jinja2 templates. Anonymous visitors see shared content only; progress and phrases require login.
 
-On startup, `scheduler.py` registers an APScheduler background job that runs every 15 minutes (configurable via `REFRESH_INTERVAL_MINUTES`). Each run calls `fetcher.run_refresh()`, which refreshes the daily word and sentence, reader passages, flashcard deck, Wikipedia articles for the reader, and (when `NEWS_API_KEY` is set) Spanish news headlines. Wikipedia articles about Spain (history, culture, cuisine, landmarks) are fetched from the Spanish Wikipedia API, cached for 24 hours, and rotated daily in the reader. Translation requests go through the MyMemory API, but every lookup is keyed by a SHA hash and stored under `cache["translations"]` so repeat phrases never hit the network. DictionaryAPI.dev enriches the daily word with phonetics and an English definition. News articles are filtered for Spain-related keywords and cached for an hour.
+On startup, `scheduler.py` registers an APScheduler background job that runs every 15 minutes (configurable via `REFRESH_INTERVAL_MINUTES`). Each run calls `fetcher.run_refresh()`, which refreshes the daily word and sentence, reader passages, flashcard deck, Wikipedia articles for the reader, and (when `NEWS_API_KEY` is set) Spanish news headlines. Wikipedia articles about Spain (history, culture, cuisine, landmarks) are fetched from the Spanish Wikipedia API, cached for 24 hours, and rotated daily in the reader.
 
-The UI is Spanish-first: English appears only on hover (site-wide click-to-reveal) or through the reader's fog lens, which follows your cursor over a passage. Signed-in users track flashcard misses in their personal `weak_words` map, surfaced on the homepage. Phrasebook entries are translated once via MyMemory and cached per user.
+**Translation pipeline:** Lookups are keyed by a SHA hash and stored under `cache["translations"]` so repeat phrases never hit the network. On a cache miss, `fetcher.py` races Lingva instances, MyMemory, and (when configured) LibreTranslate in parallel — the first valid result wins. Lingva is tried first because MyMemory’s free quota is per server IP and exhausts quickly on shared Render hosts. The **Traductor** and **Voz** pages share this stack; voice uses shorter per-provider timeouts via `fetch_translation_fast()`.
 
-The **Voz** page uses a hybrid speech stack. On phones and tablets, users dictate via the **keyboard's built-in mic** into a textarea (no speech-recognition JavaScript — the page loads a ~4 KB `voice-lite.js` bundle). On desktop it lazy-loads [Transformers.js](https://github.com/huggingface/transformers.js) with the `Xenova/whisper-tiny` model (~40 MB on first recording, then cached in IndexedDB). Transcription never hits the server; only the text translation uses MyMemory/Lingva with shorter timeouts for the voice endpoint. Microphone access requires HTTPS (provided on Render).
+DictionaryAPI.dev enriches the daily word with phonetics and an English definition. News articles are filtered for Spain-related keywords and cached for an hour.
+
+The UI is Spanish-first: English appears only on hover (site-wide click-to-reveal) or through the reader's fog lens, which follows your cursor over a passage. Signed-in users track flashcard misses in their personal `weak_words` map, surfaced on the homepage. Phrasebook entries store EN/ES pairs; the Traductor page can save bilingual pairs directly, while the phrasebook form still translates English input via the shared cache.
+
+The **Voz** page uses a hybrid speech stack. On phones and tablets, users dictate via the **keyboard's built-in mic** into a textarea (no speech-recognition JavaScript — the page loads a ~4 KB `voice-lite.js` bundle). On desktop it lazy-loads [Transformers.js](https://github.com/huggingface/transformers.js) with the `Xenova/whisper-tiny` model (~40 MB on first recording, then cached in IndexedDB). Transcription never hits the server; only the text translation uses the shared provider race. Microphone access requires HTTPS (provided on Render).
 
 ## What I'd Build Next
 
