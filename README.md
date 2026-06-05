@@ -13,7 +13,7 @@ https://cursor-spanishstudy-xander.onrender.com
 - **Lector** — Fog-reveal reader: a cursor lens uncovers English under Spanish passages; includes daily rotating Spain-related Wikipedia articles
 - **Tarjetas** — Flashcard deck; mark misses to build your weak-words list
 - **Libro de frases** — Type English → cached Spanish translation; add, edit, delete; export CSV
-- **Voz** — Hold-to-talk voice translation (English ↔ Spanish) using browser Whisper (WASM/WebGPU); save to phrasebook when signed in
+- **Voz** — Voice translation (English ↔ Spanish): Web Speech API on mobile, Whisper on desktop; save to phrasebook when signed in
 - **Viajes** — Filter Barcelona recommendations by time, location, distance, and mood; Leaflet map
 - **Noticias** — Spanish headlines about Spain (NewsAPI, cached 60 minutes)
 - **Historia** — Four Spain/Catalonia topics with click-to-reveal English summaries
@@ -150,7 +150,7 @@ On startup, `scheduler.py` registers an APScheduler background job that runs eve
 
 The UI is Spanish-first: English appears only on hover (site-wide click-to-reveal) or through the reader's fog lens, which follows your cursor over a passage. Signed-in users track flashcard misses in their personal `weak_words` map, surfaced on the homepage. Phrasebook entries are translated once via MyMemory and cached per user.
 
-The **Voz** page runs speech recognition entirely in the browser via [Transformers.js](https://github.com/huggingface/transformers.js) and the `Xenova/whisper-tiny` model (~40 MB on first visit, then cached in IndexedDB). Transcription never hits the server; only the text translation uses the existing MyMemory endpoint. Microphone access requires HTTPS (provided on Render). WebGPU is used when available, with WASM fallback.
+The **Voz** page uses a hybrid speech stack in the browser. On mobile and low-memory devices it uses the built-in Web Speech API (hold the mic button while speaking). On desktop it lazy-loads [Transformers.js](https://github.com/huggingface/transformers.js) with the `Xenova/whisper-tiny` model (~40 MB on first recording, then cached in IndexedDB). Transcription never hits the server; only the text translation uses MyMemory/Lingva with shorter timeouts for the voice endpoint. Microphone access requires HTTPS (provided on Render).
 
 ## What I'd Build Next
 

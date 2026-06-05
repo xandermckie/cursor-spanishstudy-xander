@@ -51,10 +51,13 @@ def app(tmp_path, monkeypatch):
     monkeypatch.setenv("ENCRYPTION_KEY", "Zzpj9pN4UxvhKzx0oW7TDk8YQn5X5vR9LqBvG0TJ_Qs=")
     monkeypatch.setenv("SCHEDULER_ENABLED", "false")
 
-    def fake_translation(text: str, src: str, tgt: str) -> tuple[str, str | None]:
-        return f"ES:{text}", None
+    def fake_translation(
+        text: str, src: str, tgt: str, use_cache: bool = True
+    ) -> tuple[str, bool]:
+        return f"ES:{text}", False
 
     monkeypatch.setattr("fetcher.fetch_translation", fake_translation)
+    monkeypatch.setattr("fetcher.fetch_translation_fast", fake_translation)
 
     from app import create_app
 

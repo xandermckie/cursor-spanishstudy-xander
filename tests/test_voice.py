@@ -17,7 +17,29 @@ def test_voice_page_renders(client) -> None:
     response = client.get("/voice")
     assert response.status_code == 200
     assert b"voice-mic-btn" in response.data
+    assert b'data-speech-backend="auto"' in response.data
+    assert b"voice-unsupported" in response.data
+    assert b"voice-cancel-translate-btn" in response.data
+    assert b"voice-empty-note" in response.data
     assert "Traducción por voz".encode() in response.data
+
+
+def test_voice_translate_returns_504_when_fast_translation_fails(
+    client, monkeypatch
+) -> None:
+    def fail_fast(*_args, **_kwargs):
+        return None, False
+
+    monkeypatch.setattr("fetcher.fetch_translation_fast", fail_fast)
+    client.get("/voice")
+    token = _csrf_from_session(client)
+    response = client.post(
+        "/voice/translate",
+        json={"text": "Hello", "source_lang": "en"},
+        headers={"X-CSRF-Token": token},
+    )
+    assert response.status_code == 504
+    assert "tardó demasiado" in response.get_json()["error"]
 
 
 def test_voice_translate_en_to_es(client) -> None:

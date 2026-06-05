@@ -549,12 +549,16 @@ def register_routes(app: Flask) -> None:
             ), 400
         target_lang = "es" if source_lang == "en" else "en"
         try:
-            translated, _ = fetcher.fetch_translation(text, source_lang, target_lang)
+            translated, _ = fetcher.fetch_translation_fast(
+                text, source_lang, target_lang
+            )
         except Exception as exc:
             logger.exception("voice_translate failed: %s", exc)
             return jsonify({"error": "No se pudo traducir. Inténtalo de nuevo."}), 500
         if not translated:
-            return jsonify({"error": "No se pudo traducir. Inténtalo de nuevo."}), 500
+            return jsonify(
+                {"error": "La traducción tardó demasiado. Inténtalo de nuevo."}
+            ), 504
         return jsonify(
             {
                 "spoken": text,

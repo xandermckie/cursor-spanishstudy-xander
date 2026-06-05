@@ -2711,6 +2711,19 @@ body.dark .streak-badge { color: var(--accent-yellow); }
   margin: 0;
 }
 
+.voice-unsupported {
+  border-left: 4px solid var(--accent-yellow);
+  background: rgba(232, 185, 35, 0.08);
+}
+
+.voice-unsupported p {
+  margin: 0;
+}
+
+.voice-mic-btn.is-recording {
+  touch-action: none;
+}
+
 .voice-error {
   margin: 1rem 0 0;
   color: var(--accent-red);

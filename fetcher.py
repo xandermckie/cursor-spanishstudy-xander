@@ -168,7 +168,9 @@ def _is_valid_translation(text: str) -> bool:
     return "MYMEMORY WARNING" not in cleaned.upper()
 
 
-def _fetch_mymemory(text: str, source: str, target: str) -> str | None:
+def _fetch_mymemory(
+    text: str, source: str, target: str, *, timeout: int = 15
+) -> str | None:
     params: dict[str, str] = {
         "q": text[:500],
         "langpair": f"{source}|{target}",
@@ -177,7 +179,7 @@ def _fetch_mymemory(text: str, source: str, target: str) -> str | None:
         params["de"] = MYMEMORY_EMAIL
 
     try:
-        response = requests.get(MYMEMORY_URL, params=params, timeout=15)
+        response = requests.get(MYMEMORY_URL, params=params, timeout=timeout)
         try:
             data = response.json()
         except ValueError:
@@ -199,7 +201,9 @@ def _fetch_mymemory(text: str, source: str, target: str) -> str | None:
         return None
 
 
-def _fetch_lingva(text: str, source: str, target: str) -> str | None:
+def _fetch_lingva(
+    text: str, source: str, target: str, *, timeout: int = 20
+) -> str | None:
     supported = {"en", "es", "ca"}
     if source not in supported or target not in supported:
         return None
@@ -209,7 +213,7 @@ def _fetch_lingva(text: str, source: str, target: str) -> str | None:
             f"{LINGVA_URL}/{source}/{target}/"
             f"{quote(text[:500], safe='')}"
         )
-        response = requests.get(path, timeout=20)
+        response = requests.get(path, timeout=timeout)
         response.raise_for_status()
         data = response.json()
         translated = (data.get("translation") or "").strip()
@@ -241,6 +245,36 @@ def fetch_translation(
     translated = _fetch_mymemory(text, source, target)
     if not translated:
         translated = _fetch_lingva(text, source, target)
+
+    if translated:
+        cache["translations"][key] = translated
+        _save_cache(cache)
+        return translated, False
+
+    if key in cache["translations"]:
+        return cache["translations"][key], True
+    return None, False
+
+
+def fetch_translation_fast(
+    text: str, source: str, target: str, use_cache: bool = True
+) -> tuple[str | None, bool]:
+    """
+    Faster translation for the voice UI — shorter external API timeouts.
+    """
+    if not text or not text.strip():
+        return None, False
+
+    cache = _load_cache()
+    cache.setdefault("translations", {})
+    key = _translation_cache_key(text, source, target)
+
+    if use_cache and key in cache["translations"]:
+        return cache["translations"][key], True
+
+    translated = _fetch_mymemory(text, source, target, timeout=10)
+    if not translated:
+        translated = _fetch_lingva(text, source, target, timeout=10)
 
     if translated:
         cache["translations"][key] = translated

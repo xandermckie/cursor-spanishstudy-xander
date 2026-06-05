@@ -16,7 +16,7 @@
   </div>
 </section>
 
-<div class="instruction-bar" role="note">◎ &nbsp;Pulsa el micrófono, habla y pulsa Traducir</div>
+<div class="instruction-bar" role="note">◎ &nbsp;Mantén pulsado el micrófono en móvil; en ordenador, pulsa para grabar</div>
 
 {% if not current_user.is_authenticated %}
 <div class="alert alert-info mb-4" role="status">
@@ -34,7 +34,15 @@
   data-logged-in="{{ current_user.is_authenticated|tojson }}"
   data-login-url="{{ url_for('login', next=url_for('voice')) }}"
   data-phrasebook-url="{{ url_for('phrasebook') }}"
+  data-speech-backend="auto"
 >
+  <div class="card mb-4 voice-unsupported hidden" id="voice-unsupported" role="alert">
+    <p class="mb-0">
+      Tu navegador no admite reconocimiento de voz. Puedes escribir tu frase en la caja de
+      transcripción y pulsar <strong>Traducir</strong>.
+    </p>
+  </div>
+
   <div class="card mb-4">
     <h2 class="section-title-sm">Dirección</h2>
     <div class="voice-direction-toggle" role="group" aria-label="Dirección de traducción">
@@ -49,7 +57,7 @@
 
   <div class="card mb-4 voice-mic-card">
     <div id="voice-model-status" class="voice-model-status" role="status" aria-live="polite">
-      <p class="voice-model-status-text">Cargando modelo de voz…</p>
+      <p class="voice-model-status-text">Preparando…</p>
       <div class="voice-model-progress" hidden>
         <div class="voice-model-progress-bar" id="voice-model-progress-bar"></div>
       </div>
@@ -82,6 +90,7 @@
     ></textarea>
     <div class="flex gap-2 flex-wrap mt-3">
       <button type="button" id="voice-translate-btn" class="btn btn-primary">Traducir</button>
+      <button type="button" id="voice-cancel-translate-btn" class="btn btn-secondary" hidden>Cancelar</button>
       <button type="button" id="voice-retry-btn" class="btn btn-secondary">Volver a grabar</button>
     </div>
   </div>
@@ -111,7 +120,9 @@
 
   <div class="text-center py-4 voice-empty-state" id="voice-empty-state">
     {{ pez(size=64, expression='happy', speech='¡Pulsa el micrófono y habla!') }}
-    <p class="text-muted mt-3 mb-0">La primera visita descarga ~40&nbsp;MB del modelo Whisper; luego queda en caché.</p>
+    <p class="text-muted mt-3 mb-0" id="voice-empty-note">
+      En móvil usamos el micrófono del navegador; en ordenador, Whisper local.
+    </p>
   </div>
 </div>
 {% endblock %}
