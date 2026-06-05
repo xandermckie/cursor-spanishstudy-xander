@@ -7,11 +7,11 @@
   <title>{% block title %}{{ title }}{% endblock %} — Estudio Abroad</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/pez-logo.png') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/pez-logo.png') }}">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/estudio.css') }}">
   <script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
   <style>
-    html.theme-pending-dark body { background: #0F1117; }
+    html.theme-pending-dark body { background: #0D0D0D; }
     {% block inline_css %}{% endblock %}
   </style>
   {% block extra_head %}{% endblock %}
@@ -67,7 +67,7 @@
               </a>
               {% endfor %}
               <hr class="dropdown-divider">
-              <form method="POST" action="{{ url_for('logout') }}" style="margin: 0;">
+              <form method="POST" action="{{ url_for('logout') }}" class="inline-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="dropdown-item logout-item">
                   <span class="dropdown-icon">🚪</span>
@@ -106,7 +106,7 @@
     <!-- Main wheel container -->
     <div class="wheel-container" id="wheel-container">
       <!-- Background -->
-      <div class="wheel-aquarium-bg"></div>
+      <div class="wheel-bg wheel-aquarium-bg"></div>
       
       <!-- Center hub with user info -->
       <div class="wheel-hub" id="wheel-hub">

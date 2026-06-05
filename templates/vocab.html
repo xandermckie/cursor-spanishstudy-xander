@@ -1,80 +1,38 @@
 {% extends "base.html" %}
 {% from "partials/pez.html" import pez %}
 {% block title %}Tarjetas{% endblock %}
-
-{% block inline_css %}
-  .vocab-zone { max-width: 520px; margin: 0 auto; }
-  .vocab-progress-meta {
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-bottom: 8px;
-  }
-  .flashcard {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md);
-    padding: 3rem 2rem;
-    text-align: center;
-    min-height: 240px;
-    cursor: pointer;
-  }
-  .flashcard-prompt {
-    font-size: 36px;
-    font-family: var(--font-heading);
-    font-weight: 800;
-    color: var(--text);
-    margin: 0;
-  }
-  .flash-reveal-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 20px;
-    padding: 8px 16px;
-    background: var(--primary-light);
-    color: var(--primary);
-    border: none;
-    border-radius: var(--radius-full);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .flashcard-answer {
-    display: none;
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border);
-    font-size: 18px;
-    color: var(--teal);
-    font-style: italic;
-  }
-  .flashcard.is-revealed .flashcard-answer { display: block; }
-  .session-complete { text-align: center; max-width: 480px; margin: 0 auto; }
-{% endblock %}
+{% block body_class %}vocab-page{% endblock %}
 
 {% block content %}
 {% if section_failed %}
-<h1 class="page-title">Tarjetas</h1>
+<section class="page-hero page-hero--compact" aria-label="Tarjetas">
+  <div class="page-hero-overlay"></div>
+  <div class="page-hero-content page-hero-content--center">
+    <h1 class="display-title mb-0">Tarjetas</h1>
+  </div>
+</section>
 {% include "partials/section_alerts.html" %}
 {% elif session.complete %}
+<section class="page-hero page-hero--compact" aria-label="Sesión completada">
+  <div class="page-hero-overlay"></div>
+  <div class="page-hero-content page-hero-content--center">
+    <h1 class="display-title mb-0">Sesión completada</h1>
+  </div>
+</section>
 <div class="session-complete">
   {{ pez(size=96, expression='celebrating' if session.correct_count >= session.missed_count else 'thinking',
          speech='¡Muy bien!' if session.correct_count >= session.missed_count else '¡Sigue practicando!', animated=true) }}
-  <h1 class="page-title mt-4">Sesión completada</h1>
   <p class="page-subtitle">Has repasado {{ session.total }} tarjetas en esta sesión.</p>
-  <div class="stats-grid" style="max-width: 400px; margin: 0 auto 24px;">
+  <div class="stats-grid stats-grid--narrow">
     <div class="stat-card">
-      <div class="stat-icon" style="background: rgba(34, 197, 94, 0.12);">✅</div>
+      <div class="stat-icon stat-icon--correct">✅</div>
       <div>
         <div class="stat-value">{{ session.correct_count }}</div>
         <div class="stat-label">Correctas</div>
       </div>
     </div>
     <div class="stat-card">
-      <div class="stat-icon" style="background: rgba(230, 57, 70, 0.1);">❌</div>
+      <div class="stat-icon stat-icon--missed">❌</div>
       <div>
         <div class="stat-value">{{ session.missed_count }}</div>
         <div class="stat-label">Falladas</div>
@@ -82,14 +40,14 @@
     </div>
   </div>
   <div class="card mb-4">
-    <p class="text-muted mb-1" style="font-size: 14px; font-weight: 600;">XP ganados</p>
-    <p style="font-size: 32px; font-weight: 800; color: var(--primary); margin: 0; font-family: var(--font-heading);">+{{ session.xp_earned }} XP</p>
+    <p class="text-muted mb-1 section-title-sm">XP ganados</p>
+    <p class="xp-display">+{{ session.xp_earned }} XP</p>
   </div>
   {% if session.missed_words %}
   <div class="card text-left mb-4">
-    <h3 style="font-size: 16px; font-weight: 700; margin: 0 0 12px;">Palabras para repasar</h3>
+    <h3 class="section-title-sm">Palabras para repasar</h3>
     {% for w in session.missed_words %}
-    <p style="margin: 0 0 8px;"><strong>{{ w.es }}</strong> — <span style="color: var(--teal); font-style: italic;">{{ w.en }}</span></p>
+    <p class="missed-word-line"><strong>{{ w.es }}</strong> — <span class="missed-word-en">{{ w.en }}</span></p>
     {% endfor %}
   </div>
   {% endif %}
@@ -99,8 +57,13 @@
   </form>
 </div>
 {% else %}
-<h1 class="page-title text-center">Tarjetas</h1>
-<p class="page-subtitle text-center">Español primero — toca la tarjeta para ver inglés.</p>
+<section class="page-hero page-hero--compact" aria-label="Tarjetas">
+  <div class="page-hero-overlay"></div>
+  <div class="page-hero-content page-hero-content--center">
+    <h1 class="display-title mb-0">Tarjetas</h1>
+    <p class="lead">Español primero — toca la tarjeta para ver inglés.</p>
+  </div>
+</section>
 
 {% if session.read_only %}
 <div class="alert alert-info mb-4" role="status">

@@ -1,9 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Historia{% endblock %}
+{% block body_class %}history-page{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Historia de España</h1>
-<p class="page-subtitle">Temas clave para entender la cultura española y catalana.</p>
+<section class="page-hero page-hero--compact" aria-label="Historia">
+  <div class="page-hero-overlay"></div>
+  <div class="page-hero-content">
+    <h1 class="display-title mb-0">Historia de España</h1>
+    <p class="lead">Temas clave para entender la cultura española y catalana.</p>
+  </div>
+</section>
 
 {% include "partials/section_alerts.html" %}
 
@@ -23,9 +29,9 @@
 
 {% for topic in topics %}
 <div class="history-panel card{% if loop.first %} active{% endif %}" id="panel-{{ topic.key }}" role="tabpanel">
-  <h2 style="font-size: 20px; font-weight: 700; margin: 0 0 8px;">{{ topic.title_es }}</h2>
-  <p class="text-muted mb-3">{{ topic.intro_es }}</p>
-  <p style="line-height: 1.75; margin-bottom: 16px;">{{ topic.summary_es }}</p>
+  <h2 class="history-panel-title">{{ topic.title_es }}</h2>
+  <p class="text-muted mb-3 history-intro">{{ topic.intro_es }}</p>
+  <p class="history-summary">{{ topic.summary_es }}</p>
   <button type="button" class="btn btn-primary btn-sm history-translate-btn"
           data-target="en-{{ topic.key }}" aria-expanded="false">
     Ver en inglés
