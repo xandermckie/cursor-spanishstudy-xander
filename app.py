@@ -27,6 +27,7 @@ from werkzeug.wrappers.response import Response
 
 import encryption
 import fetcher
+import greetings
 import user_store
 from scheduler import init_scheduler
 
@@ -332,6 +333,7 @@ def register_routes(app: Flask) -> None:
             title="Inicio",
             homepage=homepage,
             gallery_items=fetcher.get_home_gallery(),
+            greeting=greetings.get_time_greeting(),
         )
 
     @app.route("/reader")

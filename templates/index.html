@@ -12,9 +12,9 @@
     <section class="page-hero home-hero mb-4" aria-label="Bienvenida">
       <div class="page-hero-overlay"></div>
       <div class="page-hero-content">
-        {{ pez(size=80, expression='happy', speech='¡Hola! ¿Listo para aprender?') }}
+        {{ pez(size=80, expression='happy', speech=greeting.speech) }}
         <div>
-          <h1 class="display-title mb-0">Buenos días</h1>
+          <h1 class="display-title mb-0">{{ greeting.title }}</h1>
           <p class="lead mb-0">Tu estudio en Barcelona — sigue con el ritmo.</p>
         </div>
       </div>

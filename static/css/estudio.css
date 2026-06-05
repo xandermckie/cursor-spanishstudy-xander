@@ -147,6 +147,16 @@ main.container-narrow {
   letter-spacing: -0.02em;
 }
 
+.nav-brand .pez-wrapper {
+  align-items: center;
+  gap: 0;
+}
+
+.nav-brand .pez-svg {
+  width: 36px;
+  height: 36px;
+}
+
 .nav-links {
   display: flex;
   align-items: center;
