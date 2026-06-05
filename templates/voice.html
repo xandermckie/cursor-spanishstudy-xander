@@ -12,11 +12,11 @@
   <div class="page-hero-overlay"></div>
   <div class="page-hero-content">
     <h1 class="display-title mb-0">Traducción por voz</h1>
-    <p class="lead">Habla y traduce al instante con reconocimiento local en el navegador.</p>
+    <p class="lead">Habla, revisa la transcripción y pulsa Traducir.</p>
   </div>
 </section>
 
-<div class="instruction-bar" role="note">◎ &nbsp;Mantén pulsado el micrófono y habla</div>
+<div class="instruction-bar" role="note">◎ &nbsp;Pulsa el micrófono, habla y pulsa Traducir</div>
 
 {% if not current_user.is_authenticated %}
 <div class="alert alert-info mb-4" role="status">
@@ -61,7 +61,7 @@
         id="voice-mic-btn"
         class="voice-mic-btn"
         disabled
-        aria-label="Mantén pulsado para hablar"
+        aria-label="Pulsa para hablar"
       >
         <span class="voice-mic-icon" aria-hidden="true">🎙️</span>
       </button>
@@ -110,7 +110,7 @@
   </div>
 
   <div class="text-center py-4 voice-empty-state" id="voice-empty-state">
-    {{ pez(size=64, expression='happy', speech='¡Mantén el micrófono y habla!') }}
+    {{ pez(size=64, expression='happy', speech='¡Pulsa el micrófono y habla!') }}
     <p class="text-muted mt-3 mb-0">La primera visita descarga ~40&nbsp;MB del modelo Whisper; luego queda en caché.</p>
   </div>
 </div>

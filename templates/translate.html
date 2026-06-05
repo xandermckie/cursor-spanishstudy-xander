@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% from "partials/pez.html" import pez %}
+{% block title %}Traductor{% endblock %}
+{% block body_class %}translate-page{% endblock %}
+
+{% block extra_head %}
+<script type="module" src="{{ url_for('static', filename='js/translate.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero--compact" aria-label="Traductor">
+  <div class="page-hero-overlay"></div>
+  <div class="page-hero-content">
+    <h1 class="display-title mb-0">Traductor</h1>
+    <p class="lead">Traduce entre inglés, español y catalán.</p>
+  </div>
+</section>
+
+<div class="translate-lang-strip" aria-hidden="true">
+  <img src="{{ url_for('static', filename='img/spain/spain-flag.png') }}" alt="" class="translate-lang-thumb" data-lang="es">
+  <img src="{{ url_for('static', filename='img/spain/tossa-de-mar.png') }}" alt="" class="translate-lang-thumb" data-lang="ca">
+  <img src="{{ url_for('static', filename='img/spain/coastal-cove.png') }}" alt="" class="translate-lang-thumb" data-lang="ca">
+  <img src="{{ url_for('static', filename='img/spain/seville-street.png') }}" alt="" class="translate-lang-thumb" data-lang="en">
+</div>
+
+<div class="instruction-bar" role="note">◎ &nbsp;Escribe tu texto y pulsa Traducir</div>
+
+{% if not current_user.is_authenticated %}
+<div class="alert alert-info mb-4" role="status">
+  <span>
+    <a href="{{ url_for('login', next=url_for('translate')) }}">Inicia sesión</a>
+    para guardar traducciones en inglés o español en tu libro de frases.
+  </span>
+</div>
+{% endif %}
+
+<div
+  id="translate-app"
+  class="translate-app"
+  data-csrf="{{ csrf_token() }}"
+  data-logged-in="{{ current_user.is_authenticated|tojson }}"
+  data-phrasebook-url="{{ url_for('phrasebook') }}"
+>
+  <div class="card translate-panel">
+    <div class="translate-lang-bar">
+      <div class="translate-lang-select-wrap">
+        <label class="form-label" for="translate-source-lang">De</label>
+        <select id="translate-source-lang" class="form-select translate-lang-select" aria-label="Idioma de origen">
+          <option value="en">Inglés</option>
+          <option value="es">Español</option>
+          <option value="ca">Catalán</option>
+        </select>
+      </div>
+
+      <button
+        type="button"
+        id="translate-swap-btn"
+        class="translate-swap-btn"
+        aria-label="Intercambiar idiomas"
+        title="Intercambiar idiomas"
+      >⇄</button>
+
+      <div class="translate-lang-select-wrap">
+        <label class="form-label" for="translate-target-lang">A</label>
+        <select id="translate-target-lang" class="form-select translate-lang-select" aria-label="Idioma de destino">
+          <option value="es">Español</option>
+          <option value="en">Inglés</option>
+          <option value="ca">Catalán</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="translate-columns">
+      <div class="translate-column">
+        <label class="form-label" for="translate-source-text">Texto original</label>
+        <textarea
+          id="translate-source-text"
+          class="form-control translate-source"
+          rows="8"
+          maxlength="500"
+          placeholder="Escribe o pega el texto aquí…"
+        ></textarea>
+        <span id="translate-char-count" class="translate-char-count text-muted">0 / 500</span>
+      </div>
+
+      <div class="translate-column">
+        <div class="translate-output-header">
+          <label class="form-label mb-0" for="translate-target-text">Traducción</label>
+          <button type="button" id="translate-copy-btn" class="btn btn-ghost btn-sm" disabled aria-label="Copiar traducción">
+            Copiar
+          </button>
+        </div>
+        <textarea
+          id="translate-target-text"
+          class="form-control translate-output"
+          rows="8"
+          readonly
+          placeholder="La traducción aparecerá aquí…"
+        ></textarea>
+        <span id="translate-cache-hint" class="translate-cache-hint text-muted hidden" role="status"></span>
+      </div>
+    </div>
+
+    <p id="translate-error" class="translate-error hidden" role="alert"></p>
+
+    <div class="translate-actions">
+      <button type="button" id="translate-btn" class="btn btn-primary">Traducir</button>
+      <button type="button" id="translate-clear-btn" class="btn btn-secondary">Limpiar</button>
+      {% if current_user.is_authenticated %}
+      <button type="button" id="translate-save-btn" class="btn btn-secondary" disabled>Guardar en frases</button>
+      {% endif %}
+    </div>
+
+    <p id="translate-save-status" class="translate-save-status text-muted mt-2 hidden" role="status"></p>
+  </div>
+
+  <div class="text-center py-4 translate-empty-state" id="translate-empty-state">
+    {{ pez(size=64, expression='happy', speech='¡Prueba una frase!') }}
+    <p class="text-muted mt-3 mb-0">Las traducciones se guardan en caché para responder más rápido.</p>
+  </div>
+</div>
+{% endblock %}

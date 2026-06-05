@@ -2,6 +2,7 @@ import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transfo
 
 const MAX_RECORD_SECONDS = 30;
 const TARGET_SAMPLE_RATE = 16000;
+const IDLE_HINT = 'Pulsa el micrófono para hablar';
 
 function mergeFloat32Arrays(chunks) {
   const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
@@ -32,11 +33,6 @@ function resampleTo16k(audioData, sampleRate) {
   return result;
 }
 
-function stopMediaStream(stream) {
-  if (!stream) return;
-  stream.getTracks().forEach((track) => track.stop());
-}
-
 class VoiceApp {
   constructor(root) {
     this.root = root;
@@ -49,7 +45,10 @@ class VoiceApp {
     this.transcriber = null;
     this.isModelReady = false;
     this.isRecording = false;
+    this.isStarting = false;
     this.isBusy = false;
+    this.recordingRequested = false;
+    this.pendingStop = false;
 
     this.mediaStream = null;
     this.audioContext = null;
@@ -94,24 +93,11 @@ class VoiceApp {
       });
     });
 
-    if (this.micBtn) {
-      const stopEvents = ['pointerdown', 'pointerup', 'pointercancel', 'click'];
-      stopEvents.forEach((eventName) => {
-        this.micBtn.addEventListener(eventName, (e) => e.stopPropagation());
-      });
-
-      this.micBtn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        if (this.micBtn.disabled || this.isBusy) return;
-        this.startRecording();
-      });
-
-      this.micBtn.addEventListener('pointerup', () => this.stopRecording());
-      this.micBtn.addEventListener('pointercancel', () => this.stopRecording());
-      this.micBtn.addEventListener('pointerleave', () => {
-        if (this.isRecording) this.stopRecording();
-      });
-    }
+    this.micBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.micBtn.disabled || this.isBusy) return;
+      this.toggleRecording();
+    });
 
     this.translateBtn?.addEventListener('click', () => this.translateTranscript());
     this.retryBtn?.addEventListener('click', () => this.resetToIdle());
@@ -137,12 +123,17 @@ class VoiceApp {
     }
     this.errorEl.textContent = message;
     this.errorEl.classList.remove('hidden');
+    this.errorEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   setModelStatus(message) {
     if (this.modelStatusText) {
       this.modelStatusText.textContent = message;
     }
+  }
+
+  setIdleHint() {
+    if (this.micHint) this.micHint.textContent = IDLE_HINT;
   }
 
   updateProgress(progress) {
@@ -182,9 +173,7 @@ class VoiceApp {
       if (this.progressWrap) this.progressWrap.hidden = true;
       this.setModelStatus('Modelo listo');
       if (this.micBtn) this.micBtn.disabled = false;
-      if (this.micHint) {
-        this.micHint.textContent = 'Mantén pulsado para hablar';
-      }
+      this.setIdleHint();
     } catch (err) {
       console.error('Whisper model load failed:', err);
       this.setModelStatus('No se pudo cargar el modelo de voz.');
@@ -211,26 +200,61 @@ class VoiceApp {
     } catch (err) {
       console.error('Microphone access denied:', err);
       this.setError(
-        'No se pudo acceder al micrófono. Permite el acceso en tu navegador o escribe frases en el libro de frases.'
+        'No se pudo acceder al micrófono. Permite el acceso en tu navegador.'
       );
       return null;
     }
   }
 
+  async toggleRecording() {
+    if (this.isRecording || this.isStarting) {
+      await this.stopRecording();
+      return;
+    }
+    await this.startRecording();
+  }
+
   async startRecording() {
-    if (!this.isModelReady || this.isRecording || this.isBusy) return;
+    if (!this.isModelReady || this.isRecording || this.isBusy || this.isStarting) return;
+
+    this.recordingRequested = true;
+    this.pendingStop = false;
+    this.isStarting = true;
+    if (this.micHint) this.micHint.textContent = 'Preparando micrófono…';
 
     const stream = await this.ensureMicAccess();
-    if (!stream) return;
+    if (!stream || !this.recordingRequested) {
+      this.isStarting = false;
+      this.recordingRequested = false;
+      this.setIdleHint();
+      return;
+    }
+
+    if (this.pendingStop) {
+      this.isStarting = false;
+      this.recordingRequested = false;
+      this.pendingStop = false;
+      this.setIdleHint();
+      return;
+    }
 
     this.setError('');
+    if (this.resultsCard) this.resultsCard.classList.add('hidden');
+    this.lastResult = null;
+
     this.isRecording = true;
+    this.isStarting = false;
     document.body.classList.add('voice-recording');
     this.micBtn?.classList.add('is-recording');
-    if (this.micHint) this.micHint.textContent = 'Grabando… suelta para transcribir';
+    if (this.micHint) this.micHint.textContent = 'Escuchando… pulsa de nuevo para terminar';
+    if (this.micBtn) this.micBtn.setAttribute('aria-label', 'Pulsa para dejar de grabar');
 
     this.audioChunks = [];
     this.audioContext = new AudioContext();
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+    }
+
     this.sourceNode = this.audioContext.createMediaStreamSource(stream);
     this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
 
@@ -269,11 +293,18 @@ class VoiceApp {
   }
 
   async stopRecording() {
+    if (this.isStarting) {
+      this.pendingStop = true;
+      this.recordingRequested = false;
+      return;
+    }
     if (!this.isRecording) return;
 
     this.isRecording = false;
+    this.recordingRequested = false;
     document.body.classList.remove('voice-recording');
     this.micBtn?.classList.remove('is-recording');
+    if (this.micBtn) this.micBtn.setAttribute('aria-label', 'Pulsa para hablar');
 
     const sampleRate = this.audioContext?.sampleRate || TARGET_SAMPLE_RATE;
     this.cleanupRecordingGraph();
@@ -294,6 +325,7 @@ class VoiceApp {
 
     this.isBusy = true;
     if (this.micBtn) this.micBtn.disabled = true;
+    if (this.translateBtn) this.translateBtn.disabled = true;
     if (this.micHint) this.micHint.textContent = 'Transcribiendo…';
 
     try {
@@ -305,21 +337,25 @@ class VoiceApp {
 
       if (!text) {
         this.setError('No se entendió el audio. Inténtalo de nuevo.');
+        this.setIdleHint();
         return;
       }
 
       if (this.emptyState) this.emptyState.classList.add('hidden');
-      if (this.transcriptCard) this.transcriptCard.classList.remove('hidden');
+      if (this.transcriptCard) {
+        this.transcriptCard.classList.remove('hidden');
+        this.transcriptCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
       if (this.transcriptInput) this.transcriptInput.value = text;
-
-      await this.translateText(text);
+      if (this.micHint) this.micHint.textContent = 'Revisa el texto y pulsa Traducir';
     } catch (err) {
       console.error('Transcription failed:', err);
       this.setError('Error al transcribir. Inténtalo de nuevo.');
+      this.setIdleHint();
     } finally {
       this.isBusy = false;
       if (this.micBtn && this.isModelReady) this.micBtn.disabled = false;
-      if (this.micHint) this.micHint.textContent = 'Mantén pulsado para hablar';
+      if (this.translateBtn) this.translateBtn.disabled = false;
     }
   }
 
@@ -334,7 +370,12 @@ class VoiceApp {
 
   async translateText(text) {
     this.isBusy = true;
-    if (this.translateBtn) this.translateBtn.disabled = true;
+    const translateLabel = this.translateBtn?.textContent || 'Traducir';
+    if (this.translateBtn) {
+      this.translateBtn.disabled = true;
+      this.translateBtn.textContent = 'Traduciendo…';
+    }
+    if (this.micBtn) this.micBtn.disabled = true;
     this.setError('');
 
     try {
@@ -357,13 +398,20 @@ class VoiceApp {
       this.setError('No se pudo traducir. Comprueba tu conexión.');
     } finally {
       this.isBusy = false;
-      if (this.translateBtn) this.translateBtn.disabled = false;
+      if (this.translateBtn) {
+        this.translateBtn.disabled = false;
+        this.translateBtn.textContent = translateLabel;
+      }
+      if (this.micBtn && this.isModelReady) this.micBtn.disabled = false;
     }
   }
 
   showResult(data) {
     this.lastResult = data;
-    if (this.resultsCard) this.resultsCard.classList.remove('hidden');
+    if (this.resultsCard) {
+      this.resultsCard.classList.remove('hidden');
+      this.resultsCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 
     const spokenLabel = data.source_lang === 'en' ? 'Inglés' : 'Español';
     const translatedLabel = data.target_lang === 'en' ? 'Inglés' : 'Español';
@@ -387,6 +435,7 @@ class VoiceApp {
     if (this.transcriptInput) this.transcriptInput.value = '';
     if (this.emptyState) this.emptyState.classList.remove('hidden');
     this.setError('');
+    this.setIdleHint();
     if (this.saveStatus) {
       this.saveStatus.textContent = '';
       this.saveStatus.classList.add('hidden');

@@ -1922,6 +1922,10 @@ body[data-page="vocab"],
 body.vocab-page { --page-bg: url('../img/backgrounds/placa-centro-golden.png'); }
 body.vocab-page .page-hero { background-position: 40% center; }
 
+body[data-page="translate"],
+body.translate-page { --page-bg: url('../img/backgrounds/segovia-aqueduct.png'); }
+body.translate-page .page-hero { background-position: center 40%; }
+
 body.profile-page .page-hero--auth,
 body.auth-page .page-hero--auth {
   margin-bottom: 0;
@@ -2790,6 +2794,141 @@ body.dark .voice-result-block {
 @media (prefers-reduced-motion: reduce) {
   .voice-mic-btn.is-recording {
     animation: none;
+  }
+}
+
+/* Translate page */
+.translate-lang-strip {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: -12px 0 20px;
+}
+
+.translate-lang-thumb {
+  width: 72px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  opacity: 0.55;
+  transition: opacity 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.translate-lang-thumb.is-active {
+  opacity: 1;
+  border-color: var(--accent-yellow);
+  transform: translateY(-2px);
+}
+
+.translate-panel {
+  margin-bottom: 24px;
+}
+
+.translate-lang-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.translate-lang-select-wrap {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+
+.translate-swap-btn {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.25rem;
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.translate-swap-btn:hover {
+  background: var(--panel-bg);
+  border-color: var(--accent-yellow);
+}
+
+.translate-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.translate-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.translate-source,
+.translate-output {
+  resize: vertical;
+  min-height: 180px;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.translate-output {
+  background: var(--panel-bg);
+  color: var(--text);
+}
+
+.translate-output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.translate-char-count,
+.translate-cache-hint {
+  font-size: 0.85rem;
+}
+
+.translate-error {
+  color: var(--accent-red);
+  margin: 12px 0 0;
+}
+
+.translate-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.translate-save-status {
+  margin: 0;
+}
+
+body.dark .translate-swap-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+body.dark .translate-output {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 768px) {
+  .translate-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .translate-lang-thumb {
+    width: 56px;
+    height: 38px;
   }
 }
 
