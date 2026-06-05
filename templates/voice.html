@@ -1,18 +1,30 @@
 {% extends "base.html" %}
+{% if not prefer_webspeech %}
 {% from "partials/pez.html" import pez %}
+{% endif %}
 {% block title %}Voz{% endblock %}
-{% block body_class %}voice-page{% endblock %}
+{% block body_class %}voice-page{% if prefer_webspeech %} voice-page--mobile{% endif %}{% endblock %}
 
 {% block content %}
 <section class="page-hero page-hero--compact" aria-label="Traducción por voz">
   <div class="page-hero-overlay"></div>
   <div class="page-hero-content">
     <h1 class="display-title mb-0">Traducción por voz</h1>
-    <p class="lead">Habla, revisa la transcripción y pulsa Traducir.</p>
+    <p class="lead">
+      {% if prefer_webspeech %}
+      Dicta con el micrófono del teclado, revisa y pulsa Traducir.
+      {% else %}
+      Habla, revisa la transcripción y pulsa Traducir.
+      {% endif %}
+    </p>
   </div>
 </section>
 
-<div class="instruction-bar" role="note">◎ &nbsp;Mantén pulsado el micrófono en móvil; en ordenador, pulsa para grabar</div>
+{% if prefer_webspeech %}
+<div class="instruction-bar" role="note">◎ &nbsp;Toca la caja de texto → micrófono del teclado 🎙️ → Traducir</div>
+{% else %}
+<div class="instruction-bar" role="note">◎ &nbsp;Pulsa el micrófono, habla y pulsa Traducir</div>
+{% endif %}
 
 {% if not current_user.is_authenticated %}
 <div class="alert alert-info mb-4" role="status">
@@ -30,15 +42,17 @@
   data-logged-in="{{ current_user.is_authenticated|tojson }}"
   data-login-url="{{ url_for('login', next=url_for('voice')) }}"
   data-phrasebook-url="{{ url_for('phrasebook') }}"
-  data-speech-backend="auto"
+  data-speech-backend="{% if prefer_webspeech %}keyboard{% else %}auto{% endif %}"
   data-prefer-webspeech="{{ prefer_webspeech|tojson }}"
 >
+  {% if not prefer_webspeech %}
   <div class="card mb-4 voice-unsupported hidden" id="voice-unsupported" role="alert">
     <p class="mb-0">
       Tu navegador no admite reconocimiento de voz. Puedes escribir tu frase en la caja de
       transcripción y pulsar <strong>Traducir</strong>.
     </p>
   </div>
+  {% endif %}
 
   <div class="card mb-4">
     <h2 class="section-title-sm">Dirección</h2>
@@ -52,11 +66,35 @@
     </div>
   </div>
 
+  {% if prefer_webspeech %}
+  <div class="card mb-4 voice-keyboard-card">
+    <h2 class="section-title-sm">Tu frase</h2>
+    <p class="voice-keyboard-hint text-muted">
+      Pulsa la caja de texto. En el teclado verás un icono de micrófono para dictar en
+      el idioma que elijas arriba.
+    </p>
+    <label class="form-label" for="voice-transcript">Escribe o dicta aquí</label>
+    <textarea
+      id="voice-transcript"
+      class="form-control voice-transcript"
+      rows="4"
+      maxlength="500"
+      placeholder="Toca aquí, luego el micrófono del teclado…"
+      autofocus
+      inputmode="text"
+      enterkeyhint="done"
+    ></textarea>
+    <div class="flex gap-2 flex-wrap mt-3">
+      <button type="button" id="voice-translate-btn" class="btn btn-primary">Traducir</button>
+      <button type="button" id="voice-cancel-translate-btn" class="btn btn-secondary" hidden>Cancelar</button>
+      <button type="button" id="voice-clear-btn" class="btn btn-secondary">Borrar</button>
+    </div>
+    <p id="voice-error" class="voice-error hidden" role="alert"></p>
+  </div>
+  {% else %}
   <div class="card mb-4 voice-mic-card">
     <div id="voice-model-status" class="voice-model-status" role="status" aria-live="polite">
-      <p class="voice-model-status-text">
-        {% if prefer_webspeech %}Usando reconocimiento del navegador{% else %}Pulsa el micrófono para cargar Whisper{% endif %}
-      </p>
+      <p class="voice-model-status-text">Pulsa el micrófono para cargar Whisper</p>
       <div class="voice-model-progress" hidden>
         <div class="voice-model-progress-bar" id="voice-model-progress-bar"></div>
       </div>
@@ -67,14 +105,12 @@
         type="button"
         id="voice-mic-btn"
         class="voice-mic-btn"
-        {% if not prefer_webspeech %}disabled{% endif %}
+        disabled
         aria-label="Pulsa para hablar"
       >
         <span class="voice-mic-icon" aria-hidden="true">🎙️</span>
       </button>
-      <p id="voice-mic-hint" class="voice-mic-hint text-muted">
-        {% if prefer_webspeech %}Mantén pulsado el micrófono para hablar{% else %}Preparando micrófono…{% endif %}
-      </p>
+      <p id="voice-mic-hint" class="voice-mic-hint text-muted">Preparando micrófono…</p>
     </div>
 
     <p id="voice-error" class="voice-error hidden" role="alert"></p>
@@ -95,6 +131,14 @@
       <button type="button" id="voice-retry-btn" class="btn btn-secondary">Volver a grabar</button>
     </div>
   </div>
+
+  <div class="text-center py-4 voice-empty-state" id="voice-empty-state">
+    {{ pez(size=64, expression='happy', speech='¡Pulsa el micrófono y habla!') }}
+    <p class="text-muted mt-3 mb-0" id="voice-empty-note">
+      La primera grabación descarga ~40&nbsp;MB del modelo Whisper; luego queda en caché.
+    </p>
+  </div>
+  {% endif %}
 
   <div class="card voice-results hidden" id="voice-results">
     <h2 class="section-title-sm">Resultado</h2>
@@ -118,18 +162,11 @@
     </div>
     <p id="voice-save-status" class="voice-save-status text-muted mt-2 hidden" role="status"></p>
   </div>
-
-  <div class="text-center py-4 voice-empty-state" id="voice-empty-state">
-    {{ pez(size=64, expression='happy', speech='¡Pulsa el micrófono y habla!') }}
-    <p class="text-muted mt-3 mb-0" id="voice-empty-note">
-      {% if prefer_webspeech %}
-      En móvil usamos el micrófono del navegador. Mantén pulsado el botón mientras hablas.
-      {% else %}
-      La primera grabación descarga ~40&nbsp;MB del modelo Whisper; luego queda en caché.
-      {% endif %}
-    </p>
-  </div>
 </div>
 
+{% if prefer_webspeech %}
+<script type="module" src="{{ url_for('static', filename='js/voice-lite.js') }}" defer></script>
+{% else %}
 <script type="module" src="{{ url_for('static', filename='js/voice.js') }}" defer></script>
+{% endif %}
 {% endblock %}

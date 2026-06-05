@@ -2716,6 +2716,20 @@ body.dark .streak-badge { color: var(--accent-yellow); }
   margin: 0;
 }
 
+.voice-keyboard-card .voice-transcript {
+  font-size: 1.05rem;
+  min-height: 6rem;
+}
+
+.voice-keyboard-hint {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+}
+
+.voice-page--mobile .voice-empty-state {
+  display: none;
+}
+
 .voice-unsupported {
   border-left: 4px solid var(--accent-yellow);
   background: rgba(232, 185, 35, 0.08);

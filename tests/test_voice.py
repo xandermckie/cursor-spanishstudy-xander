@@ -13,16 +13,36 @@ def _csrf_from_session(client) -> str:
     return token
 
 
-def test_voice_page_renders(client) -> None:
+def test_voice_page_renders_desktop(client) -> None:
     response = client.get("/voice")
     assert response.status_code == 200
     assert b"voice-mic-btn" in response.data
     assert b'data-speech-backend="auto"' in response.data
-    assert b"data-prefer-webspeech" in response.data
+    assert b"voice.js" in response.data
+    assert b"voice-lite.js" not in response.data
     assert b"voice-unsupported" in response.data
     assert b"voice-cancel-translate-btn" in response.data
-    assert b"voice-empty-note" in response.data
     assert "Traducción por voz".encode() in response.data
+
+
+def test_voice_page_renders_mobile_lite(client) -> None:
+    response = client.get(
+        "/voice",
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
+                "Mobile/15E148 Safari/604.1"
+            )
+        },
+    )
+    assert response.status_code == 200
+    assert b'data-speech-backend="keyboard"' in response.data
+    assert b"voice-lite.js" in response.data
+    assert b"voice.js" not in response.data
+    assert b"voice-mic-btn" not in response.data
+    assert b"voice-keyboard-card" in response.data
+    assert "micrófono del teclado".encode() in response.data
 
 
 def test_voice_translate_returns_504_when_fast_translation_fails(
