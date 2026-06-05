@@ -96,6 +96,7 @@
         class="travel-geo-btn"
         id="travel-geo-btn"
         aria-label="Usar mi ubicación como punto de partida"
+        aria-pressed="false"
         title="Mi ubicación"
       >📍</button>
     </div>
@@ -190,15 +191,23 @@
     searched: {{ searched | tojson }}
   };
 
+  var ROUTE_RADIUS_KM = 50;
+
   var state = {
     map: null,
     markersById: {},
     selectedId: null,
-    userOrigin: null,
+    userPosition: null,
+    userNearBarcelona: false,
+    prevNearBarcelona: null,
     userMarker: null,
     routePolyline: null,
     routeDebounce: null,
-    multistopActive: false
+    multistopActive: false,
+    geoWatchId: null,
+    geoTracking: false,
+    hasPannedToUser: false,
+    hadFirstGeoFix: false
   };
 
   function escapeHtml(str) {
@@ -231,13 +240,42 @@
     });
   }
 
-  function getOrigin() {
-    if (state.userOrigin) return state.userOrigin;
+  function distanceKm(a, b) {
+    var R = 6371;
+    var dLat = (b.lat - a.lat) * Math.PI / 180;
+    var dLng = (b.lng - a.lng) * Math.PI / 180;
+    var lat1 = a.lat * Math.PI / 180;
+    var lat2 = b.lat * Math.PI / 180;
+    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+      + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+  }
+
+  function getRoutingOrigin() {
+    if (state.userPosition && state.userNearBarcelona) return state.userPosition;
     return travelConfig.origin;
   }
 
+  function getDirectionsOrigin() {
+    if (state.userPosition) return state.userPosition;
+    return travelConfig.origin;
+  }
+
+  function setMapHint(text) {
+    var hint = document.getElementById('travel-map-hint');
+    if (hint) hint.textContent = text;
+  }
+
+  function geoErrorMessage(error) {
+    if (!error) return 'No se pudo obtener tu ubicación.';
+    if (error.code === 1) return 'Permiso de ubicación denegado.';
+    if (error.code === 2) return 'Ubicación no disponible en este dispositivo.';
+    if (error.code === 3) return 'Tiempo de espera agotado al buscar tu ubicación.';
+    return 'No se pudo obtener tu ubicación.';
+  }
+
   function buildDirectionsUrl(dest, preferApple) {
-    var origin = getOrigin();
+    var origin = getDirectionsOrigin();
     var o = origin.lat + ',' + origin.lng;
     var d = dest.lat + ',' + dest.lng;
     if (preferApple) {
@@ -249,8 +287,7 @@
   function openDirections(rec) {
     if (!rec || !rec.lat || !rec.lng) return;
 
-    function navigate(origin) {
-      if (origin) state.userOrigin = origin;
+    function navigate() {
       var url = buildDirectionsUrl({ lat: rec.lat, lng: rec.lng }, isIOS());
       if (isIOS()) {
         window.location.href = url;
@@ -260,22 +297,23 @@
       updateNavBarHint();
     }
 
-    if (state.userOrigin) {
-      navigate(null);
+    if (state.userPosition) {
+      navigate();
       return;
     }
 
     if (!navigator.geolocation) {
-      navigate(null);
+      navigate();
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       function (pos) {
-        navigate({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        TravelGeo.applyPosition(pos, { pan: false, refetchRoute: false });
+        navigate();
       },
       function () {
-        navigate(null);
+        navigate();
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
     );
@@ -285,7 +323,7 @@
     var hint = document.getElementById('travel-nav-bar-hint');
     if (!hint) return;
     var mapsName = isIOS() ? 'Apple Maps' : 'Google Maps';
-    var originText = state.userOrigin ? 'tu ubicación' : travelConfig.originLabel;
+    var originText = state.userPosition ? 'tu ubicación' : travelConfig.originLabel;
     hint.textContent = 'Se abrirá ' + mapsName + ' desde ' + originText;
   }
 
@@ -387,15 +425,16 @@
     },
 
     _doFetch: function (rec) {
-      var origin = getOrigin();
+      var origin = getRoutingOrigin();
       var url = 'https://router.project-osrm.org/route/v1/walking/'
         + origin.lng + ',' + origin.lat + ';' + rec.lng + ',' + rec.lat
         + '?overview=full&geometries=geojson';
 
       var card = document.querySelector('.rec-card[data-rec-id="' + rec.id + '"]');
       var routeEl = card ? card.querySelector('.rec-card__route') : null;
+      if (routeEl) routeEl.textContent = 'Calculando ruta…';
 
-      fetchWithTimeout(url, 5000)
+      fetchWithTimeout(url, 8000)
         .then(function (res) { return res.json(); })
         .then(function (data) {
           if (!data.routes || !data.routes[0]) throw new Error('no route');
@@ -412,11 +451,17 @@
           }).addTo(state.map);
 
           if (routeEl) {
-            routeEl.textContent = formatDurationEs(route.duration) + ' a pie · ' + formatDistanceEs(route.distance);
+            var label = formatDurationEs(route.duration) + ' a pie · ' + formatDistanceEs(route.distance);
+            if (state.userPosition && !state.userNearBarcelona) {
+              label += ' (desde ' + travelConfig.originLabel + ')';
+            }
+            routeEl.textContent = label;
           }
         })
         .catch(function () {
-          if (routeEl) routeEl.textContent = '';
+          if (routeEl) {
+            routeEl.textContent = 'Ruta no disponible. Prueba «Cómo llegar» o revisa tu conexión.';
+          }
         });
     },
 
@@ -424,7 +469,7 @@
       var recs = travelConfig.recommendations || [];
       if (recs.length < 2 || !state.map) return;
 
-      var origin = getOrigin();
+      var origin = getRoutingOrigin();
       var coords = [origin.lng + ',' + origin.lat];
       recs.forEach(function (rec) {
         if (rec.lat && rec.lng) coords.push(rec.lng + ',' + rec.lat);
@@ -562,42 +607,121 @@
   };
 
   var TravelGeo = {
+    btn: null,
+
     init: function () {
-      var btn = document.getElementById('travel-geo-btn');
-      if (!btn || !navigator.geolocation) {
-        if (btn) btn.style.display = 'none';
+      this.btn = document.getElementById('travel-geo-btn');
+      if (!this.btn || !navigator.geolocation) {
+        if (this.btn) this.btn.style.display = 'none';
         return;
       }
 
       if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-        btn.title = 'La ubicación requiere HTTPS';
+        this.btn.title = 'La ubicación requiere HTTPS';
       }
 
-      btn.addEventListener('click', function () {
-        navigator.geolocation.getCurrentPosition(
-          function (pos) {
-            state.userOrigin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            TravelGeo.showMarker(state.userOrigin);
-            updateNavBarHint();
-            var hint = document.getElementById('travel-map-hint');
-            if (hint) hint.textContent = 'Origen: tu ubicación actual';
-            if (state.selectedId) {
-              var rec = TravelCards.getRecById(state.selectedId);
-              if (rec) TravelRoute.fetchWalking(rec);
-            }
-          },
-          function () {
-            var hint = document.getElementById('travel-map-hint');
-            if (hint) hint.textContent = 'No se pudo obtener tu ubicación. Usando ' + travelConfig.originLabel + '.';
-          },
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-        );
+      this.btn.addEventListener('click', function () {
+        if (state.geoTracking) {
+          TravelGeo.stopTracking();
+        } else {
+          TravelGeo.startTracking();
+        }
       });
+
+      window.addEventListener('beforeunload', function () {
+        TravelGeo.stopTracking();
+      });
+    },
+
+    startTracking: function () {
+      if (!navigator.geolocation || state.geoTracking) return;
+
+      state.geoTracking = true;
+      if (this.btn) {
+        this.btn.setAttribute('aria-pressed', 'true');
+        this.btn.classList.add('travel-geo-btn--active');
+      }
+      setMapHint('Buscando tu ubicación…');
+
+      state.geoWatchId = navigator.geolocation.watchPosition(
+        function (pos) {
+          TravelGeo.applyPosition(pos, { pan: true, refetchRoute: true });
+        },
+        function (err) {
+          TravelGeo.onError(err);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+      );
+    },
+
+    stopTracking: function () {
+      if (state.geoWatchId !== null) {
+        navigator.geolocation.clearWatch(state.geoWatchId);
+        state.geoWatchId = null;
+      }
+      state.geoTracking = false;
+      if (this.btn) {
+        this.btn.setAttribute('aria-pressed', 'false');
+        this.btn.classList.remove('travel-geo-btn--active');
+      }
+    },
+
+    applyPosition: function (pos, options) {
+      var opts = options || {};
+      var coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      var nearChanged = state.userNearBarcelona !== (
+        distanceKm(coords, travelConfig.origin) <= ROUTE_RADIUS_KM
+      );
+
+      state.userPosition = coords;
+      state.userNearBarcelona = distanceKm(coords, travelConfig.origin) <= ROUTE_RADIUS_KM;
+      state.prevNearBarcelona = state.userNearBarcelona;
+
+      this.showMarker(coords);
+
+      if (opts.pan && !state.hasPannedToUser && state.map) {
+        state.map.setView([coords.lat, coords.lng], 16);
+        state.hasPannedToUser = true;
+        if (state.userMarker) state.userMarker.openPopup();
+      }
+
+      this.updateHint();
+      updateNavBarHint();
+
+      var shouldRefetch = opts.refetchRoute && state.selectedId && !state.multistopActive
+        && (!state.hadFirstGeoFix || nearChanged);
+      state.hadFirstGeoFix = true;
+
+      if (shouldRefetch) {
+        var rec = TravelCards.getRecById(state.selectedId);
+        if (rec) TravelRoute.fetchWalking(rec);
+      }
+    },
+
+    onError: function (error) {
+      var fallback = geoErrorMessage(error) + ' Usando ' + travelConfig.originLabel + ' para las rutas.';
+      setMapHint(fallback);
+      this.stopTracking();
+    },
+
+    updateHint: function () {
+      if (!state.userPosition) return;
+      if (state.userNearBarcelona) {
+        setMapHint('Origen: tu ubicación actual');
+        return;
+      }
+      setMapHint(
+        'Ubicación activa en el mapa. Las rutas usan ' + travelConfig.originLabel
+        + ' porque estás lejos de Barcelona.'
+      );
     },
 
     showMarker: function (coords) {
       if (!state.map) return;
-      if (state.userMarker) state.map.removeLayer(state.userMarker);
+      if (state.userMarker) {
+        state.userMarker.setLatLng([coords.lat, coords.lng]);
+        return;
+      }
       state.userMarker = L.circleMarker([coords.lat, coords.lng], {
         radius: 8,
         fillColor: '#3B82F6',
