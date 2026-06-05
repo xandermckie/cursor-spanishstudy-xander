@@ -4,10 +4,6 @@
 {% block title %}Viajes{% endblock %}
 {% block body_class %}travel-page{% endblock %}
 
-{% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-{% endblock %}
-
 {% block content %}
 <section class="page-hero page-hero--compact" aria-label="Viajes">
   <div class="page-hero-overlay"></div>
@@ -90,7 +86,11 @@
 
   <div class="travel-main">
     <div class="travel-map-zone">
-      <div id="travel-map" role="region" aria-label="Mapa de Barcelona"></div>
+      <div id="travel-map" role="region" aria-label="Mapa de Barcelona">
+        {% if not google_maps_api_key %}
+        <p class="travel-map-unavailable">Configura <code>GOOGLE_MAPS_API_KEY</code> en tu archivo <code>.env</code> para ver el mapa.</p>
+        {% endif %}
+      </div>
       <button
         type="button"
         class="travel-geo-btn"
@@ -177,7 +177,6 @@
 
 {% block extra_js %}
 {% if not section_failed %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 (function () {
   'use strict';
@@ -188,20 +187,27 @@
     originLabel: {{ origin_label | tojson }},
     locationFilter: {{ (filters.location or '') | tojson }},
     recommendations: {{ recommendations | tojson }},
-    searched: {{ searched | tojson }}
+    searched: {{ searched | tojson }},
+    mapsEnabled: {{ (google_maps_api_key | length > 0) | tojson }}
   };
 
   var ROUTE_RADIUS_KM = 50;
+  var MARKER_COLOR = '#C45C3E';
+  var MARKER_ACTIVE_COLOR = '#2D6A4F';
 
   var state = {
     map: null,
     markersById: {},
+    markerMeta: {},
     selectedId: null,
     userPosition: null,
     userNearBarcelona: false,
     prevNearBarcelona: null,
     userMarker: null,
-    routePolyline: null,
+    infoWindow: null,
+    directionsService: null,
+    directionsRenderer: null,
+    multiStopRenderer: null,
     routeDebounce: null,
     multistopActive: false,
     geoWatchId: null,
@@ -230,14 +236,6 @@
   function formatDistanceEs(meters) {
     if (meters < 1000) return Math.round(meters) + ' m';
     return (meters / 1000).toFixed(1).replace('.', ',') + ' km';
-  }
-
-  function fetchWithTimeout(url, ms) {
-    var ctrl = new AbortController();
-    var timer = setTimeout(function () { ctrl.abort(); }, ms);
-    return fetch(url, { signal: ctrl.signal }).finally(function () {
-      clearTimeout(timer);
-    });
   }
 
   function distanceKm(a, b) {
@@ -327,58 +325,124 @@
     hint.textContent = 'Se abrirá ' + mapsName + ' desde ' + originText;
   }
 
-  function createNumberedIcon(num) {
-    return L.divIcon({
-      className: 'rec-marker-wrap',
-      html: '<span class="rec-marker-icon">' + num + '</span>',
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
-      popupAnchor: [0, -14]
-    });
+  function createMarkerIcon(active) {
+    return {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: active ? 16 : 14,
+      fillColor: active ? MARKER_ACTIVE_COLOR : MARKER_COLOR,
+      fillOpacity: 1,
+      strokeColor: '#ffffff',
+      strokeWeight: 2
+    };
+  }
+
+  function createUserIcon() {
+    return {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 8,
+      fillColor: '#3B82F6',
+      fillOpacity: 0.9,
+      strokeColor: '#ffffff',
+      strokeWeight: 2
+    };
   }
 
   function invalidateMapSize() {
     if (state.map) {
       setTimeout(function () {
-        state.map.invalidateSize({ animate: false });
+        google.maps.event.trigger(state.map, 'resize');
       }, 150);
     }
   }
 
+  function sumRouteLegs(legs) {
+    var totalDuration = 0;
+    var totalDistance = 0;
+    legs.forEach(function (leg) {
+      totalDuration += leg.duration.value;
+      totalDistance += leg.distance.value;
+    });
+    return { duration: totalDuration, distance: totalDistance };
+  }
+
   var TravelMap = {
     init: function () {
-      var el = document.getElementById('travel-map');
-      if (!el || el._leaflet_id) return;
+      if (!travelConfig.mapsEnabled || typeof google === 'undefined') return;
 
-      state.map = L.map(el, { scrollWheelZoom: true }).setView(
-        [travelConfig.center.lat, travelConfig.center.lng],
-        13
-      );
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(state.map);
+      var el = document.getElementById('travel-map');
+      if (!el || state.map) return;
+
+      var unavailable = el.querySelector('.travel-map-unavailable');
+      if (unavailable) unavailable.remove();
+
+      state.map = new google.maps.Map(el, {
+        center: { lat: travelConfig.center.lat, lng: travelConfig.center.lng },
+        zoom: 13,
+        scrollwheel: true,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false
+      });
+
+      state.infoWindow = new google.maps.InfoWindow();
+      state.directionsService = new google.maps.DirectionsService();
+      state.directionsRenderer = new google.maps.DirectionsRenderer({
+        map: state.map,
+        suppressMarkers: true,
+        polylineOptions: {
+          strokeColor: MARKER_COLOR,
+          strokeWeight: 4,
+          strokeOpacity: 0.85
+        }
+      });
+      state.multiStopRenderer = new google.maps.DirectionsRenderer({
+        suppressMarkers: true,
+        polylineOptions: {
+          strokeColor: MARKER_ACTIVE_COLOR,
+          strokeWeight: 4,
+          strokeOpacity: 0.85,
+          icons: [{
+            icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 4 },
+            offset: '0',
+            repeat: '20px'
+          }]
+        }
+      });
 
       var recs = travelConfig.recommendations || [];
-      var markers = [];
+      var bounds = new google.maps.LatLngBounds();
+      var hasBounds = false;
+
       recs.forEach(function (rec, idx) {
         if (!rec.lat || !rec.lng) return;
         var num = idx + 1;
-        var marker = L.marker([rec.lat, rec.lng], { icon: createNumberedIcon(num) }).addTo(state.map);
-        marker.bindPopup(
-          '<strong>' + escapeHtml(rec.name_es) + '</strong><br>' + escapeHtml(rec.address)
-        );
+        var position = { lat: rec.lat, lng: rec.lng };
+        var marker = new google.maps.Marker({
+          position: position,
+          map: state.map,
+          icon: createMarkerIcon(false),
+          label: {
+            text: String(num),
+            color: '#ffffff',
+            fontSize: '13px',
+            fontWeight: '700'
+          }
+        });
         marker._recId = rec.id;
-        marker.on('click', function () {
+        state.markerMeta[rec.id] = { num: num, name: rec.name_es, address: rec.address };
+        marker.addListener('click', function () {
           TravelCards.selectRec(rec.id, true);
         });
         state.markersById[rec.id] = marker;
-        markers.push(marker);
+        bounds.extend(position);
+        hasBounds = true;
       });
 
-      if (markers.length > 0) {
-        var group = new L.featureGroup(markers);
-        state.map.fitBounds(group.getBounds().pad(0.1), { maxZoom: 14 });
+      if (hasBounds) {
+        state.map.fitBounds(bounds, 40);
+        google.maps.event.addListenerOnce(state.map, 'bounds_changed', function () {
+          if (state.map.getZoom() > 14) state.map.setZoom(14);
+        });
       }
 
       if (recs.length > 0) {
@@ -391,23 +455,31 @@
     selectRec: function (id, panTo) {
       Object.keys(state.markersById).forEach(function (mid) {
         var m = state.markersById[mid];
-        var el = m.getElement();
-        if (el) el.classList.toggle('rec-marker--active', mid === id);
+        m.setIcon(createMarkerIcon(mid === id));
       });
 
-      if (panTo && state.markersById[id]) {
+      if (panTo && state.markersById[id] && state.map) {
         var marker = state.markersById[id];
-        state.map.setView(marker.getLatLng(), Math.max(state.map.getZoom(), 15), { animate: true });
-        marker.openPopup();
+        var meta = state.markerMeta[id];
+        state.map.panTo(marker.getPosition());
+        if (state.map.getZoom() < 15) state.map.setZoom(15);
+        if (state.infoWindow && meta) {
+          state.infoWindow.setContent(
+            '<strong>' + escapeHtml(meta.name) + '</strong><br>' + escapeHtml(meta.address)
+          );
+          state.infoWindow.open({ map: state.map, anchor: marker });
+        }
       }
     }
   };
 
   var TravelRoute = {
     clear: function () {
-      if (state.routePolyline) {
-        state.map.removeLayer(state.routePolyline);
-        state.routePolyline = null;
+      if (state.directionsRenderer) {
+        state.directionsRenderer.setMap(null);
+      }
+      if (state.multiStopRenderer) {
+        state.multiStopRenderer.setMap(null);
       }
       document.querySelectorAll('.rec-card__route').forEach(function (el) {
         el.textContent = '';
@@ -416,7 +488,7 @@
 
     fetchWalking: function (rec) {
       var self = this;
-      if (!rec || !rec.lat || !rec.lng || !state.map) return;
+      if (!rec || !rec.lat || !rec.lng || !state.map || !state.directionsService) return;
 
       clearTimeout(state.routeDebounce);
       state.routeDebounce = setTimeout(function () {
@@ -426,85 +498,78 @@
 
     _doFetch: function (rec) {
       var origin = getRoutingOrigin();
-      var url = 'https://router.project-osrm.org/route/v1/walking/'
-        + origin.lng + ',' + origin.lat + ';' + rec.lng + ',' + rec.lat
-        + '?overview=full&geometries=geojson';
-
       var card = document.querySelector('.rec-card[data-rec-id="' + rec.id + '"]');
       var routeEl = card ? card.querySelector('.rec-card__route') : null;
       if (routeEl) routeEl.textContent = 'Calculando ruta…';
 
-      fetchWithTimeout(url, 8000)
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.routes || !data.routes[0]) throw new Error('no route');
-          var route = data.routes[0];
-          var coords = route.geometry.coordinates.map(function (c) {
-            return [c[1], c[0]];
-          });
-
-          TravelRoute.clear();
-          state.routePolyline = L.polyline(coords, {
-            color: '#C45C3E',
-            weight: 4,
-            opacity: 0.85
-          }).addTo(state.map);
-
-          if (routeEl) {
-            var label = formatDurationEs(route.duration) + ' a pie · ' + formatDistanceEs(route.distance);
-            if (state.userPosition && !state.userNearBarcelona) {
-              label += ' (desde ' + travelConfig.originLabel + ')';
-            }
-            routeEl.textContent = label;
-          }
-        })
-        .catch(function () {
+      state.directionsService.route({
+        origin: { lat: origin.lat, lng: origin.lng },
+        destination: { lat: rec.lat, lng: rec.lng },
+        travelMode: google.maps.TravelMode.WALKING
+      }, function (result, status) {
+        if (status !== google.maps.DirectionsStatus.OK || !result.routes[0]) {
           if (routeEl) {
             routeEl.textContent = 'Ruta no disponible. Prueba «Cómo llegar» o revisa tu conexión.';
           }
-        });
+          return;
+        }
+
+        TravelRoute.clear();
+        state.multistopActive = false;
+        state.directionsRenderer.setMap(state.map);
+        state.directionsRenderer.setDirections(result);
+
+        var leg = result.routes[0].legs[0];
+        if (routeEl) {
+          var label = formatDurationEs(leg.duration.value) + ' a pie · ' + formatDistanceEs(leg.distance.value);
+          if (state.userPosition && !state.userNearBarcelona) {
+            label += ' (desde ' + travelConfig.originLabel + ')';
+          }
+          routeEl.textContent = label;
+        }
+      });
     },
 
     fetchMultiStop: function () {
-      var recs = travelConfig.recommendations || [];
-      if (recs.length < 2 || !state.map) return;
+      var recs = (travelConfig.recommendations || []).filter(function (r) {
+        return r.lat && r.lng;
+      });
+      if (recs.length < 2 || !state.map || !state.directionsService) return;
 
       var origin = getRoutingOrigin();
-      var coords = [origin.lng + ',' + origin.lat];
-      recs.forEach(function (rec) {
-        if (rec.lat && rec.lng) coords.push(rec.lng + ',' + rec.lat);
+      var last = recs[recs.length - 1];
+      var waypoints = recs.slice(0, -1).map(function (r) {
+        return { location: { lat: r.lat, lng: r.lng }, stopover: true };
       });
 
-      var url = 'https://router.project-osrm.org/route/v1/walking/'
-        + coords.join(';') + '?overview=full&geometries=geojson';
-
-      fetchWithTimeout(url, 8000)
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.routes || !data.routes[0]) throw new Error('no route');
-          var route = data.routes[0];
-          var lineCoords = route.geometry.coordinates.map(function (c) {
-            return [c[1], c[0]];
-          });
-
-          TravelRoute.clear();
-          state.routePolyline = L.polyline(lineCoords, {
-            color: '#2D6A4F',
-            weight: 4,
-            opacity: 0.85,
-            dashArray: '8, 6'
-          }).addTo(state.map);
-          state.map.fitBounds(state.routePolyline.getBounds().pad(0.1));
-
-          var hint = document.getElementById('travel-map-hint');
-          if (hint) {
-            hint.textContent = 'Ruta con paradas: ' + formatDurationEs(route.duration) + ' a pie · ' + formatDistanceEs(route.distance);
-          }
-        })
-        .catch(function () {
-          var hint = document.getElementById('travel-map-hint');
+      state.directionsService.route({
+        origin: { lat: origin.lat, lng: origin.lng },
+        destination: { lat: last.lat, lng: last.lng },
+        waypoints: waypoints,
+        optimizeWaypoints: false,
+        travelMode: google.maps.TravelMode.WALKING
+      }, function (result, status) {
+        var hint = document.getElementById('travel-map-hint');
+        if (status !== google.maps.DirectionsStatus.OK || !result.routes[0]) {
           if (hint) hint.textContent = 'Ruta no disponible. Usa «Cómo llegar» en cada lugar.';
-        });
+          return;
+        }
+
+        TravelRoute.clear();
+        state.multistopActive = true;
+        state.multiStopRenderer.setMap(state.map);
+        state.multiStopRenderer.setDirections(result);
+
+        if (result.routes[0].bounds) {
+          state.map.fitBounds(result.routes[0].bounds, 40);
+        }
+
+        var totals = sumRouteLegs(result.routes[0].legs);
+        if (hint) {
+          hint.textContent = 'Ruta con paradas: ' + formatDurationEs(totals.duration)
+            + ' a pie · ' + formatDistanceEs(totals.distance);
+        }
+      });
     }
   };
 
@@ -680,9 +745,13 @@
       this.showMarker(coords);
 
       if (opts.pan && !state.hasPannedToUser && state.map) {
-        state.map.setView([coords.lat, coords.lng], 16);
+        state.map.setCenter(coords);
+        state.map.setZoom(16);
         state.hasPannedToUser = true;
-        if (state.userMarker) state.userMarker.openPopup();
+        if (state.infoWindow && state.userMarker) {
+          state.infoWindow.setContent('Tu ubicación');
+          state.infoWindow.open({ map: state.map, anchor: state.userMarker });
+        }
       }
 
       this.updateHint();
@@ -718,17 +787,18 @@
 
     showMarker: function (coords) {
       if (!state.map) return;
+      var position = { lat: coords.lat, lng: coords.lng };
       if (state.userMarker) {
-        state.userMarker.setLatLng([coords.lat, coords.lng]);
+        state.userMarker.setPosition(position);
         return;
       }
-      state.userMarker = L.circleMarker([coords.lat, coords.lng], {
-        radius: 8,
-        fillColor: '#3B82F6',
-        color: '#fff',
-        weight: 2,
-        fillOpacity: 0.9
-      }).addTo(state.map).bindPopup('Tu ubicación');
+      state.userMarker = new google.maps.Marker({
+        position: position,
+        map: state.map,
+        icon: createUserIcon(),
+        title: 'Tu ubicación',
+        zIndex: google.maps.Marker.MAX_ZINDEX + 1
+      });
     }
   };
 
@@ -751,9 +821,20 @@
     updateNavBarHint();
   }
 
-  if (document.readyState === 'complete') init();
-  else window.addEventListener('load', init);
+  window.initTravelPage = init;
 })();
 </script>
+{% if google_maps_api_key %}
+<script async defer
+  src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=geometry&callback=initTravelPage">
+</script>
+{% else %}
+<script>
+  (function () {
+    if (document.readyState === 'complete') window.initTravelPage();
+    else window.addEventListener('load', window.initTravelPage);
+  })();
+</script>
+{% endif %}
 {% endif %}
 {% endblock %}

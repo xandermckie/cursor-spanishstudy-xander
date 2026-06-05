@@ -2223,14 +2223,6 @@ body.fog-reveal-page .passage-wrap { cursor: none; }
 .form-hint { font-size: 12px; }
 
 /* Travel */
-body.travel-page .leaflet-container img.leaflet-tile {
-  max-width: none !important;
-  max-height: none !important;
-  padding: 0 !important;
-  border: none !important;
-  margin: 0 !important;
-}
-
 body.travel-page #travel-map {
   width: 100%;
   height: clamp(280px, 50vh, 420px);
@@ -2248,6 +2240,19 @@ body.travel-page #travel-map {
 }
 
 body.travel-page main { overflow-x: clip; }
+
+.travel-map-unavailable {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 280px;
+  margin: 0;
+  padding: 1.5rem;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+}
 
 .filter-panel {
   background: var(--panel-bg);

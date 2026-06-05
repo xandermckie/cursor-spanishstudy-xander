@@ -14,7 +14,7 @@ https://cursor-spanishstudy-xander.onrender.com
 - **Tarjetas** — Flashcard deck; mark misses to build your weak-words list
 - **Libro de frases** — Type English → cached Spanish translation; add, edit, delete; export CSV
 - **Voz** — Voice translation (English ↔ Spanish): Web Speech API on mobile, Whisper on desktop; save to phrasebook when signed in
-- **Viajes** — Filter Barcelona recommendations by time, location, distance, and mood; Leaflet map
+- **Viajes** — Filter Barcelona recommendations by time, location, distance, and mood; Google Maps with walking routes
 - **Noticias** — Spanish headlines about Spain (NewsAPI, cached 60 minutes)
 - **Historia** — Four Spain/Catalonia topics with click-to-reveal English summaries
 - **Recursos** — Curated Spanish study links
@@ -39,7 +39,7 @@ Repo: `xandermckie/cursor-spanishstudy-xander`, branch `main`.
 
 Do **not** use `gunicorn app:app` alone — it ignores Render’s `PORT`. The repo’s [`Procfile`](Procfile) and [`gunicorn.conf.py`](gunicorn.conf.py) bind to `0.0.0.0:$PORT` for you.
 
-**Environment (optional):** `NEWS_API_KEY` for live news. `SECRET_KEY` and `ENCRYPTION_KEY` are optional — the app boots without them (encryption derives from `SECRET_KEY` when set).
+**Environment (optional):** `NEWS_API_KEY` for live news; `GOOGLE_MAPS_API_KEY` for the travel map (Maps JavaScript API + Directions API). `SECRET_KEY` and `ENCRYPTION_KEY` are optional — the app boots without them (encryption derives from `SECRET_KEY` when set).
 
 **Remove** any dashboard `ENCRYPTION_KEY` that Render auto-generated; it is not a valid Fernet key.
 
@@ -86,6 +86,8 @@ Optional variables (defaults shown in `.env.example`):
 | `MYMEMORY_URL` | MyMemory API endpoint (default provided) |
 | `DICTIONARY_API_BASE` | DictionaryAPI.dev endpoint (no key required) |
 | `NEWS_API_URL` | NewsAPI endpoint (default provided) |
+| `GOOGLE_MAPS_API_KEY` | Embedded travel map and walking routes — enable **Maps JavaScript API** and **Directions API** in Google Cloud Console |
+| `GOOGLE_PLACES_API_KEY` | Optional server-side place recommendations on `/travel` |
 
 The news section requires `NEWS_API_KEY`; the rest of the app works without it.
 

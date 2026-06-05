@@ -780,6 +780,7 @@ def register_routes(app: Flask) -> None:
         except Exception as exc:
             logger.exception("travel route failed: %s", exc)
             section_failed = True
+        google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
         return render_template(
             "travel.html",
             page="travel",
@@ -791,6 +792,7 @@ def register_routes(app: Flask) -> None:
             origin=origin,
             origin_label=origin_label,
             section_failed=section_failed,
+            google_maps_api_key=google_maps_api_key,
             spain_accent=fetcher.get_spain_accent(1),
         )
 
