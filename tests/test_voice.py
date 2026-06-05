@@ -18,6 +18,7 @@ def test_voice_page_renders(client) -> None:
     assert response.status_code == 200
     assert b"voice-mic-btn" in response.data
     assert b'data-speech-backend="auto"' in response.data
+    assert b"data-prefer-webspeech" in response.data
     assert b"voice-unsupported" in response.data
     assert b"voice-cancel-translate-btn" in response.data
     assert b"voice-empty-note" in response.data

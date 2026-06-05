@@ -1,7 +1,5 @@
 const MAX_RECORD_SECONDS = 15;
-const TARGET_SAMPLE_RATE = 16000;
 const TRANSLATE_TIMEOUT_MS = 20000;
-const TRANSCRIBE_TIMEOUT_MS = 45000;
 const IDLE_HINT = 'Mantén pulsado el micrófono para hablar';
 const IDLE_HINT_DESKTOP = 'Pulsa el micrófono para hablar';
 
@@ -21,82 +19,33 @@ function isMobileOrLowMemory() {
 }
 
 function isTouchPrimary() {
-  return window.matchMedia('(pointer: coarse)').matches;
+  return (
+    window.matchMedia('(pointer: coarse)').matches ||
+    (navigator.maxTouchPoints > 0 && window.matchMedia('(max-width: 1200px)').matches)
+  );
 }
 
-export function detectSpeechBackendKind() {
+function prefersWebSpeech(root) {
+  if (root?.dataset?.preferWebspeech === 'true') {
+    return true;
+  }
+  return isMobileOrLowMemory() || isTouchPrimary();
+}
+
+function detectSpeechBackendKind(root) {
   const SpeechRecognition = getSpeechRecognitionCtor();
-  if (isMobileOrLowMemory() && SpeechRecognition) {
+  const useWebSpeech = prefersWebSpeech(root);
+
+  if (useWebSpeech && SpeechRecognition) {
     return 'webspeech';
   }
-  if (!isMobileOrLowMemory()) {
+  if (!useWebSpeech) {
     return 'whisper';
   }
   if (SpeechRecognition) {
     return 'webspeech';
   }
   return 'none';
-}
-
-function mergeFloat32Arrays(chunks) {
-  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const merged = new Float32Array(totalLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    merged.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return merged;
-}
-
-function resampleTo16k(audioData, sampleRate) {
-  if (sampleRate === TARGET_SAMPLE_RATE) {
-    return audioData;
-  }
-  const ratio = sampleRate / TARGET_SAMPLE_RATE;
-  const newLength = Math.round(audioData.length / ratio);
-  const result = new Float32Array(newLength);
-  for (let i = 0; i < newLength; i += 1) {
-    const srcIndex = i * ratio;
-    const idx = Math.floor(srcIndex);
-    const frac = srcIndex - idx;
-    const a = audioData[idx] || 0;
-    const b = audioData[idx + 1] || a;
-    result[i] = a + frac * (b - a);
-  }
-  return result;
-}
-
-async function blobToFloat32(blob) {
-  const audioContext = new AudioContext();
-  try {
-    const arrayBuffer = await blob.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    const channel = audioBuffer.getChannelData(0);
-    return {
-      samples: new Float32Array(channel),
-      sampleRate: audioBuffer.sampleRate,
-    };
-  } finally {
-    await audioContext.close().catch(() => {});
-  }
-}
-
-function withTimeout(promise, ms, message) {
-  return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => {
-      reject(new Error(message));
-    }, ms);
-    promise
-      .then((value) => {
-        window.clearTimeout(timer);
-        resolve(value);
-      })
-      .catch((err) => {
-        window.clearTimeout(timer);
-        reject(err);
-      });
-  });
 }
 
 class WebSpeechBackend {
@@ -222,7 +171,7 @@ class WebSpeechBackend {
       this.stopPromise = { resolve, reject };
       try {
         this.recognition.stop();
-      } catch (err) {
+      } catch {
         this.stopPromise = null;
         resolve((this.finalTranscript + this.interimTranscript).trim());
       }
@@ -238,181 +187,6 @@ class WebSpeechBackend {
   }
 }
 
-class WhisperBackend {
-  constructor(ui) {
-    this.ui = ui;
-    this.transcriber = null;
-    this.isModelReady = false;
-    this.isLoading = false;
-    this.mediaStream = null;
-    this.mediaRecorder = null;
-    this.recordedChunks = [];
-    this.isRecording = false;
-    this.transformersModule = null;
-  }
-
-  get kind() {
-    return 'whisper';
-  }
-
-  get ready() {
-    return this.isModelReady;
-  }
-
-  async loadTransformers() {
-    if (!this.transformersModule) {
-      this.transformersModule = await import(
-        'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.0'
-      );
-    }
-    return this.transformersModule;
-  }
-
-  async load() {
-    if (this.isModelReady || this.isLoading) {
-      while (this.isLoading) {
-        await new Promise((r) => window.setTimeout(r, 100));
-      }
-      return;
-    }
-
-    this.isLoading = true;
-    const { pipeline, env } = await this.loadTransformers();
-    env.allowLocalModels = false;
-    const progressCallback = (progress) => this.ui.updateProgress(progress);
-
-    try {
-      this.ui.setModelStatus('Cargando modelo Whisper…');
-      const skipWebGpu = isMobileOrLowMemory();
-      if (!skipWebGpu) {
-        try {
-          this.transcriber = await pipeline(
-            'automatic-speech-recognition',
-            'Xenova/whisper-tiny',
-            { device: 'webgpu', progress_callback: progressCallback }
-          );
-        } catch (webgpuError) {
-          console.warn('WebGPU unavailable, using WASM:', webgpuError);
-          this.transcriber = await pipeline(
-            'automatic-speech-recognition',
-            'Xenova/whisper-tiny',
-            { progress_callback: progressCallback }
-          );
-        }
-      } else {
-        this.transcriber = await pipeline(
-          'automatic-speech-recognition',
-          'Xenova/whisper-tiny',
-          { progress_callback: progressCallback }
-        );
-      }
-
-      this.isModelReady = true;
-      if (this.ui.progressWrap) this.ui.progressWrap.hidden = true;
-      this.ui.setModelStatus('Modelo Whisper listo');
-    } catch (err) {
-      console.error('Whisper model load failed:', err);
-      throw new Error(
-        'No se pudo cargar Whisper. Comprueba tu conexión e inténtalo de nuevo.'
-      );
-    } finally {
-      this.isLoading = false;
-    }
-  }
-
-  async ensureMicAccess() {
-    if (this.mediaStream) return this.mediaStream;
-    this.mediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-      },
-    });
-    return this.mediaStream;
-  }
-
-  async start(lang) {
-    this.sourceLang = lang;
-    const stream = await this.ensureMicAccess();
-    this.recordedChunks = [];
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ? 'audio/webm;codecs=opus'
-      : 'audio/webm';
-    this.mediaRecorder = new MediaRecorder(stream, { mimeType });
-    this.mediaRecorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) {
-        this.recordedChunks.push(event.data);
-      }
-    };
-    this.mediaRecorder.start(250);
-    this.isRecording = true;
-  }
-
-  async stop() {
-    if (!this.isRecording || !this.mediaRecorder) {
-      return '';
-    }
-
-    this.isRecording = false;
-
-    const recorder = this.mediaRecorder;
-    this.mediaRecorder = null;
-
-    const blob = await new Promise((resolve) => {
-      recorder.onstop = () => {
-        const type = recorder.mimeType || 'audio/webm';
-        resolve(new Blob(this.recordedChunks, { type }));
-      };
-      try {
-        recorder.stop();
-      } catch {
-        resolve(new Blob(this.recordedChunks, { type: recorder.mimeType || 'audio/webm' }));
-      }
-    });
-
-    this.recordedChunks = [];
-
-    if (!blob.size) {
-      return '';
-    }
-
-    const { samples, sampleRate } = await blobToFloat32(blob);
-    const audio = resampleTo16k(samples, sampleRate);
-    return this.transcribe(audio);
-  }
-
-  async transcribe(audio) {
-    if (!this.transcriber || !audio.length) {
-      return '';
-    }
-
-    const output = await withTimeout(
-      this.transcriber(audio, {
-        language: this.sourceLang,
-        task: 'transcribe',
-      }),
-      TRANSCRIBE_TIMEOUT_MS,
-      'Transcription timeout'
-    );
-    return (output?.text || '').trim();
-  }
-
-  dispose() {
-    if (this.mediaRecorder && this.isRecording) {
-      try {
-        this.mediaRecorder.stop();
-      } catch {
-        /* ignore */
-      }
-    }
-    if (this.mediaStream) {
-      this.mediaStream.getTracks().forEach((track) => track.stop());
-      this.mediaStream = null;
-    }
-  }
-}
-
 class VoiceApp {
   constructor(root) {
     this.root = root;
@@ -420,11 +194,12 @@ class VoiceApp {
     this.isLoggedIn = root.dataset.loggedIn === 'true';
     this.loginUrl = root.dataset.loginUrl || '/login';
     this.phrasebookUrl = root.dataset.phrasebookUrl || '/phrasebook';
-    this.backendKind = detectSpeechBackendKind();
-    this.useHoldToTalk = isTouchPrimary();
+    this.backendKind = detectSpeechBackendKind(root);
+    this.useHoldToTalk = isTouchPrimary() || root.dataset.preferWebspeech === 'true';
 
     this.sourceLang = 'en';
     this.backend = null;
+    this.whisperModulePromise = null;
     this.isRecording = false;
     this.isWarmingUp = false;
     this.isBusy = false;
@@ -462,6 +237,24 @@ class VoiceApp {
 
     this.bindEvents();
     this.initBackend();
+  }
+
+  whisperUi() {
+    return {
+      setModelStatus: (msg) => this.setModelStatus(msg),
+      updateProgress: (progress) => this.updateProgress(progress),
+      progressWrap: this.progressWrap,
+    };
+  }
+
+  async ensureWhisperBackend() {
+    if (this.backend) return this.backend;
+    if (!this.whisperModulePromise) {
+      this.whisperModulePromise = import('./voice-whisper.js');
+    }
+    const { WhisperBackend } = await this.whisperModulePromise;
+    this.backend = new WhisperBackend(this.whisperUi());
+    return this.backend;
   }
 
   bindEvents() {
@@ -515,7 +308,7 @@ class VoiceApp {
     this.saveBtn?.addEventListener('click', () => this.savePhrase());
   }
 
-  async initBackend() {
+  initBackend() {
     if (this.backendKind === 'none') {
       this.showUnsupported();
       return;
@@ -533,11 +326,6 @@ class VoiceApp {
             'En móvil usamos el micrófono del navegador. Mantén pulsado el botón mientras hablas.';
         }
       } else {
-        this.backend = new WhisperBackend({
-          setModelStatus: (msg) => this.setModelStatus(msg),
-          updateProgress: (progress) => this.updateProgress(progress),
-          progressWrap: this.progressWrap,
-        });
         if (this.progressWrap) this.progressWrap.hidden = true;
         this.setModelStatus('Pulsa el micrófono para cargar Whisper');
         if (this.micBtn) this.micBtn.disabled = false;
@@ -614,19 +402,26 @@ class VoiceApp {
   }
 
   micIsReady() {
-    return this.backend && (this.backendKind === 'webspeech' || this.backend.ready);
+    if (this.backendKind === 'none') return false;
+    if (this.backendKind === 'webspeech') return !!this.backend;
+    return !this.isWarmingUp && !this.isBusy;
   }
 
   async beginRecording() {
-    if (!this.backend || this.isBusy || this.isRecording || this.isWarmingUp) return;
+    if (this.isBusy || this.isRecording || this.isWarmingUp) return;
 
     this.isWarmingUp = true;
     if (this.micHint) this.micHint.textContent = 'Espera, preparando…';
     if (this.micBtn) this.micBtn.disabled = true;
 
     try {
-      if (this.backendKind === 'whisper' && !this.backend.ready) {
-        await this.backend.load();
+      if (this.backendKind === 'whisper') {
+        await this.ensureWhisperBackend();
+        if (!this.backend.ready) {
+          await this.backend.load();
+        }
+      } else if (!this.backend) {
+        return;
       }
 
       this.setError('');
@@ -885,9 +680,15 @@ class VoiceApp {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function bootVoiceApp() {
   const root = document.getElementById('voice-app');
   if (root) {
     new VoiceApp(root);
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootVoiceApp);
+} else {
+  bootVoiceApp();
+}

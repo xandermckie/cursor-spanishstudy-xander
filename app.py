@@ -43,6 +43,22 @@ SUPPORTED_LANGS = frozenset({"en", "es", "ca"})
 LANG_LABELS = {"en": "Inglés", "es": "Español", "ca": "Catalán"}
 
 
+def _is_mobile_user_agent(user_agent: str | None) -> bool:
+    """Heuristic for phones/tablets — used to fast-path Web Speech on /voice."""
+    ua = (user_agent or "").lower()
+    mobile_tokens = (
+        "iphone",
+        "ipad",
+        "ipod",
+        "android",
+        "mobile",
+        "webos",
+        "opera mini",
+        "iemobile",
+    )
+    return any(token in ua for token in mobile_tokens)
+
+
 def _parse_refresh_interval_minutes() -> int:
     raw = os.environ.get("REFRESH_INTERVAL_MINUTES", "15")
     try:
@@ -521,10 +537,12 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/voice")
     def voice():
+        prefer_webspeech = _is_mobile_user_agent(request.headers.get("User-Agent"))
         return render_template(
             "voice.html",
             page="voice",
             title="Voz",
+            prefer_webspeech=prefer_webspeech,
         )
 
     @app.route("/voice/translate", methods=["POST"])
