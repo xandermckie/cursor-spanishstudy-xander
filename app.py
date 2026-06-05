@@ -39,6 +39,8 @@ CACHE_FILE = DATA_DIR / "cache.json"
 DEFAULT_SECRET_KEY = "dev-change-me"
 PHRASE_MAX_LENGTH = 500
 MIN_PASSWORD_LEN = 8
+SUPPORTED_LANGS = frozenset({"en", "es", "ca"})
+LANG_LABELS = {"en": "Inglés", "es": "Español", "ca": "Catalán"}
 
 
 def _parse_refresh_interval_minutes() -> int:
@@ -592,6 +594,93 @@ def register_routes(app: Flask) -> None:
             )
         except Exception as exc:
             logger.exception("voice_save failed: %s", exc)
+            return jsonify({"error": "No se pudo guardar la frase."}), 500
+        if not entry:
+            return jsonify({"error": "No se pudo guardar la frase."}), 500
+        return jsonify({"ok": True, "phrase_id": entry["id"]})
+
+    @app.route("/translate")
+    def translate():
+        return render_template(
+            "translate.html",
+            page="translate",
+            title="Traductor",
+        )
+
+    @app.route("/translate/api", methods=["POST"])
+    def translate_api():
+        if not validate_csrf(request.headers.get("X-CSRF-Token")):
+            return jsonify({"error": "Solicitud no válida."}), 403
+        data = request.get_json(silent=True) or {}
+        text = (data.get("text") or "").strip()
+        source_lang = (data.get("source_lang") or "").strip()
+        target_lang = (data.get("target_lang") or "").strip()
+        if source_lang not in SUPPORTED_LANGS:
+            return jsonify({"error": "Idioma de origen no válido."}), 400
+        if target_lang not in SUPPORTED_LANGS:
+            return jsonify({"error": "Idioma de destino no válido."}), 400
+        if source_lang == target_lang:
+            return jsonify({"error": "Elige idiomas de origen y destino distintos."}), 400
+        if not text:
+            return jsonify({"error": "Escribe una frase para traducir."}), 400
+        if len(text) > PHRASE_MAX_LENGTH:
+            return jsonify(
+                {
+                    "error": (
+                        f"La frase es demasiado larga "
+                        f"(máximo {PHRASE_MAX_LENGTH} caracteres)."
+                    )
+                }
+            ), 400
+        try:
+            translated, from_cache = fetcher.fetch_translation(
+                text, source_lang, target_lang
+            )
+        except Exception as exc:
+            logger.exception("translate_api failed: %s", exc)
+            return jsonify({"error": "No se pudo traducir. Inténtalo de nuevo."}), 500
+        if not translated:
+            return jsonify({"error": "No se pudo traducir. Inténtalo de nuevo."}), 500
+        return jsonify(
+            {
+                "source": text,
+                "translated": translated,
+                "source_lang": source_lang,
+                "target_lang": target_lang,
+                "from_cache": from_cache,
+            }
+        )
+
+    @app.route("/translate/save", methods=["POST"])
+    def translate_save():
+        if not get_current_user_id():
+            return jsonify({"error": "Inicia sesión para guardar frases."}), 401
+        if not validate_csrf(request.headers.get("X-CSRF-Token")):
+            return jsonify({"error": "Solicitud no válida."}), 403
+        data = request.get_json(silent=True) or {}
+        spoken = (data.get("spoken") or "").strip()
+        translated = (data.get("translated") or "").strip()
+        source_lang = (data.get("source_lang") or "").strip()
+        if source_lang not in ("en", "es"):
+            return jsonify({"error": "Solo se pueden guardar frases en inglés o español."}), 400
+        if not spoken or not translated:
+            return jsonify({"error": "Faltan datos de la frase."}), 400
+        if len(spoken) > PHRASE_MAX_LENGTH or len(translated) > PHRASE_MAX_LENGTH:
+            return jsonify(
+                {
+                    "error": (
+                        f"La frase es demasiado larga "
+                        f"(máximo {PHRASE_MAX_LENGTH} caracteres)."
+                    )
+                }
+            ), 400
+        user_id = get_current_user_id()
+        try:
+            entry = fetcher.add_phrase_bidirectional(
+                user_id, spoken, translated, source_lang
+            )
+        except Exception as exc:
+            logger.exception("translate_save failed: %s", exc)
             return jsonify({"error": "No se pudo guardar la frase."}), 500
         if not entry:
             return jsonify({"error": "No se pudo guardar la frase."}), 500

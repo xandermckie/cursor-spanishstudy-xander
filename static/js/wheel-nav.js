@@ -4,7 +4,7 @@
   const CONFIG = {
     SWIPE_THRESHOLD: 80,
     TAP_MAX_DURATION: 200,
-    DOT_COUNT: 12,
+    DOT_COUNT: 13,
     DEBOUNCE_RESIZE: 150,
     SESSION_KEY: 'wheelNavState',
     FRICTION: 0.95,

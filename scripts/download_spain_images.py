@@ -20,7 +20,7 @@ IMAGES: dict[str, str] = {
         "https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/"
         "Sagrada_Familia_01.jpg/330px-Sagrada_Familia_01.jpg"
     ),
-    "mercat-boqueria.png": (
+    "spanish-tapas.png": (
         "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/"
         "La_Boqueria.JPG/330px-La_Boqueria.JPG"
     ),
@@ -41,7 +41,7 @@ IMAGES: dict[str, str] = {
 FALLBACK_COLORS: dict[str, tuple[int, int, int]] = {
     "barcelona-skyline.png": (200, 90, 60),
     "sagrada-familia.png": (180, 160, 140),
-    "mercat-boqueria.png": (220, 120, 50),
+    "spanish-tapas.png": (180, 110, 70),
     "park-guell.png": (60, 160, 120),
     "barcelona-beach.png": (70, 150, 200),
     "placa-catalunya.png": (90, 100, 160),

@@ -496,10 +496,10 @@ SPAIN_GALLERY = [
         "alt": "Sagrada Familia basilica",
     },
     {
-        "filename": "mercat-boqueria.png",
-        "caption_es": "Colores y sabores en La Boqueria",
-        "caption_en": "Colors and flavors at La Boqueria",
-        "alt": "La Boqueria market stalls",
+        "filename": "spanish-tapas.png",
+        "caption_es": "Tapas tradicionales para compartir",
+        "caption_en": "Traditional tapas to share",
+        "alt": "Spanish tapas spread with calamari, clams, and pulpo a la gallega",
     },
     {
         "filename": "park-guell.png",
