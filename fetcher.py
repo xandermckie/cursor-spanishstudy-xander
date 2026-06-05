@@ -55,6 +55,7 @@ MYMEMORY_URL = os.environ.get(
     "MYMEMORY_URL", "https://api.mymemory.translated.net/get"
 )
 MYMEMORY_EMAIL = os.environ.get("MYMEMORY_EMAIL", "")
+LINGVA_URL = os.environ.get("LINGVA_URL", "https://lingva.ml/api/v1").rstrip("/")
 DICTIONARY_API_BASE = os.environ.get(
     "DICTIONARY_API_BASE", "https://api.dictionaryapi.dev/api/v2/entries/en"
 ).rstrip("/")
@@ -160,11 +161,72 @@ def _translation_cache_key(text: str, source: str, target: str) -> str:
     return f"{source}:{target}:{digest}"
 
 
+def _is_valid_translation(text: str) -> bool:
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return False
+    return "MYMEMORY WARNING" not in cleaned.upper()
+
+
+def _fetch_mymemory(text: str, source: str, target: str) -> str | None:
+    params: dict[str, str] = {
+        "q": text[:500],
+        "langpair": f"{source}|{target}",
+    }
+    if MYMEMORY_EMAIL:
+        params["de"] = MYMEMORY_EMAIL
+
+    try:
+        response = requests.get(MYMEMORY_URL, params=params, timeout=15)
+        try:
+            data = response.json()
+        except ValueError:
+            response.raise_for_status()
+            return None
+
+        if data.get("responseStatus") != 200:
+            logger.warning(
+                "MyMemory error: %s", data.get("responseDetails", "unknown")
+            )
+            return None
+
+        translated = (data.get("responseData", {}).get("translatedText") or "").strip()
+        if not _is_valid_translation(translated):
+            return None
+        return translated
+    except requests.RequestException as exc:
+        logger.warning("MyMemory request failed: %s", exc)
+        return None
+
+
+def _fetch_lingva(text: str, source: str, target: str) -> str | None:
+    supported = {"en", "es", "ca"}
+    if source not in supported or target not in supported:
+        return None
+
+    try:
+        path = (
+            f"{LINGVA_URL}/{source}/{target}/"
+            f"{quote(text[:500], safe='')}"
+        )
+        response = requests.get(path, timeout=20)
+        response.raise_for_status()
+        data = response.json()
+        translated = (data.get("translation") or "").strip()
+        if not _is_valid_translation(translated):
+            return None
+        return translated
+    except (requests.RequestException, ValueError, KeyError) as exc:
+        logger.warning("Lingva fallback failed: %s", exc)
+        return None
+
+
 def fetch_translation(
     text: str, source: str, target: str, use_cache: bool = True
 ) -> tuple[str | None, bool]:
     """
-    MyMemory translate with JSON cache. Returns (text, from_cache).
+    Translate with JSON cache. Tries MyMemory, then Lingva fallback.
+    Returns (text, from_cache).
     """
     if not text or not text.strip():
         return None, False
@@ -176,35 +238,18 @@ def fetch_translation(
     if use_cache and key in cache["translations"]:
         return cache["translations"][key], True
 
-    try:
-        params: dict[str, str] = {
-            "q": text[:500],
-            "langpair": f"{source}|{target}",
-        }
-        if MYMEMORY_EMAIL:
-            params["de"] = MYMEMORY_EMAIL
+    translated = _fetch_mymemory(text, source, target)
+    if not translated:
+        translated = _fetch_lingva(text, source, target)
 
-        response = requests.get(MYMEMORY_URL, params=params, timeout=15)
-        response.raise_for_status()
-        data = response.json()
-
-        if data.get("responseStatus") != 200:
-            logger.warning(
-                "MyMemory error: %s", data.get("responseDetails", "unknown")
-            )
-            if key in cache["translations"]:
-                return cache["translations"][key], True
-            return None, False
-
-        translated = data.get("responseData", {}).get("translatedText", text)
+    if translated:
         cache["translations"][key] = translated
         _save_cache(cache)
         return translated, False
-    except (requests.RequestException, ValueError, KeyError) as exc:
-        logger.exception("fetch_translation failed: %s", exc)
-        if key in cache["translations"]:
-            return cache["translations"][key], True
-        return None, False
+
+    if key in cache["translations"]:
+        return cache["translations"][key], True
+    return None, False
 
 
 def fetch_definition(word: str) -> dict[str, Any] | None:

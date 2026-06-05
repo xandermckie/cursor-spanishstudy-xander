@@ -123,6 +123,7 @@ class VoiceApp {
     }
     this.errorEl.textContent = message;
     this.errorEl.classList.remove('hidden');
+    this.errorEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   setModelStatus(message) {
@@ -369,7 +370,11 @@ class VoiceApp {
 
   async translateText(text) {
     this.isBusy = true;
-    if (this.translateBtn) this.translateBtn.disabled = true;
+    const translateLabel = this.translateBtn?.textContent || 'Traducir';
+    if (this.translateBtn) {
+      this.translateBtn.disabled = true;
+      this.translateBtn.textContent = 'Traduciendo…';
+    }
     if (this.micBtn) this.micBtn.disabled = true;
     this.setError('');
 
@@ -393,7 +398,10 @@ class VoiceApp {
       this.setError('No se pudo traducir. Comprueba tu conexión.');
     } finally {
       this.isBusy = false;
-      if (this.translateBtn) this.translateBtn.disabled = false;
+      if (this.translateBtn) {
+        this.translateBtn.disabled = false;
+        this.translateBtn.textContent = translateLabel;
+      }
       if (this.micBtn && this.isModelReady) this.micBtn.disabled = false;
     }
   }
