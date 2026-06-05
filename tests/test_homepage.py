@@ -21,9 +21,15 @@ def test_bootstrap_homepage_cache_fills_daily_content(tmp_path, monkeypatch) -> 
     cache = json.loads(cache_file.read_text(encoding="utf-8"))
     assert cache["daily_sentence"]["es"]
     assert cache["daily_sentence"]["en"]
+    assert cache["daily_sentence"]["en"] != cache["daily_sentence"]["es"]
     assert cache["daily_phrase"]["es"]
     assert cache["daily_phrase"]["en"]
+    assert cache["daily_phrase"]["en"] != cache["daily_phrase"]["es"]
     assert cache["word_of_day"]["es"]
+    wod = cache["word_of_day"]
+    assert wod["en"]
+    assert wod["en"] != wod["es"]
+    assert wod.get("definition") or wod.get("definition_es")
     assert cache.get("flashcard_deck")
 
 
@@ -44,4 +50,31 @@ def test_get_homepage_bootstraps_empty_cache(tmp_path, monkeypatch) -> None:
     homepage = fetcher.get_homepage()
     assert homepage["daily_sentence"]
     assert homepage["daily_sentence"]["en"]
+    assert homepage["daily_sentence"]["en"] != homepage["daily_sentence"]["es"]
     assert homepage["error"] is False
+
+
+def test_repair_invalid_spanish_as_english_cache(tmp_path, monkeypatch) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    cache_file = data_dir / "cache.json"
+    bad = {
+        "daily_sentence": {"es": "Hola mundo.", "en": "Hola mundo."},
+        "daily_phrase": {"es": "gracias", "en": "gracias"},
+        "word_of_day": {"es": "estación", "en": "estación", "definition": ""},
+    }
+    cache_file.write_text(json.dumps(bad), encoding="utf-8")
+
+    monkeypatch.setattr(fetcher, "DATA_DIR", data_dir)
+    monkeypatch.setattr(fetcher, "CACHE_FILE", cache_file)
+
+    homepage = fetcher.get_homepage()
+    assert homepage["daily_sentence"]["en"] != homepage["daily_sentence"]["es"]
+    assert homepage["word_of_day"]["en"] != homepage["word_of_day"]["es"]
+
+
+def test_get_home_gallery_returns_rotated_items() -> None:
+    items = fetcher.get_home_gallery(3)
+    assert len(items) == 3
+    assert all(item.get("url", "").startswith("img/spain/") for item in items)
+    assert all(item.get("caption_es") for item in items)

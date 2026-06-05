@@ -129,6 +129,16 @@ pytest tests/ -v
 
 Tests use a temporary `data/` directory (via `pytest.ini` + fixtures in `tests/conftest.py`) so your local cache and user files are not modified.
 
+## Spain gallery images
+
+Home and several inner pages use photos under `static/img/spain/`. To refresh assets (Wikimedia Commons, 330px thumbs) or regenerate color placeholders when offline:
+
+```bash
+python scripts/download_spain_images.py
+```
+
+Attribution: images are sourced from Wikimedia Commons when download succeeds; otherwise flat PNG placeholders are generated locally.
+
 ## How It Works
 
 Estudio Abroad is a Flask app with no database. Shared content (daily word, translations, news, reader passages) lives in `data/cache.json`. Each registered user gets their own JSON file at `data/users/{user_id}.json` for phrasebook entries, weak words, vocab session progress, and XP stats. Profile photos are stored under `data/uploads/{user_id}/`.

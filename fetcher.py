@@ -24,18 +24,26 @@ import requests
 
 import user_store
 from fetcher_seeds import (
+    DAILY_PHRASES_EN,
     DAILY_PHRASES_ES,
+    DAILY_SENTENCES_EN,
     DAILY_SENTENCES_ES,
     FLASHCARD_DECK_SEED,
     READER_PASSAGES_SEED,
+    SPAIN_GALLERY,
     WIKIPEDIA_ARTICLES_ES,
+    WOD_GLOSSES_EN,
+    WOD_GLOSSES_ES,
 )
 from fetcher_travel import (
     TRAVEL_RECOMMENDATIONS_SEED,
     UB_LAT,
     UB_LNG,
+    build_directions_urls,
     fetch_google_places,
     filter_travel_recommendations,
+    get_origin_coordinates,
+    get_origin_label,
 )
 
 logger = logging.getLogger(__name__)
@@ -263,6 +271,101 @@ def _pick_spanish_headword(sentence: str) -> str:
         if len(token) > 2:
             return token
     return "palabra"
+
+
+def _normalize_es_token(word: str) -> str:
+    return word.strip().lower()
+
+
+def _translation_looks_invalid(es: str, en: str | None) -> bool:
+    if not en or not str(en).strip():
+        return True
+    return _normalize_es_token(es) == _normalize_es_token(str(en))
+
+
+def _seed_english_at_index(
+    es_text: str,
+    pool_es: list[str],
+    pool_en: list[str],
+    index: int,
+) -> str:
+    if pool_en and len(pool_en) == len(pool_es):
+        return pool_en[index % len(pool_en)]
+    return es_text
+
+
+def _gloss_for_headword(es_word: str, cache: dict[str, Any] | None = None) -> str | None:
+    key = _normalize_es_token(es_word)
+    deck = (cache or {}).get("flashcard_deck") or FLASHCARD_DECK_SEED
+    for card in deck:
+        if _normalize_es_token(card.get("es", "")) == key:
+            en = card.get("en", "").strip()
+            if en and not _translation_looks_invalid(es_word, en):
+                return en
+    for card in FLASHCARD_DECK_SEED:
+        if _normalize_es_token(card.get("es", "")) == key:
+            en = card.get("en", "").strip()
+            if en and not _translation_looks_invalid(es_word, en):
+                return en
+    return None
+
+
+def _wod_definition_es(es_word: str) -> str:
+    return WOD_GLOSSES_ES.get(
+        _normalize_es_token(es_word),
+        f"Palabra clave del día: «{es_word}».",
+    )
+
+
+def _wod_gloss_en(es_word: str, cache: dict[str, Any] | None = None) -> str:
+    key = _normalize_es_token(es_word)
+    seeded = WOD_GLOSSES_EN.get(key, "")
+    if seeded:
+        return seeded
+    flash = _gloss_for_headword(es_word, cache)
+    return flash or ""
+
+
+def _repair_homepage_cache_if_needed(cache: dict[str, Any]) -> bool:
+    """Re-seed homepage fields when cached English duplicates Spanish."""
+    daily = cache.get("daily_sentence") or {}
+    phrase = cache.get("daily_phrase") or {}
+    wod = cache.get("word_of_day") or {}
+    needs_repair = (
+        _translation_looks_invalid(daily.get("es", ""), daily.get("en"))
+        or _translation_looks_invalid(phrase.get("es", ""), phrase.get("en"))
+        or _translation_looks_invalid(wod.get("es", ""), wod.get("en"))
+        or not (wod.get("definition") or wod.get("definition_es") or wod.get("en"))
+    )
+    if not needs_repair:
+        return False
+    if not _populate_homepage_cache(cache, use_apis=False):
+        return False
+    return _save_cache(cache)
+
+
+def get_home_gallery(count: int = 3) -> list[dict[str, str]]:
+    """Rotate Spain gallery items for the home page aside."""
+    if not SPAIN_GALLERY:
+        return []
+    start = _utc_day_index(len(SPAIN_GALLERY))
+    items: list[dict[str, str]] = []
+    for offset in range(min(count, len(SPAIN_GALLERY))):
+        idx = (start + offset) % len(SPAIN_GALLERY)
+        entry = dict(SPAIN_GALLERY[idx])
+        entry["url"] = f"img/spain/{entry['filename']}"
+        items.append(entry)
+    return items
+
+
+def get_spain_accent(day_offset: int = 0) -> dict[str, str] | None:
+    """Single Spain image metadata for non-home pages."""
+    if not SPAIN_GALLERY:
+        return None
+    idx = (_utc_day_index(len(SPAIN_GALLERY)) + day_offset) % len(SPAIN_GALLERY)
+    entry = dict(SPAIN_GALLERY[idx])
+    entry["url"] = f"img/spain/{entry['filename']}"
+    return entry
 
 
 def format_refresh_time(iso_timestamp: str | None) -> str:
@@ -569,16 +672,23 @@ def _populate_homepage_cache(
     sentence_es = DAILY_SENTENCES_ES[day_idx]
     phrase_es = DAILY_PHRASES_ES[phrase_idx]
 
+    seed_sentence_en = _seed_english_at_index(
+        sentence_es, DAILY_SENTENCES_ES, DAILY_SENTENCES_EN, day_idx
+    )
+    seed_phrase_en = _seed_english_at_index(
+        phrase_es, DAILY_PHRASES_ES, DAILY_PHRASES_EN, phrase_idx
+    )
+
     if use_apis:
         en_text, _ = fetch_translation(sentence_es, "es", "en")
         phrase_en, _ = fetch_translation(phrase_es, "es", "en")
     else:
         en_text, phrase_en = None, None
 
-    if not en_text:
-        en_text = sentence_es
-    if not phrase_en:
-        phrase_en = phrase_es
+    if _translation_looks_invalid(sentence_es, en_text):
+        en_text = seed_sentence_en
+    if _translation_looks_invalid(phrase_es, phrase_en):
+        phrase_en = seed_phrase_en
 
     cache["daily_sentence"] = {
         "es": sentence_es,
@@ -592,21 +702,31 @@ def _populate_homepage_cache(
     }
 
     es_word = _pick_spanish_headword(sentence_es)
+    definition_es = _wod_definition_es(es_word)
     if use_apis:
         en_gloss, _ = fetch_translation(es_word, "es", "en")
-        en_lookup = (en_gloss or es_word).split()[0].strip(".,?!").lower()
+        en_lookup = (en_gloss or "").split()[0].strip(".,?!").lower()
+        if not en_lookup or _translation_looks_invalid(es_word, en_gloss):
+            en_lookup = (_gloss_for_headword(es_word, cache) or "").split()[0].strip(
+                ".,?!"
+            ).lower()
         dict_data = fetch_definition(en_lookup) if en_lookup else None
     else:
-        en_gloss = es_word
+        en_gloss = None
         dict_data = None
 
-    if not en_gloss:
-        en_gloss = es_word
+    if _translation_looks_invalid(es_word, en_gloss):
+        en_gloss = _wod_gloss_en(es_word, cache)
+
+    english_definition = dict_data.get("definition", "") if dict_data else ""
+    if not english_definition:
+        english_definition = en_gloss or ""
 
     cache["word_of_day"] = {
         "es": es_word,
-        "en": en_gloss,
-        "definition": dict_data.get("definition", "") if dict_data else "",
+        "en": en_gloss or "",
+        "definition": english_definition,
+        "definition_es": definition_es,
         "phonetic": dict_data.get("phonetic", "") if dict_data else "",
         "example_es": sentence_es,
         "example_en": en_text,
@@ -704,6 +824,11 @@ def get_homepage(
                     logger.warning("get_homepage: API refresh failed: %s", refresh_exc)
             if not daily or not daily.get("en") or not daily_phrase or not daily_phrase.get("en"):
                 return _homepage_from_cache(cache, user_id) or _homepage_fallback(user_id)
+
+        if _repair_homepage_cache_if_needed(cache):
+            cache = _load_cache()
+            daily = cache.get("daily_sentence")
+            daily_phrase = cache.get("daily_phrase")
 
         wod = cache.get("word_of_day")
         if wod and not wod.get("es"):
@@ -1476,8 +1601,8 @@ def format_news_date(iso_timestamp: str | None) -> str:
         return iso_timestamp
 
 
-def get_travel_map_center() -> dict[str, float]:
-    return {"lat": UB_LAT, "lng": UB_LNG}
+def get_travel_map_center(location: str | None = None) -> dict[str, float]:
+    return get_origin_coordinates(location)
 
 
 def _news_api_request_params() -> dict[str, str | int]:

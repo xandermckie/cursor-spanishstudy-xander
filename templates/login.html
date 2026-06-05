@@ -1,13 +1,19 @@
 {% extends "base.html" %}
 {% from "partials/pez.html" import pez %}
 {% block title %}Iniciar sesión{% endblock %}
+{% block body_class %}auth-page{% endblock %}
 
 {% block content %}
-<div class="auth-page">
-  {{ pez(size=64, expression='happy', speech='¡Bienvenido de nuevo!') }}
-  <h1 class="page-title text-center mt-3">Iniciar sesión</h1>
-  <p class="page-subtitle text-center">Accede para guardar tu progreso y tu libro de frases.</p>
+<section class="page-hero page-hero--auth" aria-label="Iniciar sesión">
+  <div class="page-hero-overlay"></div>
+  <div class="page-hero-content page-hero-content--center">
+    {{ pez(size=64, expression='happy', speech='¡Bienvenido de nuevo!') }}
+    <h1 class="display-title mt-3">Iniciar sesión</h1>
+    <p class="lead">Accede para guardar tu progreso y tu libro de frases.</p>
+  </div>
+</section>
 
+<div class="auth-page">
   <div class="card auth-card">
     <form method="post" action="{{ url_for('login', next=next_url) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -21,15 +27,9 @@
       </div>
       <button type="submit" class="btn btn-primary w-full">Entrar</button>
     </form>
-    <p class="text-muted text-center mt-3 mb-0" style="font-size: 14px;">
+    <p class="text-muted text-center mt-3 mb-0 auth-footer-link">
       ¿No tienes cuenta? <a href="{{ url_for('register') }}">Regístrate</a>
     </p>
   </div>
 </div>
-{% endblock %}
-
-{% block inline_css %}
-.auth-page { max-width: 420px; margin: 0 auto; text-align: center; }
-.auth-card { text-align: left; margin-top: 24px; }
-.form-group { display: flex; flex-direction: column; gap: 6px; }
 {% endblock %}

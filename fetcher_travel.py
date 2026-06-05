@@ -947,6 +947,14 @@ def _mood_to_place_types(mood: str | None) -> list[str]:
     return mood_map.get(mood or "", [])
 
 
+ORIGIN_LABELS: dict[str, str] = {
+    "ub": "Universitat de Barcelona",
+    "barcelona": "Barcelona",
+    "beach": "La Barceloneta",
+    "spain": "Barcelona",
+}
+
+
 def _location_to_coordinates(location: str | None) -> tuple[float, float]:
     """Map location filter to lat/lng coordinates for search center."""
     location_map = {
@@ -956,6 +964,38 @@ def _location_to_coordinates(location: str | None) -> tuple[float, float]:
         "spain": (41.3874, 2.1686),
     }
     return location_map.get(location or "barcelona", (UB_LAT, UB_LNG))
+
+
+def get_origin_coordinates(location: str | None) -> dict[str, float]:
+    """Return origin lat/lng for directions based on the location filter."""
+    lat, lng = _location_to_coordinates(location)
+    return {"lat": lat, "lng": lng}
+
+
+def get_origin_label(location: str | None) -> str:
+    """Spanish label for the routing origin."""
+    if not location:
+        return ORIGIN_LABELS["ub"]
+    return ORIGIN_LABELS.get(location, ORIGIN_LABELS["ub"])
+
+
+def build_directions_urls(
+    origin_lat: float,
+    origin_lng: float,
+    dest_lat: float,
+    dest_lng: float,
+) -> dict[str, str]:
+    """Build Google Maps and Apple Maps walking directions URLs."""
+    origin = f"{origin_lat},{origin_lng}"
+    destination = f"{dest_lat},{dest_lng}"
+    google = (
+        "https://www.google.com/maps/dir/?api=1"
+        f"&origin={origin}&destination={destination}&travelmode=walking"
+    )
+    apple = (
+        f"http://maps.apple.com/?saddr={origin}&daddr={destination}&dirflg=w"
+    )
+    return {"google": google, "apple": apple}
 
 
 def fetch_google_places(

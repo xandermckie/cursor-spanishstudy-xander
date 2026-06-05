@@ -1,0 +1,16 @@
+{% macro spain_photo(item, extra_class='') %}
+<figure class="spain-photo {{ extra_class }}">
+  <img
+    src="{{ url_for('static', filename=item.url) }}"
+    alt="{{ item.alt }}"
+    class="spain-photo-img"
+    loading="lazy"
+    width="640"
+    height="400"
+  >
+  <figcaption class="spain-photo-caption">{{ item.caption_es }}</figcaption>
+  {% if item.caption_en %}
+  <p class="spain-photo-caption-en text-muted">{{ item.caption_en }}</p>
+  {% endif %}
+</figure>
+{% endmacro %}

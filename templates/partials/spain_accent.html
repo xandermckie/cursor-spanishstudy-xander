@@ -1,0 +1,6 @@
+{% from "partials/spain_photo.html" import spain_photo %}
+{% if spain_accent %}
+<div class="page-accent-banner">
+  {{ spain_photo(spain_accent) }}
+</div>
+{% endif %}

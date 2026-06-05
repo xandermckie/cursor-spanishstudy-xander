@@ -2,14 +2,23 @@
 {% from "partials/pez.html" import pez %}
 {% from "partials/reveal_card.html" import reveal_card %}
 {% block title %}Libro de frases{% endblock %}
+{% block body_class %}phrasebook-page{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-  <h1 class="page-title mb-0">Libro de frases</h1>
-  {% if current_user.is_authenticated %}
-  <a href="{{ url_for('phrasebook_export') }}" class="btn btn-secondary btn-sm">Exportar CSV</a>
-  {% endif %}
-</div>
+<section class="page-hero page-hero--compact" aria-label="Libro de frases">
+  <div class="page-hero-overlay"></div>
+  <div class="page-hero-content">
+    <div class="flex flex-wrap justify-between items-center gap-2 w-full">
+      <div>
+        <h1 class="display-title mb-0">Libro de frases</h1>
+        <p class="lead">Guarda y practica frases útiles en Barcelona.</p>
+      </div>
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('phrasebook_export') }}" class="btn btn-secondary btn-sm">Exportar CSV</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
 
 <div class="instruction-bar" role="note">◎ &nbsp;Toca el texto para ver inglés</div>
 
@@ -24,24 +33,24 @@
 
 {% if current_user.is_authenticated %}
 <div class="card mb-4">
-  <h2 class="h3" style="font-size: 16px; font-weight: 700; margin: 0 0 12px;">Añadir frase</h2>
+  <h2 class="section-title-sm">Añadir frase</h2>
   <form method="post" action="{{ url_for('phrasebook') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label class="form-label">Escribe la frase en inglés; se traduce al español al guardar.</label>
     <div class="flex gap-2 flex-wrap">
-      <input type="text" class="form-control" name="input" placeholder="e.g. I need to renew my student visa" required maxlength="500" style="flex: 1; min-width: 200px;">
+      <input type="text" class="form-control phrase-form-input" name="input" placeholder="e.g. I need to renew my student visa" required maxlength="500">
       <button type="submit" class="btn btn-primary">Traducir y guardar</button>
     </div>
-    <p class="text-muted mb-0 mt-2" style="font-size: 12px;">La traducción se guarda en caché para no repetir llamadas a la API.</p>
+    <p class="text-muted mb-0 mt-2 form-hint">La traducción se guarda en caché para no repetir llamadas a la API.</p>
   </form>
 </div>
 {% endif %}
 
 <div class="card">
-  <h2 class="h3" style="font-size: 16px; font-weight: 700; margin: 0 0 16px;">Tus frases ({{ phrases|length }})</h2>
+  <h2 class="section-title-sm">Tus frases ({{ phrases|length }})</h2>
   {% if phrases %}
   {% for p in phrases %}
-  <div class="phrase-row mb-3" style="padding-bottom: 16px; border-bottom: 1px solid var(--border);">
+  <div class="phrase-row mb-3">
     {{ reveal_card(p.es, p.input) }}
     {% if current_user.is_authenticated %}
     <div class="flex gap-2 mt-2">
@@ -80,9 +89,4 @@ document.querySelectorAll('.phrase-edit-btn').forEach(function (btn) {
   });
 });
 </script>
-{% endblock %}
-
-{% block inline_css %}
-.phrase-row:last-child { border-bottom: none !important; padding-bottom: 0 !important; }
-.inline-form { display: inline; }
 {% endblock %}

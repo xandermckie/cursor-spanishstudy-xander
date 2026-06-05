@@ -1,0 +1,8 @@
+{% from "partials/spain_photo.html" import spain_photo %}
+{% if gallery_items is defined and gallery_items %}
+<aside class="home-aside" aria-label="Fotos de España">
+  {% for item in gallery_items %}
+  {{ spain_photo(item) }}
+  {% endfor %}
+</aside>
+{% endif %}

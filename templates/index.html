@@ -2,27 +2,25 @@
 {% from "partials/pez.html" import pez %}
 {% from "partials/reveal_card.html" import reveal_card %}
 {% block title %}Inicio{% endblock %}
+{% block body_class %}home-page{% endblock %}
 
 {% block content %}
 {% set stats = homepage.user_stats if homepage and homepage.user_stats else user_stats %}
 
-<div class="home-hero mb-4">
-  <div class="flex flex-wrap items-center gap-4">
-    <img
-      src="{{ url_for('static', filename='img/pez-logo.png') }}"
-      alt="Pez — mascota de Estudio Abroad"
-      class="home-hero-logo"
-      width="112"
-      height="112"
-    >
-    <div>
-      <h1 class="page-title mb-0">Buenos días</h1>
-      <p class="page-subtitle mb-0">¡Hola! ¿Listo para aprender? Sigue con el ritmo.</p>
-    </div>
-  </div>
-</div>
+<div class="home-layout">
+  <div class="home-main">
+    <section class="page-hero home-hero mb-4" aria-label="Bienvenida">
+      <div class="page-hero-overlay"></div>
+      <div class="page-hero-content">
+        {{ pez(size=80, expression='happy', speech='¡Hola! ¿Listo para aprender?') }}
+        <div>
+          <h1 class="display-title mb-0">Buenos días</h1>
+          <p class="lead mb-0">Tu estudio en Barcelona — sigue con el ritmo.</p>
+        </div>
+      </div>
+    </section>
 
-{% if homepage and homepage.error and not homepage.daily_sentence %}
+{% if homepage and homepage.error and not homepage.word_of_day %}
 <p class="section-error">No se pudo cargar el contenido del día. Las estadísticas y enlaces siguen abajo.</p>
 {% endif %}
 {% if homepage %}
@@ -45,28 +43,28 @@
 
 <div class="stats-grid">
   <div class="stat-card">
-    <div class="stat-icon" style="background: rgba(255, 182, 39, 0.12);">🔥</div>
+    <div class="stat-icon stat-icon--streak">🔥</div>
     <div>
       <div class="stat-value">{{ stats.streak_days }}</div>
       <div class="stat-label">Días de racha</div>
     </div>
   </div>
   <div class="stat-card">
-    <div class="stat-icon" style="background: rgba(255, 107, 53, 0.08);">⭐</div>
+    <div class="stat-icon stat-icon--xp">⭐</div>
     <div>
       <div class="stat-value">{{ stats.xp_total }}</div>
       <div class="stat-label">XP total</div>
     </div>
   </div>
   <div class="stat-card">
-    <div class="stat-icon" style="background: rgba(46, 196, 182, 0.12);">📝</div>
+    <div class="stat-icon stat-icon--words">📝</div>
     <div>
       <div class="stat-value">{{ stats.words_learned }}</div>
       <div class="stat-label">Palabras aprendidas</div>
     </div>
   </div>
   <div class="stat-card">
-    <div class="stat-icon" style="background: rgba(34, 197, 94, 0.12);">💪</div>
+    <div class="stat-icon stat-icon--accuracy">💪</div>
     <div>
       <div class="stat-value">{{ stats.accuracy_pct }}%</div>
       <div class="stat-label">Precisión</div>
@@ -74,22 +72,22 @@
   </div>
 </div>
 
-<div class="card mb-4" style="padding: 18px 22px;">
+<div class="card card--progress mb-4">
   <div class="card-header-row">
-    <span style="font-size: 14px; font-weight: 700; font-family: var(--font-heading);">Progreso diario</span>
+    <span class="card-title-sm">Progreso diario</span>
     <span class="streak-badge">🔥 {{ stats.streak_days }} día{{ 's' if stats.streak_days != 1 else '' }}</span>
   </div>
   <div class="xp-bar-wrap">
     <div class="xp-bar-labels">
       <span class="xp-level-badge">Nivel {{ stats.level }}</span>
-      <span style="font-weight: 700; color: var(--primary);">{{ stats.xp_in_level }}/{{ stats.xp_level_max }} XP</span>
+      <span class="xp-level-badge">{{ stats.xp_in_level }}/{{ stats.xp_level_max }} XP</span>
     </div>
     <div class="xp-bar-track">
       <div class="xp-bar-fill" style="width: {{ (stats.xp_in_level / stats.xp_level_max * 100) if stats.xp_level_max else 0 }}%;"></div>
     </div>
   </div>
   {% if stats.xp_to_next_level > 0 %}
-  <p class="text-muted mb-0 mt-3" style="font-size: 12px;">{{ stats.xp_to_next_level }} XP más para el Nivel {{ stats.level + 1 }}</p>
+  <p class="text-muted mb-0 mt-3 form-hint">{{ stats.xp_to_next_level }} XP más para el Nivel {{ stats.level + 1 }}</p>
   {% endif %}
 </div>
 
@@ -101,20 +99,16 @@
 <div class="card mb-4">
   <div class="flex flex-wrap gap-3 items-start">
     <div class="wod-icon">{{ homepage.word_of_day.es[0] | upper }}</div>
-    <div style="flex: 1; min-width: 200px;">
-      <h3 style="font-size: 26px; font-weight: 800; margin: 0 0 4px; font-family: var(--font-heading);">{{ homepage.word_of_day.es }}</h3>
-      {% if homepage.word_of_day.phonetic %}
-      <p class="text-muted mb-2" style="font-size: 13px; margin-top: 0;">{{ homepage.word_of_day.phonetic }}</p>
+    <div class="flex-grow">
+      <h3 class="wod-title">{{ homepage.word_of_day.es }}</h3>
+      {% if homepage.word_of_day.en %}
+      <p class="wod-en">{{ homepage.word_of_day.en }}</p>
       {% endif %}
-      {{ reveal_card('👁 Toca para ver el significado', homepage.word_of_day.definition or homepage.word_of_day.en, extra_class='wod-meaning-card') }}
+      {% if homepage.word_of_day.definition %}
+      <p class="wod-definition text-muted">{{ homepage.word_of_day.definition }}</p>
+      {% endif %}
     </div>
   </div>
-  {% if homepage.word_of_day.example_es %}
-  <div class="wod-example">
-    <p class="text-muted mb-1" style="font-size: 13px; font-weight: 600; margin-top: 0;">Ejemplo</p>
-    {{ reveal_card(homepage.word_of_day.example_es, homepage.word_of_day.example_en) }}
-  </div>
-  {% endif %}
 </div>
 {% endif %}
 
@@ -122,7 +116,7 @@
 <div class="mb-3 mt-4">
   <span class="section-tag">💬 Frase corta</span>
 </div>
-{{ reveal_card(homepage.daily_phrase.es, homepage.daily_phrase.en) }}
+{{ reveal_card(homepage.daily_phrase.es, homepage.daily_phrase.en, hint='Toca para ver en inglés') }}
 {% endif %}
 
 <div class="mb-3 mt-4">
@@ -132,7 +126,7 @@
   {% if homepage.weak_words %}
   {% for w in homepage.weak_words %}
   <div class="weak-word-item">
-    <div class="flex items-center gap-2" style="flex: 1;">
+    <div class="flex items-center gap-2 flex-grow">
       <span class="weak-word-es">{{ w.es }}</span>
       <span class="weak-miss-badge">{{ w.miss_count }} error{{ 'es' if w.miss_count != 1 else '' }}</span>
     </div>
@@ -183,31 +177,8 @@
 </div>
 
 {% endif %}
-{% endblock %}
+  </div>
 
-{% block inline_css %}
-.wod-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  color: #fff;
-  font-weight: 800;
-  font-family: var(--font-heading);
-  flex-shrink: 0;
-}
-.wod-example {
-  margin-top: 16px;
-  padding: 14px 18px;
-  background: #FFF8F5;
-  border-radius: var(--radius-md);
-  border-left: 3px solid var(--primary);
-}
-body.dark .wod-example { background: var(--surface-hover); }
-.wod-meaning-card .reveal-es { font-size: 13px !important; }
-.home-hero .pez-wrapper { align-items: center; }
+  {% include "partials/home_gallery.html" %}
+</div>
 {% endblock %}

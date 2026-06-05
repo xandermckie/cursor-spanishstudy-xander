@@ -1,24 +1,26 @@
 {% extends "base.html" %}
 {% from "partials/reveal_card.html" import reveal_card %}
 {% block title %}Recursos{% endblock %}
+{% block body_class %}resources-page{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Recursos de estudio</h1>
-<p class="page-subtitle">Sitios recomendados para mejorar tu español fuera de clase.</p>
+<section class="page-hero page-hero--compact" aria-label="Recursos">
+  <div class="page-hero-overlay"></div>
+  <div class="page-hero-content">
+    <h1 class="display-title mb-0">Recursos de estudio</h1>
+    <p class="lead">Sitios recomendados para mejorar tu español fuera de clase.</p>
+  </div>
+</section>
 
 <div class="instruction-bar" role="note">◎ &nbsp;Toca el texto para ver inglés</div>
 
 {% include "partials/section_alerts.html" %}
 
+{% include "partials/spain_accent.html" %}
+
 {% if not section_failed %}
 <div class="resource-grid">
   {% for r in resources %}
-  {% set bar_colors = {
-    'speaking': 'var(--primary)',
-    'vocabulary': 'var(--secondary)',
-    'listening': 'var(--green)',
-    'reading': 'var(--teal)'
-  } %}
   {% set badge_class = {
     'speaking': 'badge-primary',
     'vocabulary': 'badge-secondary',
@@ -26,10 +28,10 @@
     'reading': 'badge-teal'
   } %}
   <article class="news-card">
-    <div class="news-card-bar" style="background: {{ bar_colors.get(r.skill, 'var(--primary)') }};"></div>
+    <div class="news-card-bar resource-bar--{{ r.skill }}"></div>
     <div class="news-card-body">
       <div class="flex justify-between items-start gap-2 mb-2">
-        <h2 style="font-size: 17px; font-weight: 700; margin: 0; font-family: var(--font-heading);">{{ r.name }}</h2>
+        <h2 class="resource-name">{{ r.name }}</h2>
         <span class="badge {{ badge_class.get(r.skill, 'badge-primary') }}">{{ r.skill_es }}</span>
       </div>
       {{ reveal_card(r.description_es, r.description_en) }}

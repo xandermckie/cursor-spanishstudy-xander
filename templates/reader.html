@@ -4,98 +4,20 @@
 {% block body_class %}reader-page{% endblock %}
 {% block main_class %}container-narrow{% endblock %}
 
-{% block inline_css %}
-  body.fog-reveal-page .passage-wrap { cursor: none; }
-
-  .reader-hero { text-align: center; margin-bottom: 2rem; }
-  .reader-label {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--primary);
-    margin-bottom: 0.75rem;
-  }
-  .reader-hero h1 {
-    font-size: clamp(1.6rem, 4vw, 2.2rem);
-    font-weight: 800;
-    line-height: 1.2;
-    margin-bottom: 0.75rem;
-  }
-  .reader-hero h1 em { color: var(--primary); font-style: normal; }
-
-  .reader-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    padding: 2rem 2.25rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .card-label {
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    font-weight: 600;
-    margin-bottom: 1.25rem;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .card-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-
-  .passage-wrap.fog-wrap--reader {
-    display: block;
-    position: relative;
-    overflow: visible;
-    width: 100%;
-  }
-  .passage-wrap.fog-wrap--reader .passage-layer {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    box-sizing: border-box;
-    font-size: 17px;
-    line-height: 1.9;
-  }
-  .passage-wrap.fog-wrap--reader .passage-layer.target-lang {
-    color: var(--text);
-    position: relative;
-    z-index: 1;
-  }
-  .passage-wrap.fog-wrap--reader .passage-layer.translation {
-    position: absolute;
-    top: 0;
-    left: 0;
-    color: var(--teal);
-    font-style: italic;
-    clip-path: circle(0px at var(--cx, 50%) var(--cy, 50%));
-    transition: clip-path 0.08s ease;
-    pointer-events: none;
-    z-index: 2;
-    background: var(--surface);
-  }
-  .passage-wrap.fog-wrap--reader.revealing .passage-layer.translation {
-    clip-path: circle(var(--fog-lens-radius) at var(--cx, 50%) var(--cy, 50%));
-  }
-{% endblock %}
-
 {% block content %}
-<header class="reader-hero">
-  <div class="flex justify-center mb-3">{{ pez(size=56, expression='thinking') }}</div>
-  <p class="reader-label">Estudio Abroad Reader</p>
-  <h1>Lee en español.<br><em>Pasa el cursor para recordar.</em></h1>
-  <p class="page-subtitle text-center">
-    Mueve el cursor sobre el pasaje — una lente revela la traducción al inglés bajo el texto español.
-  </p>
-</header>
+<section class="page-hero page-hero--compact" aria-label="Lector">
+  <div class="page-hero-overlay"></div>
+  <div class="page-hero-content page-hero-content--center">
+    <div class="flex justify-center mb-3">{{ pez(size=56, expression='thinking') }}</div>
+    <p class="reader-label">Estudio Abroad Reader</p>
+    <h1 class="display-title">Lee en español.<br><em style="color: var(--accent-red); font-style: normal;">Pasa el cursor para recordar.</em></h1>
+    <p class="lead">
+      Mueve el cursor sobre el pasaje — una lente revela la traducción al inglés bajo el texto español.
+    </p>
+  </div>
+</section>
+
+{% include "partials/spain_accent.html" %}
 
 <div class="instruction-bar" role="note">
   ◎ &nbsp;Pasa el cursor sobre el pasaje — la niebla se aclara donde mueves el ratón
@@ -110,7 +32,7 @@
     <span class="badge badge-primary">{{ passage.lang | upper }}</span>
     {{ passage.title }}
     {% if passage.source == 'wikipedia' %}
-    <span style="margin-left: auto; font-size: 10px; color: var(--text-muted);">Wikipedia</span>
+    <span class="card-label-source">Wikipedia</span>
     {% endif %}
   </div>
   <div class="passage-wrap fog-wrap--reader" data-passage-id="{{ passage.id }}">
