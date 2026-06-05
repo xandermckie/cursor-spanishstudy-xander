@@ -893,7 +893,7 @@ main.container-narrow {
   position: absolute;
   top: 10px;
   right: 10px;
-  z-index: 400;
+  z-index: 600;
   width: 44px;
   height: 44px;
   border-radius: var(--radius-lg);
@@ -910,6 +910,17 @@ main.container-narrow {
 
 .travel-geo-btn:hover {
   background: var(--surface);
+}
+
+.travel-geo-btn--active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.travel-geo-btn--active:hover {
+  background: var(--accent-red);
+  border-color: var(--accent-red);
 }
 
 .travel-results-header {
@@ -2597,6 +2608,190 @@ body.dark .streak-badge { color: var(--accent-yellow); }
 }
 
 .swipe-text { color: var(--tan-200); }
+
+/* Voice page */
+.voice-direction-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--surface-muted, rgba(0, 0, 0, 0.04));
+}
+
+.voice-direction-btn {
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.voice-direction-btn.is-active {
+  background: var(--accent-red);
+  border-color: var(--accent-red);
+  color: #fff;
+}
+
+.voice-mic-card {
+  text-align: center;
+}
+
+.voice-model-status {
+  margin-bottom: 1.25rem;
+}
+
+.voice-model-status-text {
+  margin: 0 0 0.5rem;
+  color: var(--text-muted, #666);
+}
+
+.voice-model-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.voice-model-progress-bar {
+  height: 100%;
+  width: 0;
+  background: var(--accent-yellow);
+  transition: width 0.2s ease;
+}
+
+.voice-mic-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.voice-mic-btn {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 3px solid var(--accent-red);
+  background: var(--surface, #fff);
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  user-select: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.voice-mic-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.voice-mic-btn.is-recording {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 6px rgba(196, 30, 58, 0.25);
+  animation: voiceMicPulse 1.2s ease-in-out infinite;
+}
+
+.voice-mic-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.voice-mic-hint {
+  margin: 0;
+}
+
+.voice-error {
+  margin: 1rem 0 0;
+  color: var(--accent-red);
+}
+
+.voice-transcript {
+  resize: vertical;
+  min-height: 5rem;
+}
+
+.voice-result-pair {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .voice-result-pair {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.voice-result-block {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: var(--surface-muted, rgba(0, 0, 0, 0.04));
+}
+
+.voice-result-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #666);
+  margin-bottom: 0.35rem;
+}
+
+.voice-result-text {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.45;
+}
+
+.voice-result-translation {
+  font-weight: 600;
+}
+
+.voice-save-status {
+  margin: 0;
+}
+
+body.dark .voice-direction-toggle {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+body.dark .voice-direction-btn {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+body.dark .voice-model-progress {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+body.dark .voice-mic-btn {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+body.dark .voice-result-block {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@keyframes voiceMicPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(196, 30, 58, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(196, 30, 58, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-mic-btn.is-recording {
+    animation: none;
+  }
+}
 
 /* Accessibility */
 :focus-visible {

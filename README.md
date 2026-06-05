@@ -13,6 +13,7 @@ https://cursor-spanishstudy-xander.onrender.com
 - **Lector** — Fog-reveal reader: a cursor lens uncovers English under Spanish passages; includes daily rotating Spain-related Wikipedia articles
 - **Tarjetas** — Flashcard deck; mark misses to build your weak-words list
 - **Libro de frases** — Type English → cached Spanish translation; add, edit, delete; export CSV
+- **Voz** — Hold-to-talk voice translation (English ↔ Spanish) using browser Whisper (WASM/WebGPU); save to phrasebook when signed in
 - **Viajes** — Filter Barcelona recommendations by time, location, distance, and mood; Leaflet map
 - **Noticias** — Spanish headlines about Spain (NewsAPI, cached 60 minutes)
 - **Historia** — Four Spain/Catalonia topics with click-to-reveal English summaries
@@ -149,10 +150,12 @@ On startup, `scheduler.py` registers an APScheduler background job that runs eve
 
 The UI is Spanish-first: English appears only on hover (site-wide click-to-reveal) or through the reader's fog lens, which follows your cursor over a passage. Signed-in users track flashcard misses in their personal `weak_words` map, surfaced on the homepage. Phrasebook entries are translated once via MyMemory and cached per user.
 
+The **Voz** page runs speech recognition entirely in the browser via [Transformers.js](https://github.com/huggingface/transformers.js) and the `Xenova/whisper-tiny` model (~40 MB on first visit, then cached in IndexedDB). Transcription never hits the server; only the text translation uses the existing MyMemory endpoint. Microphone access requires HTTPS (provided on Render). WebGPU is used when available, with WASM fallback.
+
 ## What I'd Build Next
 
 - **Rebuild the quiz page** — A prior quiz route was removed; a new version would mix Open Trivia DB questions with personal vocab and score by category
 - **Spaced repetition** — Resurface weak flashcard words more often instead of cycling the deck in flat order
 - **Persistent storage on Render** — Free-tier disk is ephemeral; move cache and phrasebook data to Postgres or S3 so user progress survives redeploys
-- **Audio pronunciation** — Integrate something like the Forvo API for native Catalan and Spanish listening practice
+- **Audio pronunciation** — TTS or Forvo API for native Catalan and Spanish listening practice
 - **Offline / PWA mode** — Service worker over cached JSON so the app works without a network connection

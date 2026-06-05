@@ -1055,6 +1055,50 @@ def add_phrase(user_id: str, user_input: str) -> dict[str, Any] | None:
         return None
 
 
+def add_phrase_bidirectional(
+    user_id: str, spoken: str, translated: str, source_lang: str
+) -> dict[str, Any] | None:
+    """Save a voice phrase without re-translating. source_lang is 'en' or 'es'."""
+    if not user_id:
+        return None
+    if source_lang not in ("en", "es"):
+        return None
+    spoken_text = spoken.strip()
+    translated_text = translated.strip()
+    if not spoken_text or not translated_text:
+        return None
+    if (
+        len(spoken_text) > PHRASE_MAX_LENGTH
+        or len(translated_text) > PHRASE_MAX_LENGTH
+    ):
+        return None
+    try:
+        if source_lang == "en":
+            input_text, es_text = spoken_text, translated_text
+        else:
+            input_text, es_text = translated_text, spoken_text
+
+        cache = _load_user_cache(user_id)
+        cache.setdefault("phrasebook", [])
+        now = datetime.now(timezone.utc).isoformat()
+        entry = {
+            "id": str(uuid.uuid4()),
+            "input": input_text,
+            "es": es_text,
+            "created_at": now,
+            "updated_at": now,
+        }
+        cache["phrasebook"].append(entry)
+        update_xp(user_id, 5, cache)
+        update_streak(user_id, cache)
+        if not _save_user_cache(user_id, cache):
+            return None
+        return entry
+    except Exception as exc:
+        logger.exception("add_phrase_bidirectional failed: %s", exc)
+        return None
+
+
 def update_phrase(user_id: str, phrase_id: str, user_input: str) -> bool:
     if not user_id:
         return False
