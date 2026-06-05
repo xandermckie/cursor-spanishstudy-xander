@@ -4,7 +4,7 @@
   const CONFIG = {
     SWIPE_THRESHOLD: 80,
     TAP_MAX_DURATION: 200,
-    DOT_COUNT: 11,
+    DOT_COUNT: 12,
     DEBOUNCE_RESIZE: 150,
     SESSION_KEY: 'wheelNavState',
     FRICTION: 0.95,
@@ -149,6 +149,7 @@
       
       // Click outside wheel to minimize
       document.addEventListener('click', (e) => {
+        if (document.body.classList.contains('voice-recording')) return;
         if (!this.isHomepage && this.state === 'expanded' && !this.isDragging) {
           // Check if click is outside the wheel
           if (!this.wheelNav.contains(e.target)) {

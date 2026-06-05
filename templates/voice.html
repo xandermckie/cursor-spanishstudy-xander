@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% from "partials/pez.html" import pez %}
+{% block title %}Voz{% endblock %}
+{% block body_class %}voice-page{% endblock %}
+
+{% block extra_head %}
+<script type="module" src="{{ url_for('static', filename='js/voice.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<section class="page-hero page-hero--compact" aria-label="Traducción por voz">
+  <div class="page-hero-overlay"></div>
+  <div class="page-hero-content">
+    <h1 class="display-title mb-0">Traducción por voz</h1>
+    <p class="lead">Habla y traduce al instante con reconocimiento local en el navegador.</p>
+  </div>
+</section>
+
+<div class="instruction-bar" role="note">◎ &nbsp;Mantén pulsado el micrófono y habla</div>
+
+{% if not current_user.is_authenticated %}
+<div class="alert alert-info mb-4" role="status">
+  <span>
+    <a href="{{ url_for('login', next=url_for('voice')) }}">Inicia sesión</a>
+    para guardar frases en tu libro.
+  </span>
+</div>
+{% endif %}
+
+<div
+  id="voice-app"
+  class="voice-app"
+  data-csrf="{{ csrf_token() }}"
+  data-logged-in="{{ current_user.is_authenticated|tojson }}"
+  data-login-url="{{ url_for('login', next=url_for('voice')) }}"
+  data-phrasebook-url="{{ url_for('phrasebook') }}"
+>
+  <div class="card mb-4">
+    <h2 class="section-title-sm">Dirección</h2>
+    <div class="voice-direction-toggle" role="group" aria-label="Dirección de traducción">
+      <button type="button" class="voice-direction-btn is-active" data-source-lang="en" aria-pressed="true">
+        Inglés → Español
+      </button>
+      <button type="button" class="voice-direction-btn" data-source-lang="es" aria-pressed="false">
+        Español → Inglés
+      </button>
+    </div>
+  </div>
+
+  <div class="card mb-4 voice-mic-card">
+    <div id="voice-model-status" class="voice-model-status" role="status" aria-live="polite">
+      <p class="voice-model-status-text">Cargando modelo de voz…</p>
+      <div class="voice-model-progress" hidden>
+        <div class="voice-model-progress-bar" id="voice-model-progress-bar"></div>
+      </div>
+    </div>
+
+    <div class="voice-mic-wrap">
+      <button
+        type="button"
+        id="voice-mic-btn"
+        class="voice-mic-btn"
+        disabled
+        aria-label="Mantén pulsado para hablar"
+      >
+        <span class="voice-mic-icon" aria-hidden="true">🎙️</span>
+      </button>
+      <p id="voice-mic-hint" class="voice-mic-hint text-muted">Preparando micrófono…</p>
+    </div>
+
+    <p id="voice-error" class="voice-error hidden" role="alert"></p>
+  </div>
+
+  <div class="card mb-4 voice-transcript-card hidden" id="voice-transcript-card">
+    <h2 class="section-title-sm">Transcripción</h2>
+    <label class="form-label" for="voice-transcript">Puedes editar antes de traducir</label>
+    <textarea
+      id="voice-transcript"
+      class="form-control voice-transcript"
+      rows="3"
+      maxlength="500"
+    ></textarea>
+    <div class="flex gap-2 flex-wrap mt-3">
+      <button type="button" id="voice-translate-btn" class="btn btn-primary">Traducir</button>
+      <button type="button" id="voice-retry-btn" class="btn btn-secondary">Volver a grabar</button>
+    </div>
+  </div>
+
+  <div class="card voice-results hidden" id="voice-results">
+    <h2 class="section-title-sm">Resultado</h2>
+    <div class="voice-result-pair">
+      <div class="voice-result-block">
+        <span class="voice-result-label" id="voice-spoken-label">Original</span>
+        <p id="voice-spoken-text" class="voice-result-text"></p>
+      </div>
+      <div class="voice-result-block">
+        <span class="voice-result-label" id="voice-translated-label">Traducción</span>
+        <p id="voice-translated-text" class="voice-result-text voice-result-translation"></p>
+      </div>
+    </div>
+    <div class="flex gap-2 flex-wrap mt-3">
+      {% if current_user.is_authenticated %}
+      <button type="button" id="voice-save-btn" class="btn btn-primary">Guardar en frases</button>
+      {% else %}
+      <a href="{{ url_for('login', next=url_for('voice')) }}" class="btn btn-primary">Inicia sesión para guardar</a>
+      {% endif %}
+      <a href="{{ url_for('phrasebook') }}" class="btn btn-secondary" id="voice-phrasebook-link" hidden>Ver libro de frases</a>
+    </div>
+    <p id="voice-save-status" class="voice-save-status text-muted mt-2 hidden" role="status"></p>
+  </div>
+
+  <div class="text-center py-4 voice-empty-state" id="voice-empty-state">
+    {{ pez(size=64, expression='happy', speech='¡Mantén el micrófono y habla!') }}
+    <p class="text-muted mt-3 mb-0">La primera visita descarga ~40&nbsp;MB del modelo Whisper; luego queda en caché.</p>
+  </div>
+</div>
+{% endblock %}

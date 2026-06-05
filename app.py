@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from flask import (
     Flask,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -515,6 +516,86 @@ def register_routes(app: Flask) -> None:
             as_attachment=True,
             download_name="estudio_abroad_phrasebook.csv",
         )
+
+    @app.route("/voice")
+    def voice():
+        return render_template(
+            "voice.html",
+            page="voice",
+            title="Voz",
+        )
+
+    @app.route("/voice/translate", methods=["POST"])
+    def voice_translate():
+        if not validate_csrf(request.headers.get("X-CSRF-Token")):
+            return jsonify({"error": "Solicitud no válida."}), 403
+        data = request.get_json(silent=True) or {}
+        text = (data.get("text") or "").strip()
+        source_lang = (data.get("source_lang") or "").strip()
+        if source_lang not in ("en", "es"):
+            return jsonify({"error": "Idioma de origen no válido."}), 400
+        if not text:
+            return jsonify({"error": "Escribe o dicta una frase."}), 400
+        if len(text) > PHRASE_MAX_LENGTH:
+            return jsonify(
+                {
+                    "error": (
+                        f"La frase es demasiado larga "
+                        f"(máximo {PHRASE_MAX_LENGTH} caracteres)."
+                    )
+                }
+            ), 400
+        target_lang = "es" if source_lang == "en" else "en"
+        try:
+            translated, _ = fetcher.fetch_translation(text, source_lang, target_lang)
+        except Exception as exc:
+            logger.exception("voice_translate failed: %s", exc)
+            return jsonify({"error": "No se pudo traducir. Inténtalo de nuevo."}), 500
+        if not translated:
+            return jsonify({"error": "No se pudo traducir. Inténtalo de nuevo."}), 500
+        return jsonify(
+            {
+                "spoken": text,
+                "translated": translated,
+                "source_lang": source_lang,
+                "target_lang": target_lang,
+            }
+        )
+
+    @app.route("/voice/save", methods=["POST"])
+    def voice_save():
+        if not get_current_user_id():
+            return jsonify({"error": "Inicia sesión para guardar frases."}), 401
+        if not validate_csrf(request.headers.get("X-CSRF-Token")):
+            return jsonify({"error": "Solicitud no válida."}), 403
+        data = request.get_json(silent=True) or {}
+        spoken = (data.get("spoken") or "").strip()
+        translated = (data.get("translated") or "").strip()
+        source_lang = (data.get("source_lang") or "").strip()
+        if source_lang not in ("en", "es"):
+            return jsonify({"error": "Idioma de origen no válido."}), 400
+        if not spoken or not translated:
+            return jsonify({"error": "Faltan datos de la frase."}), 400
+        if len(spoken) > PHRASE_MAX_LENGTH or len(translated) > PHRASE_MAX_LENGTH:
+            return jsonify(
+                {
+                    "error": (
+                        f"La frase es demasiado larga "
+                        f"(máximo {PHRASE_MAX_LENGTH} caracteres)."
+                    )
+                }
+            ), 400
+        user_id = get_current_user_id()
+        try:
+            entry = fetcher.add_phrase_bidirectional(
+                user_id, spoken, translated, source_lang
+            )
+        except Exception as exc:
+            logger.exception("voice_save failed: %s", exc)
+            return jsonify({"error": "No se pudo guardar la frase."}), 500
+        if not entry:
+            return jsonify({"error": "No se pudo guardar la frase."}), 500
+        return jsonify({"ok": True, "phrase_id": entry["id"]})
 
     @app.route("/travel", methods=["GET", "POST"])
     def travel():
