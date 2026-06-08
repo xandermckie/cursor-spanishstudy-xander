@@ -447,40 +447,22 @@ WOD_GLOSSES_EN = {
 
 SPAIN_GALLERY = [
     {
-        "filename": 'barcelona-skyline.png',
-        "caption_es": 'El skyline de Barcelona al atardecer',
-        "caption_en": 'Barcelona skyline at sunset',
-        "alt": 'Panoramic view of Barcelona',
+        "filename": "toledo-panorama.png",
+        "caption_es": "Toledo, ciudad histórica sobre el Tajo",
+        "caption_en": "Toledo, historic city above the Tagus",
+        "alt": "Panoramic view of Toledo with the cathedral and Alcázar",
     },
     {
-        "filename": 'sagrada-familia.png',
-        "caption_es": 'La Sagrada Familia, símbolo de la ciudad',
-        "caption_en": 'Sagrada Familia, icon of the city',
-        "alt": 'Sagrada Familia basilica',
+        "filename": "seville-flamenco.png",
+        "caption_es": "Flamenco en la Plaza de España, Sevilla",
+        "caption_en": "Flamenco at Plaza de España, Seville",
+        "alt": "Flamenco dancers in colorful dresses at Plaza de España",
     },
     {
-        "filename": 'spanish-tapas.png',
-        "caption_es": 'Tapas tradicionales para compartir',
-        "caption_en": 'Traditional tapas to share',
-        "alt": 'Spanish tapas spread with calamari, clams, and pulpo a la gallega',
-    },
-    {
-        "filename": 'park-guell.png',
-        "caption_es": 'Mosaicos y vistas en Park Güell',
-        "caption_en": 'Mosaics and views at Park Güell',
-        "alt": 'Park Güell terrace',
-    },
-    {
-        "filename": 'barcelona-beach.png',
-        "caption_es": 'La playa a pocos minutos del centro',
-        "caption_en": 'The beach minutes from the center',
-        "alt": 'Barcelona beach',
-    },
-    {
-        "filename": 'placa-catalunya.png',
-        "caption_es": 'Plaça de Catalunya, corazón del tránsito',
-        "caption_en": 'Plaça de Catalunya, transit hub',
-        "alt": 'Plaça de Catalunya square',
+        "filename": "alicante-castle.png",
+        "caption_es": "El castillo de Santa Bárbara, Alicante",
+        "caption_en": "Santa Bárbara Castle, Alicante",
+        "alt": "Santa Bárbara Castle overlooking Alicante and the coast",
     },
 ]
 

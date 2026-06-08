@@ -1900,39 +1900,39 @@ body:not([data-page="home"]) .wheel-nav.minimized .wheel-swipe-hint.visible {
   background: var(--surface);
 }
 
-body[data-page="home"] { --page-bg: url('../img/backgrounds/sagrada-aerial.png'); }
+body[data-page="home"] { --page-bg: url('../img/backgrounds/toledo-panorama.png'); }
 body[data-page="home"] .page-hero { background-position: center 30%; }
 
 body[data-page="reader"],
-body.reader-page { --page-bg: url('../img/backgrounds/sagrada-twilight.png'); }
+body.reader-page { --page-bg: url('../img/backgrounds/alicante-castle.png'); }
 body.reader-page .page-hero { background-position: center 40%; }
 
 body[data-page="history"],
-body.history-page { --page-bg: url('../img/backgrounds/placa-espanya-night.png'); }
+body.history-page { --page-bg: url('../img/backgrounds/seville-flamenco.png'); }
 body.history-page .page-hero { background-position: center 35%; }
 
 body[data-page="resources"],
-body.resources-page { --page-bg: url('../img/backgrounds/uab-campus.png'); }
+body.resources-page { --page-bg: url('../img/backgrounds/toledo-panorama.png'); }
 body.resources-page .page-hero { background-position: center 25%; }
 
 body[data-page="news"],
-body.news-page { --page-bg: url('../img/backgrounds/disseny-hub.png'); }
+body.news-page { --page-bg: url('../img/backgrounds/alicante-castle.png'); }
 body.news-page .page-hero { background-position: center center; }
 
 body[data-page="travel"],
-body.travel-page { --page-bg: url('../img/backgrounds/barceloneta-coast.png'); }
+body.travel-page { --page-bg: url('../img/backgrounds/seville-flamenco.png'); }
 body.travel-page .page-hero { background-position: 70% center; }
 
 body[data-page="phrasebook"],
-body.phrasebook-page { --page-bg: url('../img/backgrounds/placa-centro-golden.png'); }
+body.phrasebook-page { --page-bg: url('../img/backgrounds/toledo-panorama.png'); }
 body.phrasebook-page .page-hero { background-position: center 45%; }
 
 body[data-page="vocab"],
-body.vocab-page { --page-bg: url('../img/backgrounds/placa-centro-golden.png'); }
+body.vocab-page { --page-bg: url('../img/backgrounds/alicante-castle.png'); }
 body.vocab-page .page-hero { background-position: 40% center; }
 
 body[data-page="translate"],
-body.translate-page { --page-bg: url('../img/backgrounds/segovia-aqueduct.png'); }
+body.translate-page { --page-bg: url('../img/backgrounds/seville-flamenco.png'); }
 body.translate-page .page-hero { background-position: center 40%; }
 
 body.profile-page .page-hero--auth,

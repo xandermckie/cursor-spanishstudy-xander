@@ -10,41 +10,13 @@ from pathlib import Path
 
 USER_AGENT = "EstudioAbroad/1.0 (educational; local seed script)"
 
-IMAGES: dict[str, str] = {
-    "barcelona-skyline.png": (
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/"
-        "Barcelona_-_panorama_de_la_ciutat_des_de_Montju%C3%AFc.jpg/"
-        "330px-Barcelona_-_panorama_de_la_ciutat_des_de_Montju%C3%AFc.jpg"
-    ),
-    "sagrada-familia.png": (
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/"
-        "Sagrada_Familia_01.jpg/330px-Sagrada_Familia_01.jpg"
-    ),
-    "spanish-tapas.png": (
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/"
-        "La_Boqueria.JPG/330px-La_Boqueria.JPG"
-    ),
-    "park-guell.png": (
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/"
-        "Parc_guell_1.jpg/330px-Parc_guell_1.jpg"
-    ),
-    "barcelona-beach.png": (
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/"
-        "Barceloneta_Beach.jpg/330px-Barceloneta_Beach.jpg"
-    ),
-    "placa-catalunya.png": (
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/"
-        "Pla%C3%A7a_de_Catalunya.jpg/330px-Pla%C3%A7a_de_Catalunya.jpg"
-    ),
-}
+# Gallery images are committed under static/img/spain/ (not downloaded here).
+IMAGES: dict[str, str] = {}
 
 FALLBACK_COLORS: dict[str, tuple[int, int, int]] = {
-    "barcelona-skyline.png": (200, 90, 60),
-    "sagrada-familia.png": (180, 160, 140),
-    "spanish-tapas.png": (180, 110, 70),
-    "park-guell.png": (60, 160, 120),
-    "barcelona-beach.png": (70, 150, 200),
-    "placa-catalunya.png": (90, 100, 160),
+    "toledo-panorama.png": (180, 140, 90),
+    "seville-flamenco.png": (200, 90, 60),
+    "alicante-castle.png": (70, 150, 200),
 }
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "static" / "img" / "spain"

@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from app import create_app
-
 
 def test_should_set_session_cookie_flags_in_production_config(monkeypatch) -> None:
     monkeypatch.setenv("FLASK_DEBUG", "0")
     monkeypatch.setenv("SECRET_KEY", "production-secret-key-for-tests-only")
     monkeypatch.setenv("ENCRYPTION_KEY", "Zzpj9pN4UxvhKzx0oW7TDk8YQn5X5vR9LqBvG0TJ_Qs=")
     monkeypatch.setenv("SCHEDULER_ENABLED", "false")
+
+    from app import create_app
 
     application = create_app()
     assert application.config["SESSION_COOKIE_HTTPONLY"] is True
@@ -85,6 +85,8 @@ def test_should_raise_when_secret_key_missing_in_production(monkeypatch) -> None
     monkeypatch.setenv("ENCRYPTION_KEY", "Zzpj9pN4UxvhKzx0oW7TDk8YQn5X5vR9LqBvG0TJ_Qs=")
     monkeypatch.setenv("SCHEDULER_ENABLED", "false")
 
+    from app import create_app
+
     with pytest.raises(RuntimeError, match="SECRET_KEY"):
         create_app()
 
@@ -111,6 +113,8 @@ def test_should_return_429_when_login_rate_limit_exceeded(
     monkeypatch.setenv("SECRET_KEY", "rate-limit-test-secret")
     monkeypatch.setenv("ENCRYPTION_KEY", "Zzpj9pN4UxvhKzx0oW7TDk8YQn5X5vR9LqBvG0TJ_Qs=")
     monkeypatch.setenv("SCHEDULER_ENABLED", "false")
+
+    from app import create_app
 
     application = create_app()
     application.config["TESTING"] = True

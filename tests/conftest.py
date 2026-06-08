@@ -3,9 +3,20 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 import pytest
+
+
+def pytest_configure(config) -> None:
+    """Set env vars before app is imported during test collection."""
+    os.environ.setdefault("FLASK_DEBUG", "1")
+    os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest")
+    os.environ.setdefault(
+        "ENCRYPTION_KEY", "Zzpj9pN4UxvhKzx0oW7TDk8YQn5X5vR9LqBvG0TJ_Qs="
+    )
+    os.environ.setdefault("SCHEDULER_ENABLED", "false")
 
 
 def _csrf_from_session(client) -> str:
