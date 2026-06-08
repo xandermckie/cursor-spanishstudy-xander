@@ -13,9 +13,6 @@ def pytest_configure(config) -> None:
     """Set env vars before app is imported during test collection."""
     os.environ.setdefault("FLASK_DEBUG", "1")
     os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest")
-    os.environ.setdefault(
-        "ENCRYPTION_KEY", "Zzpj9pN4UxvhKzx0oW7TDk8YQn5X5vR9LqBvG0TJ_Qs="
-    )
     os.environ.setdefault("SCHEDULER_ENABLED", "false")
 
 
@@ -59,7 +56,6 @@ def app(tmp_path, monkeypatch):
 
     monkeypatch.setenv("FLASK_DEBUG", "1")
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-for-pytest")
-    monkeypatch.setenv("ENCRYPTION_KEY", "Zzpj9pN4UxvhKzx0oW7TDk8YQn5X5vR9LqBvG0TJ_Qs=")
     monkeypatch.setenv("SCHEDULER_ENABLED", "false")
 
     def fake_translation(

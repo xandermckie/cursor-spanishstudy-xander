@@ -8,7 +8,6 @@ import pytest
 def test_should_set_session_cookie_flags_in_production_config(monkeypatch) -> None:
     monkeypatch.setenv("FLASK_DEBUG", "0")
     monkeypatch.setenv("SECRET_KEY", "production-secret-key-for-tests-only")
-    monkeypatch.setenv("ENCRYPTION_KEY", "Zzpj9pN4UxvhKzx0oW7TDk8YQn5X5vR9LqBvG0TJ_Qs=")
     monkeypatch.setenv("SCHEDULER_ENABLED", "false")
 
     from app import create_app
@@ -82,7 +81,7 @@ def test_should_reject_vocab_record_when_not_logged_in(client, csrf_token) -> No
 def test_should_raise_when_secret_key_missing_in_production(monkeypatch) -> None:
     monkeypatch.setenv("FLASK_DEBUG", "0")
     monkeypatch.delenv("SECRET_KEY", raising=False)
-    monkeypatch.setenv("ENCRYPTION_KEY", "Zzpj9pN4UxvhKzx0oW7TDk8YQn5X5vR9LqBvG0TJ_Qs=")
+    monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
     monkeypatch.setenv("SCHEDULER_ENABLED", "false")
 
     from app import create_app
@@ -111,7 +110,6 @@ def test_should_return_429_when_login_rate_limit_exceeded(
     monkeypatch.setattr("app.CACHE_FILE", cache_file)
     monkeypatch.setenv("FLASK_DEBUG", "1")
     monkeypatch.setenv("SECRET_KEY", "rate-limit-test-secret")
-    monkeypatch.setenv("ENCRYPTION_KEY", "Zzpj9pN4UxvhKzx0oW7TDk8YQn5X5vR9LqBvG0TJ_Qs=")
     monkeypatch.setenv("SCHEDULER_ENABLED", "false")
 
     from app import create_app
