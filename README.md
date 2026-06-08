@@ -180,6 +180,21 @@ The UI is Spanish-first: English appears only on hover (site-wide click-to-revea
 
 The **Voz** page uses a hybrid speech stack. On phones and tablets, users dictate via the **keyboard's built-in mic** into a textarea (no speech-recognition JavaScript — the page loads a ~4 KB `voice-lite.js` bundle). On desktop it lazy-loads [Transformers.js](https://github.com/huggingface/transformers.js) with the `Xenova/whisper-tiny` model (~40 MB on first recording, then cached in IndexedDB). Transcription never hits the server; only the text translation uses the shared provider race. Microphone access requires HTTPS (provided on Render).
 
+## Production security checklist
+
+Before deploying to Render (or any public host):
+
+1. **`SECRET_KEY`** — Set a strong random value (`python -c "import secrets; print(secrets.token_hex(32))"`). The app refuses to start in production (`FLASK_DEBUG=0`) without it. Never use `change-me` or leave it unset.
+2. **`ENCRYPTION_KEY`** — Optional but recommended: a dedicated Fernet key for user data at rest. If omitted, encryption is derived from `SECRET_KEY` (rotating `SECRET_KEY` then requires re-encryption).
+3. **`FLASK_DEBUG=0`** — Required on Render. Debug mode disables secure session cookies.
+4. **HTTPS** — Render terminates TLS automatically. Session cookies use `Secure` when not in debug mode.
+5. **Google Maps / Places keys** — Restrict in [Google Cloud Console](https://console.cloud.google.com/):
+   - **Maps JavaScript API key** (`GOOGLE_MAPS_API_KEY`): Application restrictions → HTTP referrers → your Render URL and `localhost` for dev. API restrictions → Maps JavaScript API + Directions API only.
+   - **Places API key** (`GOOGLE_PLACES_API_KEY`): IP restrictions (server-side only) or separate key with Places API only.
+6. **NewsAPI key** — Server-side only; never expose in templates or client JS.
+7. **Rate limiting** — Login, register, and translation endpoints are limited per IP (10/min auth, 30/min translation). Optional `TRANSLATION_REQUIRES_AUTH=1` requires login for translation APIs in production.
+8. **CI** — GitHub Actions runs `pip-audit`, `pytest`, and gitleaks on every push/PR (see [`.github/workflows/security.yml`](.github/workflows/security.yml)).
+
 ## What I'd Build Next
 
 - **Rebuild the quiz page** — A prior quiz route was removed; a new version would mix Open Trivia DB questions with personal vocab and score by category

@@ -23,6 +23,8 @@ from flask import (
     session,
     url_for,
 )
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.wrappers.response import Response
 
 import encryption
@@ -42,6 +44,12 @@ PHRASE_MAX_LENGTH = 500
 MIN_PASSWORD_LEN = 8
 SUPPORTED_LANGS = frozenset({"en", "es", "ca"})
 LANG_LABELS = {"en": "Inglés", "es": "Español", "ca": "Catalán"}
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[],
+    storage_uri="memory://",
+)
 
 
 def _is_mobile_user_agent(user_agent: str | None) -> bool:
@@ -93,6 +101,12 @@ def get_current_user_id() -> str | None:
 
 def get_current_user_email() -> str | None:
     return session.get("email")
+
+
+def _translation_requires_auth() -> bool:
+    """Optional prod flag: require login before translation API calls."""
+    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
+    return not debug and os.environ.get("TRANSLATION_REQUIRES_AUTH", "0") == "1"
 
 
 def _safe_next_url(target: str | None) -> str:
@@ -157,16 +171,39 @@ def create_app() -> Flask:
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     secret_key = os.environ.get("SECRET_KEY", DEFAULT_SECRET_KEY)
     if not debug and secret_key in ("", DEFAULT_SECRET_KEY):
-        secret_key = secrets.token_hex(32)
-        os.environ["SECRET_KEY"] = secret_key
-        logger.warning(
-            "SECRET_KEY not set on Render; using ephemeral key "
-            "(sessions reset each deploy)."
+        raise RuntimeError(
+            "SECRET_KEY must be set to a strong random value in production. "
+            'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
         )
     app.config["SECRET_KEY"] = secret_key
     app.config["MAX_CONTENT_LENGTH"] = 3 * 1024 * 1024
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=not debug,
+    )
     if debug:
         app.config["TEMPLATES_AUTO_RELOAD"] = True
+
+    limiter.init_app(app)
+
+    @app.after_request
+    def set_security_headers(response: Response) -> Response:
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://maps.googleapis.com "
+            "https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self' https://cdn.jsdelivr.net https://huggingface.co "
+            "https://*.huggingface.co; "
+            "frame-ancestors 'self';"
+        )
+        return response
 
     logging.basicConfig(
         level=logging.INFO,
@@ -204,6 +241,7 @@ def create_app() -> Flask:
 
 def register_routes(app: Flask) -> None:
     @app.route("/register", methods=["GET", "POST"])
+    @limiter.limit("10 per minute", methods=["POST"])
     def register():
         if get_current_user_id():
             return redirect(url_for("profile"))
@@ -239,6 +277,7 @@ def register_routes(app: Flask) -> None:
         )
 
     @app.route("/login", methods=["GET", "POST"])
+    @limiter.limit("10 per minute", methods=["POST"])
     def login():
         if get_current_user_id():
             return redirect(url_for("home"))
@@ -548,7 +587,10 @@ def register_routes(app: Flask) -> None:
         )
 
     @app.route("/voice/translate", methods=["POST"])
+    @limiter.limit("30 per minute")
     def voice_translate():
+        if _translation_requires_auth() and not get_current_user_id():
+            return jsonify({"error": "Inicia sesión para traducir."}), 401
         if not validate_csrf(request.headers.get("X-CSRF-Token")):
             return jsonify({"error": "Solicitud no válida."}), 403
         data = request.get_json(silent=True) or {}
@@ -632,7 +674,10 @@ def register_routes(app: Flask) -> None:
         )
 
     @app.route("/translate/api", methods=["POST"])
+    @limiter.limit("30 per minute")
     def translate_api():
+        if _translation_requires_auth() and not get_current_user_id():
+            return jsonify({"error": "Inicia sesión para traducir."}), 401
         if not validate_csrf(request.headers.get("X-CSRF-Token")):
             return jsonify({"error": "Solicitud no válida."}), 403
         data = request.get_json(silent=True) or {}
@@ -712,6 +757,10 @@ def register_routes(app: Flask) -> None:
 
     @app.route("/travel", methods=["GET", "POST"])
     def travel():
+        if request.method == "POST":
+            if not validate_csrf(request.form.get("csrf_token")):
+                flash("Solicitud no válida. Inténtalo de nuevo.", "warning")
+                return redirect(url_for("travel"))
         filters = {
             "time": request.values.get("time", "").strip() or None,
             "location": request.values.get("location", "").strip() or None,

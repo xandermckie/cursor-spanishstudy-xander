@@ -63,6 +63,7 @@ def app(tmp_path, monkeypatch):
 
     application = create_app()
     application.config["TESTING"] = True
+    application.config["RATELIMIT_ENABLED"] = False
     return application
 
 
