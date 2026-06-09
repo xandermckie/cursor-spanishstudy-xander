@@ -8,12 +8,22 @@ from typing import Any
 
 import pytest
 
+import encryption
+
 
 def pytest_configure(config) -> None:
     """Set env vars before app is imported during test collection."""
     os.environ.setdefault("FLASK_DEBUG", "1")
     os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest")
     os.environ.setdefault("SCHEDULER_ENABLED", "false")
+
+
+@pytest.fixture(autouse=True)
+def clear_encryption_key_cache():
+    """Prevent cached encryption keys from leaking across tests."""
+    encryption.clear_encryption_key_cache()
+    yield
+    encryption.clear_encryption_key_cache()
 
 
 def _csrf_from_session(client) -> str:

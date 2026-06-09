@@ -6,11 +6,13 @@ import hashlib
 import json
 import logging
 import re
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from cryptography.fernet import InvalidToken
+from filelock import FileLock, Timeout
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import encryption
@@ -21,6 +23,7 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 USERS_DIR = DATA_DIR / "users"
 UPLOADS_DIR = DATA_DIR / "uploads"
 INDEX_FILE = USERS_DIR / "index.json"
+REGISTER_LOCK_PATH = USERS_DIR / ".register.lock"
 GLOBAL_CACHE_FILE = DATA_DIR / "cache.json"
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -239,6 +242,23 @@ def _merge_legacy_into_user_data(user_data: dict[str, Any]) -> bool:
     return True
 
 
+@contextmanager
+def _registration_lock() -> Iterator[bool]:
+    """Cross-process lock for registration critical section."""
+    _ensure_dirs()
+    lock = FileLock(REGISTER_LOCK_PATH, timeout=30)
+    try:
+        lock.acquire()
+    except Timeout:
+        logger.error("Timed out waiting for registration lock")
+        yield False
+        return
+    try:
+        yield True
+    finally:
+        lock.release()
+
+
 def _clean_legacy_from_global_cache(user_id: str) -> None:
     """Remove legacy user keys from global cache after user file is saved."""
     if not GLOBAL_CACHE_FILE.exists():
@@ -277,29 +297,39 @@ def register_user(email: str, password: str) -> str | None:
         return None
 
     user_id = user_id_from_email(normalized)
-    if _user_file(user_id).exists():
-        return None
 
-    user_data = _default_user_data(normalized)
-    user_data["password_hash"] = generate_password_hash(password)
-    migrated = _merge_legacy_into_user_data(user_data)
+    with _registration_lock() as acquired:
+        if not acquired:
+            return None
+        if get_user_by_email(normalized):
+            return None
+        if _user_file(user_id).exists():
+            return None
 
-    if not save_user(user_id, user_data):
-        return None
+        user_data = _default_user_data(normalized)
+        user_data["password_hash"] = generate_password_hash(password)
+        migrated = _merge_legacy_into_user_data(user_data)
 
-    if migrated:
-        _clean_legacy_from_global_cache(user_id)
+        if not save_user(user_id, user_data):
+            return None
 
-    index = _load_index()
-    index[normalized] = user_id
-    if not _save_index(index):
-        try:
-            _user_file(user_id).unlink(missing_ok=True)
-        except OSError as exc:
-            logger.error("Failed to roll back user file after index save failure: %s", exc)
-        return None
+        if migrated:
+            _clean_legacy_from_global_cache(user_id)
 
-    return user_id
+        index = _load_index()
+        index[normalized] = user_id
+        if not _save_index(index):
+            if get_user_by_email(normalized) is None:
+                try:
+                    _user_file(user_id).unlink(missing_ok=True)
+                except OSError as exc:
+                    logger.error(
+                        "Failed to roll back user file after index save failure: %s",
+                        exc,
+                    )
+            return None
+
+        return user_id
 
 
 def authenticate(email: str, password: str) -> str | None:
@@ -351,23 +381,33 @@ def save_avatar(user_id: str, file_bytes: bytes, content_type: str | None) -> st
     upload_dir = UPLOADS_DIR / user_id
     upload_dir.mkdir(parents=True, exist_ok=True)
 
-    for old in upload_dir.glob("avatar.*"):
-        try:
-            old.unlink()
-        except OSError:
-            pass
-
     dest = upload_dir / f"avatar.{ext}"
+    tmp = upload_dir / f"avatar.{ext}.tmp"
     try:
-        dest.write_bytes(file_bytes)
+        tmp.write_bytes(file_bytes)
+        tmp.replace(dest)
     except OSError as exc:
         logger.error("Failed to write avatar for %s: %s", user_id, exc)
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
         return None
 
     user_data.setdefault("profile", {})
     user_data["profile"]["avatar_ext"] = ext
     if not save_user(user_id, user_data):
         return None
+
+    for old in upload_dir.glob("avatar.*"):
+        if old == dest:
+            continue
+        try:
+            old.unlink()
+        except OSError:
+            pass
+
     return ext
 
 

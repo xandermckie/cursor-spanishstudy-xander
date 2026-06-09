@@ -12,6 +12,9 @@ from typing import Any, Callable
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
+
+load_dotenv()
+
 from flask import (
     Flask,
     flash,
@@ -33,8 +36,6 @@ import fetcher
 import greetings
 import user_store
 from scheduler import init_scheduler
-
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 

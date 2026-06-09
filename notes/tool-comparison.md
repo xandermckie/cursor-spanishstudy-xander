@@ -10,3 +10,10 @@ Cursor gave a much better response. It gave a breakdown of exactly the type of d
 
 4. Based only on what you just saw — not what you've read — what would you use Claude Code for that you would *not* use Cursor for?
 I would use Claude Code for understanding the structure of something, but probably avoid it for smaller details. To be honest though, I think Cursor crushed this test with the extra data and context for these questions, so I would probably trust it with everything in those wheelhouses.
+
+**What did /code-review find that you didn't notice while building?**
+1. Found a TOCTOU race in user_store.py, however it misunderstood what would happen, the race was happening, but no user file would be orphaned and they would both be held on the same file.
+
+2. found an error in user_store.py where there was an avatar cleanup issue that deleted old avatars before a new one was written, there was no rollback path if there was a writing failure.
+
+3. in encryption.py 

@@ -5,3 +5,4 @@ APScheduler==3.10.4
 gunicorn==23.0.0
 cryptography==46.0.7
 Flask-Limiter==3.12
+filelock==3.18.0

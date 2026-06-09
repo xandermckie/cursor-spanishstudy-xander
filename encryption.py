@@ -64,6 +64,11 @@ def get_encryption_key() -> bytes:
     )
 
 
+def clear_encryption_key_cache() -> None:
+    """Reset cached key so the next call re-reads environment."""
+    get_encryption_key.cache_clear()
+
+
 def encrypt_json(data: dict[str, Any]) -> bytes:
     """
     Serialize dict to JSON and encrypt it.
