@@ -16,4 +16,6 @@ I would use Claude Code for understanding the structure of something, but probab
 
 2. found an error in user_store.py where there was an avatar cleanup issue that deleted old avatars before a new one was written, there was no rollback path if there was a writing failure.
 
-3. in encryption.py 
+3. in encryption.py where the environ is only read once per process, could cause a timing issue where the cached result for an earlier call is used and either there is a valerror or uses a wrong key.
+
+4. app.py - claude believed there was code duplication but it was inline JSON authentication and would only be a style change
