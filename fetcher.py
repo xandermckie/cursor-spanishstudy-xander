@@ -987,7 +987,10 @@ def _homepage_from_cache(
 ) -> dict[str, Any] | None:
     daily = cache.get("daily_sentence")
     daily_phrase = cache.get("daily_phrase")
-    if not daily or not daily.get("en") or not daily_phrase or not daily_phrase.get("en"):
+    valid = bool(
+        daily and daily.get("en") and daily_phrase and daily_phrase.get("en")
+    )
+    if not valid:
         return None
     return {
         "daily_sentence": daily,
@@ -997,7 +1000,7 @@ def _homepage_from_cache(
         "last_refresh": cache.get("last_refresh"),
         "last_refresh_display": format_refresh_time(cache.get("last_refresh")),
         "user_stats": get_user_stats(user_id),
-        "error": True,
+        "error": not valid,
     }
 
 

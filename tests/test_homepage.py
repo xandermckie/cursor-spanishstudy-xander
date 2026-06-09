@@ -73,6 +73,33 @@ def test_repair_invalid_spanish_as_english_cache(tmp_path, monkeypatch) -> None:
     assert homepage["word_of_day"]["en"] != homepage["word_of_day"]["es"]
 
 
+def test_homepage_from_cache_valid_data_sets_error_false() -> None:
+    cache = {
+        "daily_sentence": {"es": "Buenos días.", "en": "Good morning."},
+        "daily_phrase": {"es": "gracias", "en": "thank you"},
+        "word_of_day": {"es": "estación", "en": "station"},
+        "last_refresh": "2026-06-01T10:00:00+00:00",
+    }
+    result = fetcher._homepage_from_cache(cache)
+    assert result is not None
+    assert result["daily_sentence"]["en"] == "Good morning."
+    assert result["daily_phrase"]["en"] == "thank you"
+    assert result["error"] is False
+
+
+def test_homepage_from_cache_invalid_returns_none() -> None:
+    assert fetcher._homepage_from_cache({}) is None
+    assert (
+        fetcher._homepage_from_cache(
+            {
+                "daily_sentence": {"es": "Hola.", "en": "Hello."},
+                "daily_phrase": {"es": "gracias"},
+            }
+        )
+        is None
+    )
+
+
 def test_get_home_gallery_returns_rotated_items() -> None:
     items = fetcher.get_home_gallery(3)
     assert len(items) == 3
