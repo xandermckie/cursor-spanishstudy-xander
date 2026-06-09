@@ -14,7 +14,7 @@ import os
 import random
 import re
 import uuid
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -304,22 +304,29 @@ def _fetch_translation_live(
     if not calls:
         return None
 
-    with ThreadPoolExecutor(max_workers=len(calls)) as executor:
-        futures = {
-            executor.submit(call): name for name, call in calls
-        }
-        for future in as_completed(futures):
-            provider = futures[future]
-            try:
-                translated = future.result()
-            except Exception as exc:
-                logger.warning("Translation provider %s crashed: %s", provider, exc)
-                continue
-            if translated:
-                logger.info("Translation succeeded via %s", provider)
-                return translated
+    executor = ThreadPoolExecutor(max_workers=len(calls))
+    futures = {executor.submit(call): name for name, call in calls}
+    pending = set(futures)
+    translated = None
 
-    return None
+    try:
+        while pending and translated is None:
+            done, pending = wait(pending, return_when=FIRST_COMPLETED)
+            for future in done:
+                provider = futures[future]
+                try:
+                    candidate = future.result()
+                except Exception as exc:
+                    logger.warning("Translation provider %s crashed: %s", provider, exc)
+                    continue
+                if candidate:
+                    logger.info("Translation succeeded via %s", provider)
+                    translated = candidate
+                    break
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    return translated
 
 
 def _store_translation(

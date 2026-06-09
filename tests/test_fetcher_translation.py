@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 
 import fetcher
@@ -28,6 +29,30 @@ def test_fetch_translation_uses_first_parallel_success(monkeypatch) -> None:
     assert translated == "hola"
     assert from_cache is False
     assert "lingva" in calls
+
+
+def test_fetch_translation_live_short_circuits_on_first_success(
+    monkeypatch,
+) -> None:
+    def fast_lingva(*_args, **_kwargs) -> str:
+        time.sleep(0.05)
+        return "hola"
+
+    def slow_mymemory(*_args, **_kwargs) -> None:
+        time.sleep(2.0)
+        return None
+
+    monkeypatch.setattr(fetcher, "_fetch_lingva_instance", fast_lingva)
+    monkeypatch.setattr(fetcher, "_fetch_mymemory", slow_mymemory)
+    monkeypatch.setattr(fetcher, "_fetch_libretranslate", lambda *_a, **_k: None)
+    monkeypatch.setattr(fetcher, "LINGVA_URLS", ("https://lingva.example/api/v1",))
+
+    started = time.monotonic()
+    translated = fetcher._fetch_translation_live("hello", "en", "es", timeout=8)
+    elapsed = time.monotonic() - started
+
+    assert translated == "hola"
+    assert elapsed < 0.5
 
 
 def test_homepage_cache_fresh_skips_api_calls(monkeypatch, tmp_path) -> None:
