@@ -14,9 +14,7 @@ import os
 import random
 import re
 import uuid
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -24,6 +22,15 @@ from zoneinfo import ZoneInfo
 import requests
 
 import user_store
+from fetcher.cache import (
+    CACHE_FILE,
+    DATA_DIR,
+    _invalidate_global_cache,
+    _load_cache,
+    _load_cache_from_disk,
+    _save_cache,
+)
+from fetcher import translation
 from fetcher_seeds import (
     DAILY_PHRASES_EN,
     DAILY_PHRASES_ES,
@@ -49,24 +56,6 @@ from fetcher_travel import (
 
 logger = logging.getLogger(__name__)
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
-CACHE_FILE = DATA_DIR / "cache.json"
-
-MYMEMORY_URL = os.environ.get(
-    "MYMEMORY_URL", "https://api.mymemory.translated.net/get"
-)
-MYMEMORY_EMAIL = os.environ.get("MYMEMORY_EMAIL", "")
-_DEFAULT_LINGVA_URLS = ("https://lingva.ml/api/v1",)
-LINGVA_URLS: tuple[str, ...] = tuple(
-    url.rstrip("/")
-    for url in (
-        os.environ.get("LINGVA_URLS")
-        or os.environ.get("LINGVA_URL")
-        or ",".join(_DEFAULT_LINGVA_URLS)
-    ).split(",")
-    if url.strip()
-)
-LIBRETRANSLATE_URL = os.environ.get("LIBRETRANSLATE_URL", "").rstrip("/")
 DICTIONARY_API_BASE = os.environ.get(
     "DICTIONARY_API_BASE", "https://api.dictionaryapi.dev/api/v2/entries/en"
 ).rstrip("/")
@@ -107,288 +96,6 @@ def _reader_passage_index(pool_len: int) -> int:
     if pool_len <= 0:
         return 0
     return (int(datetime.now(timezone.utc).timestamp()) // 900) % pool_len
-
-
-def _load_cache_from_disk() -> dict[str, Any]:
-    if not CACHE_FILE.exists():
-        return {}
-    try:
-        with CACHE_FILE.open(encoding="utf-8") as f:
-            return json.load(f)
-    except json.JSONDecodeError as exc:
-        logger.error("Corrupt cache file %s: %s", CACHE_FILE, exc)
-        return {}
-    except OSError as exc:
-        logger.error("Failed to read cache file %s: %s", CACHE_FILE, exc)
-        return {}
-
-
-def _invalidate_global_cache() -> None:
-    try:
-        from flask import g, has_request_context
-
-        if has_request_context() and hasattr(g, "_estudio_global_cache"):
-            delattr(g, "_estudio_global_cache")
-    except ImportError:
-        pass
-
-
-def _load_cache() -> dict[str, Any]:
-    try:
-        from flask import g, has_request_context
-
-        if has_request_context():
-            cached = getattr(g, "_estudio_global_cache", None)
-            if cached is not None:
-                return cached
-            cached = _load_cache_from_disk()
-            g._estudio_global_cache = cached
-            return cached
-    except ImportError:
-        pass
-    return _load_cache_from_disk()
-
-
-def _save_cache(cache: dict[str, Any]) -> bool:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    tmp_path = CACHE_FILE.with_suffix(".json.tmp")
-    try:
-        with tmp_path.open("w", encoding="utf-8") as f:
-            json.dump(cache, f, ensure_ascii=False, indent=2)
-        tmp_path.replace(CACHE_FILE)
-        return True
-    except OSError as exc:
-        logger.error("Failed to write cache file: %s", exc)
-        if tmp_path.exists():
-            try:
-                tmp_path.unlink()
-            except OSError:
-                pass
-        return False
-
-
-def _translation_cache_key(text: str, source: str, target: str) -> str:
-    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
-    return f"{source}:{target}:{digest}"
-
-
-def _is_valid_translation(text: str) -> bool:
-    cleaned = (text or "").strip()
-    if not cleaned:
-        return False
-    return "MYMEMORY WARNING" not in cleaned.upper()
-
-
-def _fetch_mymemory(
-    text: str, source: str, target: str, *, timeout: int = 15
-) -> str | None:
-    params: dict[str, str] = {
-        "q": text[:500],
-        "langpair": f"{source}|{target}",
-    }
-    if MYMEMORY_EMAIL:
-        params["de"] = MYMEMORY_EMAIL
-
-    try:
-        response = requests.get(MYMEMORY_URL, params=params, timeout=timeout)
-        try:
-            data = response.json()
-        except ValueError:
-            response.raise_for_status()
-            return None
-
-        if data.get("responseStatus") != 200:
-            logger.warning(
-                "MyMemory error: %s", data.get("responseDetails", "unknown")
-            )
-            return None
-
-        translated = (data.get("responseData", {}).get("translatedText") or "").strip()
-        if not _is_valid_translation(translated):
-            return None
-        return translated
-    except requests.RequestException as exc:
-        logger.warning("MyMemory request failed: %s", exc)
-        return None
-
-
-def _fetch_lingva_instance(
-    base_url: str,
-    text: str,
-    source: str,
-    target: str,
-    *,
-    timeout: int = 20,
-) -> str | None:
-    supported = {"en", "es", "ca"}
-    if source not in supported or target not in supported:
-        return None
-
-    try:
-        path = (
-            f"{base_url}/{source}/{target}/"
-            f"{quote(text[:500], safe='')}"
-        )
-        response = requests.get(path, timeout=timeout)
-        response.raise_for_status()
-        data = response.json()
-        translated = (data.get("translation") or "").strip()
-        if not _is_valid_translation(translated):
-            return None
-        return translated
-    except (requests.RequestException, ValueError, KeyError) as exc:
-        logger.warning("Lingva fallback failed (%s): %s", base_url, exc)
-        return None
-
-
-def _fetch_libretranslate(
-    text: str, source: str, target: str, *, timeout: int = 20
-) -> str | None:
-    if not LIBRETRANSLATE_URL:
-        return None
-
-    try:
-        response = requests.post(
-            LIBRETRANSLATE_URL,
-            json={
-                "q": text[:500],
-                "source": source,
-                "target": target,
-                "format": "text",
-            },
-            timeout=timeout,
-        )
-        response.raise_for_status()
-        data = response.json()
-        translated = (data.get("translatedText") or "").strip()
-        if not _is_valid_translation(translated):
-            return None
-        return translated
-    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
-        logger.warning("LibreTranslate fallback failed: %s", exc)
-        return None
-
-
-def _translation_provider_calls(
-    text: str, source: str, target: str, *, timeout: int
-) -> list[tuple[str, Any]]:
-    # Lingva first — MyMemory free quota is per server IP and exhausts on Render.
-    calls: list[tuple[str, Any]] = []
-    for base_url in LINGVA_URLS:
-        calls.append(
-            (
-                f"lingva:{base_url}",
-                lambda url=base_url: _fetch_lingva_instance(
-                    url, text, source, target, timeout=timeout
-                ),
-            )
-        )
-    calls.append(
-        ("mymemory", lambda: _fetch_mymemory(text, source, target, timeout=timeout)),
-    )
-    if LIBRETRANSLATE_URL:
-        calls.append(
-            (
-                "libretranslate",
-                lambda: _fetch_libretranslate(text, source, target, timeout=timeout),
-            )
-        )
-    return calls
-
-
-def _fetch_translation_live(
-    text: str, source: str, target: str, *, timeout: int = 12
-) -> str | None:
-    """Race free translation providers; return the first valid result."""
-    calls = _translation_provider_calls(text, source, target, timeout=timeout)
-    if not calls:
-        return None
-
-    executor = ThreadPoolExecutor(max_workers=len(calls))
-    futures = {executor.submit(call): name for name, call in calls}
-    pending = set(futures)
-    translated = None
-
-    try:
-        while pending and translated is None:
-            done, pending = wait(pending, return_when=FIRST_COMPLETED)
-            for future in done:
-                provider = futures[future]
-                try:
-                    candidate = future.result()
-                except Exception as exc:
-                    logger.warning("Translation provider %s crashed: %s", provider, exc)
-                    continue
-                if candidate:
-                    logger.info("Translation succeeded via %s", provider)
-                    translated = candidate
-                    break
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
-
-    return translated
-
-
-def _store_translation(
-    cache: dict[str, Any], key: str, translated: str
-) -> tuple[str, bool]:
-    cache.setdefault("translations", {})
-    cache["translations"][key] = translated
-    _save_cache(cache)
-    return translated, False
-
-
-def fetch_translation(
-    text: str, source: str, target: str, use_cache: bool = True
-) -> tuple[str | None, bool]:
-    """
-    Translate with JSON cache. Races MyMemory, Lingva, and LibreTranslate.
-    Returns (text, from_cache).
-    """
-    if not text or not text.strip():
-        return None, False
-
-    cache = _load_cache()
-    cache.setdefault("translations", {})
-    key = _translation_cache_key(text, source, target)
-
-    if use_cache and key in cache["translations"]:
-        return cache["translations"][key], True
-
-    translated = _fetch_translation_live(text, source, target, timeout=12)
-
-    if translated:
-        return _store_translation(cache, key, translated)
-
-    if key in cache["translations"]:
-        return cache["translations"][key], True
-    return None, False
-
-
-def fetch_translation_fast(
-    text: str, source: str, target: str, use_cache: bool = True
-) -> tuple[str | None, bool]:
-    """
-    Voice UI translation — same parallel providers with a shorter per-call timeout.
-    """
-    if not text or not text.strip():
-        return None, False
-
-    cache = _load_cache()
-    cache.setdefault("translations", {})
-    key = _translation_cache_key(text, source, target)
-
-    if use_cache and key in cache["translations"]:
-        return cache["translations"][key], True
-
-    translated = _fetch_translation_live(text, source, target, timeout=8)
-
-    if translated:
-        return _store_translation(cache, key, translated)
-
-    if key in cache["translations"]:
-        return cache["translations"][key], True
-    return None, False
 
 
 def fetch_definition(word: str) -> dict[str, Any] | None:
@@ -884,8 +591,8 @@ def _populate_homepage_cache(
         return True
 
     if use_apis:
-        en_text, _ = fetch_translation(sentence_es, "es", "en")
-        phrase_en, _ = fetch_translation(phrase_es, "es", "en")
+        en_text, _ = translation.fetch_translation(sentence_es, "es", "en")
+        phrase_en, _ = translation.fetch_translation(phrase_es, "es", "en")
     else:
         en_text, phrase_en = None, None
 
@@ -908,7 +615,7 @@ def _populate_homepage_cache(
     es_word = _pick_spanish_headword(sentence_es)
     definition_es = _wod_definition_es(es_word)
     if use_apis:
-        en_gloss, _ = fetch_translation(es_word, "es", "en")
+        en_gloss, _ = translation.fetch_translation(es_word, "es", "en")
         en_lookup = (en_gloss or "").split()[0].strip(".,?!").lower()
         if not en_lookup or _translation_looks_invalid(es_word, en_gloss):
             en_lookup = (_gloss_for_headword(es_word, cache) or "").split()[0].strip(
@@ -1237,7 +944,7 @@ def add_phrase(user_id: str, user_input: str) -> dict[str, Any] | None:
     if not text or len(text) > PHRASE_MAX_LENGTH:
         return None
     try:
-        es_text, _ = fetch_translation(text, "en", "es")
+        es_text, _ = translation.fetch_translation(text, "en", "es")
         if not es_text:
             es_text = text
 
@@ -1313,7 +1020,7 @@ def update_phrase(user_id: str, phrase_id: str, user_input: str) -> bool:
     if not text or len(text) > PHRASE_MAX_LENGTH:
         return False
     try:
-        es_text, _ = fetch_translation(text, "en", "es")
+        es_text, _ = translation.fetch_translation(text, "en", "es")
         if not es_text:
             es_text = text
 
@@ -1434,11 +1141,12 @@ def _ensure_wikipedia_passages(cache: dict[str, Any]) -> None:
     
     # Refresh every 24 hours
     now = datetime.now(timezone.utc)
-    should_refresh = (
-        not wiki_passages
-        or not last_fetch
-        or (now - datetime.fromisoformat(last_fetch)).total_seconds() > 86400
-    )
+    should_refresh = not wiki_passages or not last_fetch
+    if not should_refresh and last_fetch:
+        last_dt = datetime.fromisoformat(last_fetch.replace("Z", "+00:00"))
+        if last_dt.tzinfo is None:
+            last_dt = last_dt.replace(tzinfo=timezone.utc)
+        should_refresh = (now - last_dt).total_seconds() > 86400
     
     if not should_refresh:
         return
@@ -1464,9 +1172,15 @@ def _ensure_wikipedia_passages(cache: dict[str, Any]) -> None:
         article = _fetch_wikipedia_article(title, "es")
         if article:
             article["id"] = article_id
-            translated, _ = fetch_translation(article["body"], "es", "en")
-            article["en"] = translated if translated else article["body"]
-            wiki_passages.append(article)
+            translated, _ = translation.fetch_translation(article["body"], "es", "en")
+            if translated:
+                article["en"] = translated
+                wiki_passages.append(article)
+            else:
+                logger.warning(
+                    "Wikipedia article %r translation pending; skipping until next refresh",
+                    title,
+                )
     
     if wiki_passages:
         cache["wikipedia_passages"] = wiki_passages
@@ -1488,9 +1202,13 @@ def _ensure_reader_passages(cache: dict[str, Any]) -> list[dict[str, Any]]:
         if passage.get("en"):
             continue
         src = "es" if passage.get("lang") == "es" else "ca"
-        translated, _ = fetch_translation(passage.get("body", ""), src, "en")
+        translated, _ = translation.fetch_translation(passage.get("body", ""), src, "en")
         if translated:
             passage["en"] = translated
+            passage.pop("_translation_pending", None)
+            updated = True
+        elif not passage.get("en"):
+            passage["_translation_pending"] = True
             updated = True
     if updated:
         cache["reader_passages"] = passages
@@ -1507,9 +1225,13 @@ def get_reader(user_id: str | None = None) -> dict[str, Any]:
         _ensure_wikipedia_passages(cache)
         wiki_passages = cache.get("wikipedia_passages", [])
         
-        # Combine all passages for daily rotation
-        all_passages = seed_passages + wiki_passages
-        
+        # Combine passages with valid English translations for daily rotation
+        all_passages = [
+            p
+            for p in seed_passages + wiki_passages
+            if p.get("en") and not p.get("_translation_pending")
+        ]
+
         if not all_passages:
             return {
                 "passages": [],

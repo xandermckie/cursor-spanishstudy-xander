@@ -207,34 +207,57 @@ def _global_cache_has_legacy_user_data() -> bool:
     return any(global_cache.get(key) for key in LEGACY_USER_KEYS)
 
 
-def _migrate_legacy_user_data(user_id: str, user_data: dict[str, Any]) -> None:
+def _merge_legacy_into_user_data(user_data: dict[str, Any]) -> bool:
+    """Copy legacy user keys from global cache into user_data without mutating global cache."""
     index = _load_index()
     if index:
-        return
+        return False
     if not _global_cache_has_legacy_user_data():
-        return
+        return False
+    if not GLOBAL_CACHE_FILE.exists():
+        return False
+    try:
+        with GLOBAL_CACHE_FILE.open(encoding="utf-8") as f:
+            global_cache = json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Legacy migration skipped: %s", exc)
+        return False
+
+    migrated = False
+    for key in LEGACY_USER_KEYS:
+        if key in global_cache and global_cache[key]:
+            user_data[key] = global_cache[key]
+            migrated = True
+
+    if not migrated:
+        return False
+
+    user_data.setdefault("phrasebook", [])
+    user_data.setdefault("weak_words", {})
+    user_data.setdefault("user_stats", _default_user_stats())
+    user_data.setdefault("reader_xp_dates", [])
+    return True
+
+
+def _clean_legacy_from_global_cache(user_id: str) -> None:
+    """Remove legacy user keys from global cache after user file is saved."""
     if not GLOBAL_CACHE_FILE.exists():
         return
     try:
         with GLOBAL_CACHE_FILE.open(encoding="utf-8") as f:
             global_cache = json.load(f)
     except (json.JSONDecodeError, OSError) as exc:
-        logger.warning("Legacy migration skipped: %s", exc)
+        logger.warning("Legacy cache cleanup skipped: %s", exc)
         return
 
-    migrated = False
+    cleaned = False
     for key in LEGACY_USER_KEYS:
-        if key in global_cache and global_cache[key]:
-            user_data[key] = global_cache.pop(key)
-            migrated = True
+        if key in global_cache:
+            global_cache.pop(key)
+            cleaned = True
 
-    if not migrated:
+    if not cleaned:
         return
-
-    user_data.setdefault("phrasebook", [])
-    user_data.setdefault("weak_words", {})
-    user_data.setdefault("user_stats", _default_user_stats())
-    user_data.setdefault("reader_xp_dates", [])
 
     tmp = GLOBAL_CACHE_FILE.with_suffix(".json.tmp")
     try:
@@ -259,10 +282,13 @@ def register_user(email: str, password: str) -> str | None:
 
     user_data = _default_user_data(normalized)
     user_data["password_hash"] = generate_password_hash(password)
-    _migrate_legacy_user_data(user_id, user_data)
+    migrated = _merge_legacy_into_user_data(user_data)
 
     if not save_user(user_id, user_data):
         return None
+
+    if migrated:
+        _clean_legacy_from_global_cache(user_id)
 
     index = _load_index()
     index[normalized] = user_id

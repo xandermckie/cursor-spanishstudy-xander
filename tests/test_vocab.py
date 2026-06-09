@@ -2,8 +2,43 @@
 
 from __future__ import annotations
 
+import json
+
+import pytest
+
 import fetcher
+import user_store
 from fetcher_seeds import FLASHCARD_DECK_SEED
+
+
+@pytest.fixture
+def vocab_unit_env(tmp_path, monkeypatch):
+    """Isolated data dirs for direct fetcher vocab function tests."""
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    users_dir = data_dir / "users"
+    cache_file = data_dir / "cache.json"
+    cache_file.write_text(
+        json.dumps({"flashcard_deck": list(FLASHCARD_DECK_SEED)}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("fetcher.cache.DATA_DIR", data_dir)
+    monkeypatch.setattr("fetcher.cache.CACHE_FILE", cache_file)
+    monkeypatch.setattr("fetcher.cache.DATA_DIR", data_dir)
+    monkeypatch.setattr("fetcher.cache.CACHE_FILE", cache_file)
+    monkeypatch.setattr(fetcher, "DATA_DIR", data_dir)
+    monkeypatch.setattr(fetcher, "CACHE_FILE", cache_file)
+    monkeypatch.setattr(user_store, "DATA_DIR", data_dir)
+    monkeypatch.setattr(user_store, "USERS_DIR", users_dir)
+    monkeypatch.setattr(user_store, "UPLOADS_DIR", data_dir / "uploads")
+    monkeypatch.setattr(user_store, "INDEX_FILE", users_dir / "index.json")
+    monkeypatch.setattr(user_store, "GLOBAL_CACHE_FILE", cache_file)
+
+    user_id = user_store.register_user("vocab-unit@example.com", "password123")
+    assert user_id
+    fetcher.reset_vocab_session(user_id)
+    return user_id
 
 
 def test_should_reject_record_when_not_logged_in(client, csrf_token) -> None:
@@ -107,3 +142,60 @@ def test_should_record_shuffled_card_at_session_index(
 
     session = fetcher.get_vocab_session(user_id)
     assert session.get("index") == 1
+
+
+def test_record_flashcard_increments_correct_count_and_xp(vocab_unit_env) -> None:
+    user_id = vocab_unit_env
+    card = fetcher.get_vocab_session(user_id)["card"]
+
+    assert fetcher.record_flashcard_result(
+        user_id, card["es"], card["en"], False, 0
+    )
+
+    cache = fetcher._load_user_cache(user_id)
+    session = cache["vocab_session"]
+    assert session["correct_count"] == 1
+    assert session["expected_index"] == 1
+    assert cache["user_stats"]["xp_total"] == 10
+    assert cache["user_stats"]["total_correct"] == 1
+
+
+def test_record_flashcard_rejects_wrong_card_content(vocab_unit_env) -> None:
+    user_id = vocab_unit_env
+    cache_before = fetcher._load_user_cache(user_id)
+    xp_before = cache_before["user_stats"]["xp_total"]
+
+    assert fetcher.record_flashcard_result(
+        user_id, "fake", "card", False, 0
+    ) is False
+
+    cache_after = fetcher._load_user_cache(user_id)
+    assert cache_after["vocab_session"]["correct_count"] == 0
+    assert cache_after["user_stats"]["xp_total"] == xp_before
+
+
+def test_record_flashcard_rejects_duplicate_index(vocab_unit_env) -> None:
+    user_id = vocab_unit_env
+    card = fetcher.get_vocab_session(user_id)["card"]
+
+    assert fetcher.record_flashcard_result(
+        user_id, card["es"], card["en"], False, 0
+    )
+    assert fetcher.record_flashcard_result(
+        user_id, card["es"], card["en"], False, 0
+    ) is False
+
+
+def test_reset_vocab_session_clears_progress(vocab_unit_env) -> None:
+    user_id = vocab_unit_env
+    card = fetcher.get_vocab_session(user_id)["card"]
+    fetcher.record_flashcard_result(user_id, card["es"], card["en"], False, 0)
+
+    fetcher.reset_vocab_session(user_id)
+
+    cache = fetcher._load_user_cache(user_id)
+    session = cache["vocab_session"]
+    assert session["correct_count"] == 0
+    assert session["expected_index"] == 0
+    assert session["complete"] is False
+    assert session["visited_indices"] == []

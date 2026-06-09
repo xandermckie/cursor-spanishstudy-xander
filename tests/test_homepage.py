@@ -13,6 +13,8 @@ def test_bootstrap_homepage_cache_fills_daily_content(tmp_path, monkeypatch) -> 
     cache_file = data_dir / "cache.json"
     cache_file.write_text("{}", encoding="utf-8")
 
+    monkeypatch.setattr("fetcher.cache.DATA_DIR", data_dir)
+    monkeypatch.setattr("fetcher.cache.CACHE_FILE", cache_file)
     monkeypatch.setattr(fetcher, "DATA_DIR", data_dir)
     monkeypatch.setattr(fetcher, "CACHE_FILE", cache_file)
 
@@ -39,6 +41,8 @@ def test_get_homepage_bootstraps_empty_cache(tmp_path, monkeypatch) -> None:
     cache_file = data_dir / "cache.json"
     cache_file.write_text("{}", encoding="utf-8")
 
+    monkeypatch.setattr("fetcher.cache.DATA_DIR", data_dir)
+    monkeypatch.setattr("fetcher.cache.CACHE_FILE", cache_file)
     monkeypatch.setattr(fetcher, "DATA_DIR", data_dir)
     monkeypatch.setattr(fetcher, "CACHE_FILE", cache_file)
     monkeypatch.setattr(
@@ -65,6 +69,8 @@ def test_repair_invalid_spanish_as_english_cache(tmp_path, monkeypatch) -> None:
     }
     cache_file.write_text(json.dumps(bad), encoding="utf-8")
 
+    monkeypatch.setattr("fetcher.cache.DATA_DIR", data_dir)
+    monkeypatch.setattr("fetcher.cache.CACHE_FILE", cache_file)
     monkeypatch.setattr(fetcher, "DATA_DIR", data_dir)
     monkeypatch.setattr(fetcher, "CACHE_FILE", cache_file)
 

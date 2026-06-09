@@ -178,7 +178,7 @@
 
 {% block extra_js %}
 {% if not section_failed %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   'use strict';
 
@@ -830,7 +830,7 @@
   src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=geometry&callback=initTravelPage">
 </script>
 {% else %}
-<script>
+<script nonce="{{ csp_nonce }}">
   (function () {
     if (document.readyState === 'complete') window.initTravelPage();
     else window.addEventListener('load', window.initTravelPage);

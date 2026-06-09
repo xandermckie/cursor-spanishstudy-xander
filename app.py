@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from flask import (
     Flask,
     flash,
+    g,
     jsonify,
     redirect,
     render_template,
@@ -187,14 +188,19 @@ def create_app() -> Flask:
 
     limiter.init_app(app)
 
+    @app.before_request
+    def assign_csp_nonce() -> None:
+        g.csp_nonce = secrets.token_urlsafe(16)
+
     @app.after_request
     def set_security_headers(response: Response) -> Response:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        nonce = getattr(g, "csp_nonce", "")
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://maps.googleapis.com "
+            f"script-src 'self' 'nonce-{nonce}' https://maps.googleapis.com "
             "https://cdn.jsdelivr.net; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
@@ -233,6 +239,7 @@ def create_app() -> Flask:
             "user_stats": fetcher.get_user_stats(user_id),
             "csrf_token": generate_csrf_token,
             "current_user": _current_user_context(),
+            "csp_nonce": getattr(g, "csp_nonce", ""),
         }
 
     register_routes(app)

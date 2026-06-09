@@ -10,6 +10,7 @@ import hashlib
 import json
 import logging
 import os
+from functools import lru_cache
 from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -25,6 +26,7 @@ def _derive_key_from_secret(secret: str) -> bytes:
     return base64.urlsafe_b64encode(digest)
 
 
+@lru_cache(maxsize=1)
 def get_encryption_key() -> bytes:
     """
     Load encryption key from ENCRYPTION_KEY, or derive from SECRET_KEY.

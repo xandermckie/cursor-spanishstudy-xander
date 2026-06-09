@@ -42,7 +42,10 @@ def test_should_include_security_headers_on_html_response(client) -> None:
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
     assert response.headers.get("X-Frame-Options") == "SAMEORIGIN"
     assert response.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+    csp = response.headers.get("Content-Security-Policy", "")
     assert "Content-Security-Policy" in response.headers
+    assert "'nonce-" in csp
+    assert "script-src 'self' 'unsafe-inline'" not in csp
 
 
 def test_should_reject_phrasebook_export_when_not_logged_in(client) -> None:

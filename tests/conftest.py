@@ -44,6 +44,8 @@ def app(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
+    monkeypatch.setattr("fetcher.cache.DATA_DIR", data_dir)
+    monkeypatch.setattr("fetcher.cache.CACHE_FILE", cache_file)
     monkeypatch.setattr("fetcher.DATA_DIR", data_dir)
     monkeypatch.setattr("fetcher.CACHE_FILE", cache_file)
     monkeypatch.setattr("user_store.DATA_DIR", data_dir)
@@ -63,6 +65,8 @@ def app(tmp_path, monkeypatch):
     ) -> tuple[str, bool]:
         return f"ES:{text}", False
 
+    monkeypatch.setattr("fetcher.translation.fetch_translation", fake_translation)
+    monkeypatch.setattr("fetcher.translation.fetch_translation_fast", fake_translation)
     monkeypatch.setattr("fetcher.fetch_translation", fake_translation)
     monkeypatch.setattr("fetcher.fetch_translation_fast", fake_translation)
 

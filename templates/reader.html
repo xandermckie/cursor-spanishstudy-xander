@@ -59,7 +59,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   document.querySelectorAll('.passage-wrap.fog-wrap--reader').forEach(function (wrap) {
     const target = wrap.querySelector('.passage-layer.target-lang');

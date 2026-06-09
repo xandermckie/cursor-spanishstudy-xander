@@ -196,7 +196,7 @@
   <script src="{{ url_for('static', filename='js/profile-dropdown.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/wheel-nav.js') }}" defer></script>
   {% if page == 'reader' %}
-  <script>
+  <script nonce="{{ csp_nonce }}">
   (function () {
     const cursor = document.getElementById('fog-cursor');
     if (!cursor) return;

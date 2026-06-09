@@ -10,6 +10,14 @@ from cryptography.fernet import Fernet, InvalidToken
 import encryption
 
 
+@pytest.fixture(autouse=True)
+def clear_encryption_key_cache():
+    """Prevent lru_cache from leaking keys across tests."""
+    encryption.get_encryption_key.cache_clear()
+    yield
+    encryption.get_encryption_key.cache_clear()
+
+
 @pytest.fixture
 def test_encryption_key():
     """Generate a test encryption key."""
@@ -28,6 +36,25 @@ def test_get_encryption_key_from_env(set_test_key):
     key = encryption.get_encryption_key()
     assert key == set_test_key
     assert isinstance(key, bytes)
+
+
+def test_get_encryption_key_is_cached(set_test_key):
+    """Second call returns cached key without re-reading environment."""
+    call_count = 0
+    original_get = os.environ.get
+
+    def counting_get(name, *args, **kwargs):
+        nonlocal call_count
+        if name in ("ENCRYPTION_KEY", "SECRET_KEY"):
+            call_count += 1
+        return original_get(name, *args, **kwargs)
+
+    with patch.object(os.environ, "get", side_effect=counting_get):
+        first = encryption.get_encryption_key()
+        second = encryption.get_encryption_key()
+
+    assert first is second
+    assert call_count == 1
 
 
 def test_get_encryption_key_missing():
@@ -111,7 +138,8 @@ def test_decrypt_json_invalid_token():
     key1 = Fernet.generate_key()
     with patch.dict(os.environ, {"ENCRYPTION_KEY": key1.decode()}):
         encrypted = encryption.encrypt_json(test_data)
-    
+
+    encryption.get_encryption_key.cache_clear()
     key2 = Fernet.generate_key()
     with patch.dict(os.environ, {"ENCRYPTION_KEY": key2.decode()}):
         with pytest.raises(InvalidToken, match="Failed to decrypt data"):

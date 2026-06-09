@@ -81,7 +81,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 document.querySelectorAll('.phrase-edit-btn').forEach(function (btn) {
   btn.addEventListener('click', function () {
     var panel = document.getElementById(btn.getAttribute('data-target'));
